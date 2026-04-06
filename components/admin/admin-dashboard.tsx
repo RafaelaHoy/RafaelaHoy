@@ -1,0 +1,674 @@
+"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { createClient } from "@/lib/supabase/client"
+import { Logo } from "@/components/logo"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { LogOut, Plus, Pencil, Trash2, FileText, Eye, EyeOff, Star } from "lucide-react"
+import { format } from "date-fns"
+import { es } from "date-fns/locale"
+import Link from "next/link"
+
+interface Article {
+  id: string
+  title: string
+  slug: string
+  is_published: boolean
+  is_featured: boolean
+  published_at: string | null
+  created_at: string
+  categories: {
+    name: string
+    slug: string
+  } | null
+}
+
+interface Category {
+  id: string
+  name: string
+  slug: string
+}
+
+interface AdminDashboardProps {
+  articles: Article[]
+  categories: Category[]
+  userEmail: string
+}
+
+function generateSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .trim()
+}
+
+export function AdminDashboard({ articles: initialArticles, categories, userEmail }: AdminDashboardProps) {
+  const [articles, setArticles] = useState(initialArticles)
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+  const [editingArticle, setEditingArticle] = useState<Article | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const router = useRouter()
+
+  // Form state
+  const [title, setTitle] = useState("")
+  const [content, setContent] = useState("")
+  const [excerpt, setExcerpt] = useState("")
+  const [imageUrl, setImageUrl] = useState("")
+  const [categoryId, setCategoryId] = useState("")
+  const [isPublished, setIsPublished] = useState(true)
+  const [isFeatured, setIsFeatured] = useState(false)
+
+  const resetForm = () => {
+    setTitle("")
+    setContent("")
+    setExcerpt("")
+    setImageUrl("")
+    setCategoryId("")
+    setIsPublished(true)
+    setIsFeatured(false)
+    setEditingArticle(null)
+  }
+
+  const handleLogout = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push("/admin/login")
+    router.refresh()
+  }
+
+  const handleCreateArticle = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setIsLoading(true)
+
+    try {
+      const supabase = createClient()
+      const slug = generateSlug(title)
+
+      const { data, error } = await supabase
+        .from("articles")
+        .insert({
+          title,
+          slug,
+          content,
+          excerpt: excerpt || null,
+          image_url: imageUrl || null,
+          category_id: categoryId || null,
+          is_published: isPublished,
+          is_featured: isFeatured,
+          published_at: isPublished ? new Date().toISOString() : null,
+        })
+        .select(`
+          id,
+          title,
+          slug,
+          is_published,
+          is_featured,
+          published_at,
+          created_at,
+          categories (
+            name,
+            slug
+          )
+        `)
+        .single()
+
+      if (error) throw error
+
+      setArticles([data as Article, ...articles])
+      setIsCreateDialogOpen(false)
+      resetForm()
+    } catch (error) {
+      console.error("Error creating article:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleUpdateArticle = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingArticle) return
+    setIsLoading(true)
+
+    try {
+      const supabase = createClient()
+
+      const { data, error } = await supabase
+        .from("articles")
+        .update({
+          title,
+          content,
+          excerpt: excerpt || null,
+          image_url: imageUrl || null,
+          category_id: categoryId || null,
+          is_published: isPublished,
+          is_featured: isFeatured,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", editingArticle.id)
+        .select(`
+          id,
+          title,
+          slug,
+          is_published,
+          is_featured,
+          published_at,
+          created_at,
+          categories (
+            name,
+            slug
+          )
+        `)
+        .single()
+
+      if (error) throw error
+
+      setArticles(articles.map((a) => (a.id === editingArticle.id ? (data as Article) : a)))
+      setEditingArticle(null)
+      resetForm()
+    } catch (error) {
+      console.error("Error updating article:", error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleDeleteArticle = async (id: string) => {
+    if (!confirm("¿Estás seguro de que deseas eliminar este artículo?")) return
+
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.from("articles").delete().eq("id", id)
+
+      if (error) throw error
+
+      setArticles(articles.filter((a) => a.id !== id))
+    } catch (error) {
+      console.error("Error deleting article:", error)
+    }
+  }
+
+  const handleTogglePublished = async (article: Article) => {
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from("articles")
+        .update({
+          is_published: !article.is_published,
+          published_at: !article.is_published ? new Date().toISOString() : article.published_at,
+        })
+        .eq("id", article.id)
+
+      if (error) throw error
+
+      setArticles(
+        articles.map((a) =>
+          a.id === article.id ? { ...a, is_published: !a.is_published } : a
+        )
+      )
+    } catch (error) {
+      console.error("Error toggling published:", error)
+    }
+  }
+
+  const handleToggleFeatured = async (article: Article) => {
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from("articles")
+        .update({ is_featured: !article.is_featured })
+        .eq("id", article.id)
+
+      if (error) throw error
+
+      setArticles(
+        articles.map((a) =>
+          a.id === article.id ? { ...a, is_featured: !a.is_featured } : a
+        )
+      )
+    } catch (error) {
+      console.error("Error toggling featured:", error)
+    }
+  }
+
+  const openEditDialog = async (article: Article) => {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from("articles")
+      .select("*")
+      .eq("id", article.id)
+      .single()
+
+    if (data) {
+      setTitle(data.title)
+      setContent(data.content)
+      setExcerpt(data.excerpt || "")
+      setImageUrl(data.image_url || "")
+      setCategoryId(data.category_id || "")
+      setIsPublished(data.is_published)
+      setIsFeatured(data.is_featured)
+      setEditingArticle(article)
+    }
+  }
+
+  const publishedCount = articles.filter((a) => a.is_published).length
+  const draftCount = articles.filter((a) => !a.is_published).length
+  const featuredCount = articles.filter((a) => a.is_featured).length
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="bg-secondary text-white border-b border-white/10">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Logo size="sm" />
+            <span className="text-white/60">|</span>
+            <span className="font-medium">Panel de Administración</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-white/70">{userEmail}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="text-white/70 hover:text-white hover:bg-white/10"
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Salir
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Total de artículos
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{articles.length}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Publicados
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">{publishedCount}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Borradores
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-yellow-600">{draftCount}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Destacados
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-primary">{featuredCount}</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-bold">Artículos</h1>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" asChild>
+              <Link href="/" target="_blank">
+                <Eye className="h-4 w-4 mr-2" />
+                Ver sitio
+              </Link>
+            </Button>
+            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+              <DialogTrigger asChild>
+                <Button onClick={() => resetForm()}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nuevo artículo
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Crear nuevo artículo</DialogTitle>
+                  <DialogDescription>
+                    Completa los campos para crear una nueva noticia.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleCreateArticle} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="title">Título</Label>
+                    <Input
+                      id="title"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="excerpt">Extracto</Label>
+                    <Textarea
+                      id="excerpt"
+                      value={excerpt}
+                      onChange={(e) => setExcerpt(e.target.value)}
+                      rows={2}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="content">Contenido</Label>
+                    <Textarea
+                      id="content"
+                      value={content}
+                      onChange={(e) => setContent(e.target.value)}
+                      rows={6}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="imageUrl">URL de imagen</Label>
+                    <Input
+                      id="imageUrl"
+                      type="url"
+                      value={imageUrl}
+                      onChange={(e) => setImageUrl(e.target.value)}
+                      placeholder="https://..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Categoría</Label>
+                    <Select value={categoryId} onValueChange={setCategoryId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleccionar categoría" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((category) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="isPublished"
+                        checked={isPublished}
+                        onCheckedChange={setIsPublished}
+                      />
+                      <Label htmlFor="isPublished">Publicar</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch
+                        id="isFeatured"
+                        checked={isFeatured}
+                        onCheckedChange={setIsFeatured}
+                      />
+                      <Label htmlFor="isFeatured">Destacar</Label>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsCreateDialogOpen(false)}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button type="submit" disabled={isLoading}>
+                      {isLoading ? "Creando..." : "Crear artículo"}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </div>
+
+        {/* Edit Dialog */}
+        <Dialog open={!!editingArticle} onOpenChange={(open) => !open && setEditingArticle(null)}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Editar artículo</DialogTitle>
+              <DialogDescription>
+                Modifica los campos del artículo.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleUpdateArticle} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-title">Título</Label>
+                <Input
+                  id="edit-title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-excerpt">Extracto</Label>
+                <Textarea
+                  id="edit-excerpt"
+                  value={excerpt}
+                  onChange={(e) => setExcerpt(e.target.value)}
+                  rows={2}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-content">Contenido</Label>
+                <Textarea
+                  id="edit-content"
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  rows={6}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-imageUrl">URL de imagen</Label>
+                <Input
+                  id="edit-imageUrl"
+                  type="url"
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  placeholder="https://..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-category">Categoría</Label>
+                <Select value={categoryId} onValueChange={setCategoryId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar categoría" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="edit-isPublished"
+                    checked={isPublished}
+                    onCheckedChange={setIsPublished}
+                  />
+                  <Label htmlFor="edit-isPublished">Publicar</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="edit-isFeatured"
+                    checked={isFeatured}
+                    onCheckedChange={setIsFeatured}
+                  />
+                  <Label htmlFor="edit-isFeatured">Destacar</Label>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setEditingArticle(null)}
+                >
+                  Cancelar
+                </Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? "Guardando..." : "Guardar cambios"}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Articles Table */}
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[40%]">Título</TableHead>
+                  <TableHead>Categoría</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead className="text-right">Acciones</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {articles.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                      <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      No hay artículos. Crea el primero.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  articles.map((article) => (
+                    <TableRow key={article.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {article.is_featured && (
+                            <Star className="h-4 w-4 text-primary fill-primary" />
+                          )}
+                          <span className="font-medium line-clamp-1">{article.title}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {article.categories ? (
+                          <Badge variant="secondary">{article.categories.name}</Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={article.is_published ? "default" : "outline"}>
+                          {article.is_published ? "Publicado" : "Borrador"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {format(new Date(article.created_at), "d MMM yyyy", { locale: es })}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleTogglePublished(article)}
+                            title={article.is_published ? "Despublicar" : "Publicar"}
+                          >
+                            {article.is_published ? (
+                              <EyeOff className="h-4 w-4" />
+                            ) : (
+                              <Eye className="h-4 w-4" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleToggleFeatured(article)}
+                            title={article.is_featured ? "Quitar destacado" : "Destacar"}
+                          >
+                            <Star
+                              className={`h-4 w-4 ${
+                                article.is_featured ? "text-primary fill-primary" : ""
+                              }`}
+                            />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openEditDialog(article)}
+                            title="Editar"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteArticle(article.id)}
+                            title="Eliminar"
+                            className="text-destructive hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </main>
+    </div>
+  )
+}
