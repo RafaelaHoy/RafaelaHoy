@@ -1,15 +1,16 @@
 import Link from "next/link"
-import { Twitter, Instagram, Mail } from "lucide-react"
+import { Instagram, Facebook, Mail, Lock } from "lucide-react"
 import { Logo } from "./logo"
 
 const categories = [
   { name: "Locales", slug: "locales" },
+  { name: "Provinciales", slug: "provinciales" },
   { name: "Policiales", slug: "policiales" },
   { name: "Deportes", slug: "deportes" },
   { name: "Política", slug: "politica" },
   { name: "Economía", slug: "economia" },
-  { name: "Espectáculos", slug: "espectaculos" },
-  { name: "Campo", slug: "campo" },
+  { name: "Espectáculos", slug: "cultura-y-espectaculos" },
+  { name: "Agroindustria", slug: "agroindustria" },
   { name: "Internacionales", slug: "internacionales" },
 ]
 
@@ -24,56 +25,28 @@ const services = [
 export function Footer() {
   return (
     <footer className="bg-secondary text-white">
-      <div className="max-w-7xl mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+      <div className="max-w-7xl mx-auto px-4 py-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Logo and slogan */}
-          <div className="lg:col-span-1">
-            <Logo size="md" />
-            <p className="mt-3 text-lg font-light text-white/90 italic">
+          <div className="md:col-span-1">
+            <img 
+              src="/images/logo2.jpg" 
+              alt="Rafaela Hoy" 
+              width={140}
+              height={50}
+              className="object-contain mb-3"
+            />
+            <p className="text-lg font-light text-white/90 italic">
               &quot;Donde la noticia ocurre&quot;
             </p>
-            <p className="mt-4 text-sm text-white/70 leading-relaxed">
+            <p className="mt-3 text-sm text-white/70 leading-relaxed">
               El portal de noticias líder de Rafaela y la región. Información actualizada las 24 horas sobre lo que pasa en tu ciudad.
             </p>
           </div>
 
-          {/* Categories */}
-          <div>
-            <h3 className="font-semibold text-white mb-4">Secciones</h3>
-            <ul className="space-y-2">
-              {categories.map((category) => (
-                <li key={category.slug}>
-                  <Link
-                    href={`/categoria/${category.slug}`}
-                    className="text-sm text-white/70 hover:text-white transition-colors"
-                  >
-                    {category.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Services */}
-          <div>
-            <h3 className="font-semibold text-white mb-4">Servicios</h3>
-            <ul className="space-y-2">
-              {services.map((service) => (
-                <li key={service.slug}>
-                  <Link
-                    href={`/servicios/${service.slug}`}
-                    className="text-sm text-white/70 hover:text-white transition-colors"
-                  >
-                    {service.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
           {/* Contact and Social */}
           <div>
-            <h3 className="font-semibold text-white mb-4">Contacto</h3>
+            <h3 className="font-semibold text-white mb-4 text-base">Contacto</h3>
             <ul className="space-y-3 text-sm text-white/70">
               <li>
                 <a href="mailto:contacto@rafaelahoy.com" className="flex items-center gap-2 hover:text-white transition-colors">
@@ -86,7 +59,7 @@ export function Footer() {
               </li>
             </ul>
 
-            <h3 className="font-semibold text-white mt-6 mb-4">Redes Sociales</h3>
+            <h3 className="font-semibold text-white mt-6 mb-4 text-base">Redes Sociales</h3>
             <div className="flex items-center gap-3">
               <a
                 href="#"
@@ -98,34 +71,25 @@ export function Footer() {
               <a
                 href="#"
                 className="p-2 bg-primary/20 rounded-full hover:bg-primary transition-colors"
-                aria-label="Twitter"
+                aria-label="Facebook"
               >
-                <Twitter className="h-5 w-5 text-primary" />
+                <Facebook className="h-5 w-5 text-primary" />
               </a>
             </div>
           </div>
         </div>
 
         {/* Bottom bar */}
-        <div className="mt-12 pt-6 border-t border-white/10">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-white/50">
+        <div className="mt-10 pt-6 border-t border-white/10">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-3 text-sm text-white/50">
             <p>&copy; {new Date().getFullYear()} Rafaela Hoy. Todos los derechos reservados.</p>
-            <div className="flex items-center gap-4">
-              <Link href="/privacidad" className="hover:text-white transition-colors">
-                Política de Privacidad
-              </Link>
-              <Link href="/terminos" className="hover:text-white transition-colors">
-                Términos de Uso
-              </Link>
-            </div>
-          </div>
-          {/* Admin access - discreet at bottom corner */}
-          <div className="mt-4 text-right">
+            {/* Admin access - discreet lock icon */}
             <Link 
               href="/admin/login" 
-              className="text-xs text-white/30 hover:text-white/50 transition-colors"
+              className="inline-flex items-center justify-center w-5 h-5 text-white/20 hover:text-white/40 transition-colors"
+              title="Acceso Administrador"
             >
-              Acceso Administrador
+              <Lock className="h-3 w-3" />
             </Link>
           </div>
         </div>

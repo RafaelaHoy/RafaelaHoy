@@ -7,26 +7,64 @@ const inter = Inter({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: 'Rafaela Hoy - Noticias de Rafaela y la Región',
-  description: 'Portal de noticias de Rafaela, Santa Fe. Información actualizada sobre locales, policiales, deportes, política, economía y más.',
-  keywords: ['Rafaela', 'noticias', 'Santa Fe', 'Argentina', 'locales', 'deportes', 'policiales'],
-  generator: 'v0.app',
+  title: "Rafaela Hoy - Noticias de Rafaela y la región",
+  description: "El portal de noticias líder de Rafaela y la región. Información actualizada las 24 horas sobre lo que pasa en tu ciudad.",
+  keywords: ["noticias", "rafaela", "santa fe", "argentina", "información", "actualidad"],
+  authors: [{ name: "Rafaela Hoy" }],
+  creator: "Rafaela Hoy",
+  publisher: "Rafaela Hoy",
+  formatDetection: { email: false, address: false, telephone: false },
+  metadataBase: new URL("https://rafaelahoy.com"),
+  alternates: {
+    canonical: "https://rafaelahoy.com",
+  },
+  openGraph: {
+    type: "website",
+    locale: "es_AR",
+    url: "https://rafaelahoy.com",
+    title: "Rafaela Hoy - Noticias de Rafaela y la región",
+    description: "El portal de noticias líder de Rafaela y la región. Información actualizada las 24 horas sobre lo que pasa en tu ciudad.",
+    siteName: "Rafaela Hoy",
+    images: [
+      {
+        url: "/images/logo.jpg",
+        width: 180,
+        height: 60,
+        alt: "Rafaela Hoy",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Rafaela Hoy - Noticias de Rafaela y la región",
+    description: "El portal de noticias líder de Rafaela y la región. Información actualizada las 24 horas sobre lo que pasa en tu ciudad.",
+    images: ["/images/logo.jpg"],
+  },
   icons: {
     icon: [
       {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
+        url: '/images/icono.jpg',
+        sizes: '32x32',
+        type: 'image/jpeg',
       },
       {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
+        url: '/images/icono.jpg',
+        sizes: '192x192',
+        type: 'image/jpeg',
       },
       {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
+        url: '/images/icono.jpg',
+        sizes: '512x512',
+        type: 'image/jpeg',
       },
     ],
-    apple: '/apple-icon.png',
+    apple: [
+      {
+        url: '/images/icono.jpg',
+        sizes: '180x180',
+        type: 'image/jpeg',
+      },
+    ],
   },
 }
 

@@ -24,6 +24,15 @@ interface Article {
   } | null
 }
 
+interface MediaItem {
+  id: string
+  type: 'image' | 'video'
+  url: string
+  alt_text?: string
+  caption?: string
+  sort_order: number
+}
+
 type RelatedArticle = {
   id: string
   title: string
@@ -65,10 +74,31 @@ async function fetchRelatedArticles(categorySlug: string | undefined, currentId:
   return data as RelatedArticle[]
 }
 
+async function fetchArticleMedia(articleId: string): Promise<MediaItem[]> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('article_media')
+    .select('*')
+    .eq('article_id', articleId)
+    .order('sort_order', { ascending: true })
+
+  if (error) return []
+  return data as MediaItem[]
+}
+
 export function ArticleDetail({ article }: { article: Article }) {
   const { data: relatedArticles } = useSWR(
     article.categories ? `related-${article.categories.slug}-${article.id}` : null,
     () => fetchRelatedArticles(article.categories?.slug, article.id),
+    {
+      revalidateOnFocus: false,
+      dedupingInterval: 60000,
+    }
+  )
+
+  const { data: mediaItems } = useSWR(
+    `media-${article.id}`,
+    () => fetchArticleMedia(article.id),
     {
       revalidateOnFocus: false,
       dedupingInterval: 60000,
@@ -96,7 +126,7 @@ export function ArticleDetail({ article }: { article: Article }) {
       {/* Back button */}
       <Link
         href="/"
-        className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6"
+        className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-8"
       >
         <ArrowLeft className="h-4 w-4" />
         Volver al inicio
@@ -104,12 +134,14 @@ export function ArticleDetail({ article }: { article: Article }) {
 
       {/* Category badge */}
       {article.categories && (
-        <Link
-          href={`/categoria/${article.categories.slug}`}
-          className="inline-block px-3 py-1 text-sm font-medium bg-primary text-primary-foreground rounded-full mb-4 hover:bg-primary/90 transition-colors"
-        >
-          {article.categories.name}
-        </Link>
+        <div className="mb-8">
+          <Link
+            href={`/categoria/${article.categories.slug}`}
+            className="inline-block px-3 py-1 text-sm font-medium bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-colors"
+          >
+            {article.categories.name}
+          </Link>
+        </div>
       )}
 
       {/* Title */}
@@ -182,6 +214,40 @@ export function ArticleDetail({ article }: { article: Article }) {
             priority
           />
         </div>
+      )}
+
+      {/* Media Gallery */}
+      {mediaItems && mediaItems.length > 0 && (
+        <section className="mb-8">
+          <h2 className="text-xl font-bold mb-4">Galería de medios</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {mediaItems.map((media) => (
+              <div key={media.id} className="relative group">
+                <div className="aspect-video rounded-lg overflow-hidden bg-muted">
+                  {media.type === 'image' ? (
+                    <Image
+                      src={media.url}
+                      alt={media.alt_text || article.title}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <video
+                      src={media.url}
+                      controls
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                </div>
+                {media.caption && (
+                  <p className="text-sm text-muted-foreground mt-2 text-center">
+                    {media.caption}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
       )}
 
       {/* Content */}

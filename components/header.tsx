@@ -2,8 +2,10 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { Menu, X, Search, Cloud, Pill, Film, Star, FileText, ChevronDown } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Menu, X, Search, ChevronDown, Instagram, Facebook } from "lucide-react"
 import { Logo } from "./logo"
+import { WeatherWidget } from "./weather-widget"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -15,10 +17,10 @@ import {
 const mainNavItems = [
   { name: "Inicio", slug: "", isHome: true },
   { name: "Locales", slug: "locales" },
+  { name: "Provinciales", slug: "provinciales" },
   { name: "Policiales", slug: "policiales" },
   { name: "Deportes", slug: "deportes" },
   { name: "Política", slug: "politica" },
-  { name: "Economía", slug: "economia" },
 ]
 
 const masDropdownItems = [
@@ -27,30 +29,25 @@ const masDropdownItems = [
   { name: "Internacionales", slug: "internacionales" },
   { name: "Gremiales", slug: "gremiales" },
   { name: "Educación", slug: "educacion" },
-  { name: "Cultura y Espectáculos", slug: "espectaculos" },
+  { name: "Cultura y Espectáculos", slug: "cultura-y-espectaculos" },
   { name: "Judiciales", slug: "judiciales" },
   { name: "Tecnología", slug: "tecnologia" },
   { name: "Salud", slug: "salud" },
-  { name: "Agroindustria", slug: "campo" },
+  { name: "Agroindustria", slug: "agroindustria" },
 ]
 
 const serviciosDropdownItems = [
-  { name: "Clima", slug: "clima" },
-  { name: "Necrológicas", slug: "obituario" },
   { name: "Farmacias de Turno", slug: "farmacias" },
+  { name: "Necrológicas", slug: "necrologicas" },
   { name: "Servicios Municipales", slug: "municipales" },
 ]
 
-const serviceItems = [
-  { name: "Farmacias", slug: "farmacias", icon: Pill },
-  { name: "Clima", slug: "clima", icon: Cloud },
-  { name: "Cines", slug: "cines", icon: Film },
-  { name: "Horóscopo", slug: "horoscopo", icon: Star },
-  { name: "Obituario", slug: "obituario", icon: FileText },
-]
 
 export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const router = useRouter()
 
   return (
     <header className="sticky top-0 z-40">
@@ -58,27 +55,47 @@ export function Header() {
       <div className="bg-secondary text-white">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-10 text-sm">
-            <div className="hidden md:flex items-center gap-4">
-              {serviceItems.map((item) => (
-                <Link
-                  key={item.slug}
-                  href={`/servicios/${item.slug}`}
-                  className="flex items-center gap-1 text-white/80 hover:text-white transition-colors"
-                >
-                  <item.icon className="h-3.5 w-3.5" />
-                  <span>{item.name}</span>
-                </Link>
-              ))}
+            {/* Left spacer */}
+            <div className="flex-1"></div>
+            
+            {/* Center section with weather and date */}
+            <div className="flex items-center gap-4">
+              {/* Weather Widget */}
+              <div className="hidden md:flex items-center">
+                <WeatherWidget />
+              </div>
+              
+              {/* Date */}
+              <div className="flex items-center">
+                <span className="text-white/60 text-xs">
+                  {new Date().toLocaleDateString("es-AR", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </span>
+              </div>
             </div>
-            <div className="flex items-center gap-3 ml-auto">
-              <span className="text-white/60 text-xs">
-                {new Date().toLocaleDateString("es-AR", {
-                  weekday: "long",
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}
-              </span>
+            
+            {/* Right section with social media */}
+            <div className="flex-1 flex justify-end">
+              <div className="hidden md:flex items-center gap-4">
+                <a
+                  href="#"
+                  className="flex items-center justify-center w-8 h-8 rounded-full bg-[#E21F1D] hover:bg-red-700 transition-colors"
+                  aria-label="Instagram"
+                >
+                  <Instagram className="h-4 w-4 text-white" />
+                </a>
+                <a
+                  href="#"
+                  className="flex items-center justify-center w-8 h-8 rounded-full bg-[#E21F1D] hover:bg-red-700 transition-colors"
+                  aria-label="Facebook"
+                >
+                  <Facebook className="h-4 w-4 text-white" />
+                </a>
+              </div>
             </div>
           </div>
         </div>
@@ -88,7 +105,9 @@ export function Header() {
       <div className="bg-secondary border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            <Logo size="md" />
+            <div className="flex items-start -mt-9 -ml-4">
+              <Logo size="md" />
+            </div>
 
             {/* Desktop navigation */}
             <nav className="hidden lg:flex items-center gap-1">
@@ -143,14 +162,55 @@ export function Header() {
 
             {/* Search and mobile menu */}
             <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-white/80 hover:text-white hover:bg-white/10"
-              >
-                <Search className="h-5 w-5" />
-                <span className="sr-only">Buscar</span>
-              </Button>
+              {/* Search Input */}
+              <div className="relative">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsSearchOpen(!isSearchOpen)}
+                  className="text-white/80 hover:text-white hover:bg-white/10"
+                >
+                  <Search className="h-5 w-5" />
+                  <span className="sr-only">Buscar</span>
+                </Button>
+                
+                {isSearchOpen && (
+                  <div className="absolute right-0 top-12 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                    <div className="p-3">
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && searchQuery.trim()) {
+                            router.push(`/buscar?q=${encodeURIComponent(searchQuery.trim())}`)
+                            setIsSearchOpen(false)
+                            setSearchQuery("")
+                          }
+                        }}
+                        placeholder="Buscar noticias..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                        autoFocus
+                      />
+                      <div className="mt-2 flex justify-end">
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            if (searchQuery.trim()) {
+                              router.push(`/buscar?q=${encodeURIComponent(searchQuery.trim())}`)
+                              setIsSearchOpen(false)
+                              setSearchQuery("")
+                            }
+                          }}
+                          disabled={!searchQuery.trim()}
+                        >
+                          Buscar
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
               
               <Button
                 variant="ghost"
@@ -204,22 +264,6 @@ export function Header() {
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     {item.name}
-                  </Link>
-                ))}
-              </div>
-            </div>
-            <div className="mt-4 pt-4 border-t border-white/10">
-              <p className="text-xs text-white/50 mb-2">Servicios</p>
-              <div className="grid grid-cols-3 gap-2">
-                {serviceItems.map((item) => (
-                  <Link
-                    key={item.slug}
-                    href={`/servicios/${item.slug}`}
-                    className="flex items-center gap-1 px-2 py-1.5 text-xs text-white/70 hover:text-white hover:bg-white/10 rounded-md transition-colors"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <item.icon className="h-3 w-3" />
-                    <span>{item.name}</span>
                   </Link>
                 ))}
               </div>

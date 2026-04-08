@@ -18,6 +18,7 @@ type Article = {
   excerpt: string | null
   image_url: string | null
   published_at: string
+  sort_order: number
   categories: {
     name: string
     slug: string
@@ -35,6 +36,7 @@ async function fetchCategoryArticles(categoryId: string): Promise<Article[]> {
       excerpt,
       image_url,
       published_at,
+      sort_order,
       categories (
         name,
         slug
@@ -42,6 +44,7 @@ async function fetchCategoryArticles(categoryId: string): Promise<Article[]> {
     `)
     .eq("category_id", categoryId)
     .eq("is_published", true)
+    .order("sort_order", { ascending: true })
     .order("published_at", { ascending: false })
     .limit(20)
 

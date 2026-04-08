@@ -7,6 +7,31 @@ import { Skeleton } from "@/components/ui/skeleton"
 import Link from "next/link"
 import { ChevronRight } from "lucide-react"
 
+function ArticleSkeleton({ variant }: { variant?: "featured" | "secondary" }) {
+  if (variant === "secondary") {
+    return (
+      <div className="flex gap-3 p-3">
+        <div className="w-20 h-16 bg-muted rounded-md"></div>
+        <div className="flex-1">
+          <div className="h-3 bg-muted rounded mb-2 w-3/4"></div>
+          <div className="h-2 bg-muted rounded w-1/2"></div>
+        </div>
+      </div>
+    )
+  }
+  
+  return (
+    <div className="bg-card rounded-lg border overflow-hidden">
+      <div className="aspect-video bg-muted"></div>
+      <div className="p-4">
+        <div className="h-4 bg-muted rounded mb-2"></div>
+        <div className="h-3 bg-muted rounded mb-1"></div>
+        <div className="h-3 bg-muted rounded w-3/4"></div>
+      </div>
+    </div>
+  )
+}
+
 type Article = {
   id: string
   title: string
@@ -15,6 +40,7 @@ type Article = {
   image_url: string | null
   published_at: string
   is_featured: boolean
+  sort_order: number
   categories: {
     name: string
     slug: string
@@ -33,70 +59,19 @@ async function fetchArticles(): Promise<Article[]> {
       image_url,
       published_at,
       is_featured,
+      sort_order,
       categories (
         name,
         slug
       )
     `)
     .eq("is_published", true)
+    .order("sort_order", { ascending: true })
     .order("published_at", { ascending: false })
     .limit(30)
 
   if (error) throw error
   return data as Article[]
-}
-
-function ArticleSkeleton({ variant = "default" }: { variant?: "featured" | "default" | "compact" | "secondary" }) {
-  if (variant === "featured") {
-    return (
-      <div className="rounded-lg overflow-hidden bg-muted">
-        <Skeleton className="aspect-[16/10] w-full" />
-        <div className="p-4">
-          <Skeleton className="h-5 w-20 mb-3" />
-          <Skeleton className="h-7 w-full mb-2" />
-          <Skeleton className="h-7 w-3/4 mb-3" />
-          <Skeleton className="h-4 w-full mb-1" />
-          <Skeleton className="h-4 w-2/3" />
-        </div>
-      </div>
-    )
-  }
-
-  if (variant === "secondary") {
-    return (
-      <div className="flex gap-3 p-3 border-b border-border last:border-b-0">
-        <Skeleton className="w-24 h-20 rounded-md flex-shrink-0" />
-        <div className="flex-1">
-          <Skeleton className="h-4 w-full mb-1" />
-          <Skeleton className="h-4 w-3/4 mb-2" />
-          <Skeleton className="h-3 w-16" />
-        </div>
-      </div>
-    )
-  }
-
-  if (variant === "compact") {
-    return (
-      <div className="flex gap-3">
-        <Skeleton className="w-20 h-20 rounded-md flex-shrink-0" />
-        <div className="flex-1">
-          <Skeleton className="h-4 w-full mb-1" />
-          <Skeleton className="h-4 w-3/4 mb-2" />
-          <Skeleton className="h-3 w-16" />
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div>
-      <Skeleton className="aspect-video rounded-lg mb-3" />
-      <Skeleton className="h-3 w-16 mb-2" />
-      <Skeleton className="h-5 w-full mb-1" />
-      <Skeleton className="h-5 w-3/4 mb-2" />
-      <Skeleton className="h-3 w-20" />
-    </div>
-  )
 }
 
 export function HomeContent() {
@@ -109,95 +84,174 @@ export function HomeContent() {
     return (
       <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="text-center py-12">
-          <p className="text-muted-foreground">Error al cargar las noticias. Por favor, intenta de nuevo.</p>
+          <h2 className="text-2xl font-bold text-red-600 mb-4">Error al cargar las noticias</h2>
+          <p className="text-muted-foreground">Por favor, intenta recargar la página.</p>
         </div>
       </div>
     )
   }
 
-  const featuredArticle = articles?.find((a) => a.is_featured)
-  const allOtherArticles = articles?.filter((a) => !a.is_featured) || []
-  const secondaryArticles = allOtherArticles.slice(0, 3)
-  const gridArticles = allOtherArticles.slice(3, 12)
-  
-  // Group articles by category for sections
+  // Separate featured and other articles
+  const featuredArticle = articles?.find(article => article.is_featured)
+  const secondaryArticles = articles?.filter(article => !article.is_featured).slice(0, 5) || []
+  const gridArticles = articles?.slice(6, 15) || []
+
+  // Group articles by category for category sections
   const articlesByCategory = articles?.reduce((acc, article) => {
     if (article.categories) {
-      const slug = article.categories.slug
-      if (!acc[slug]) {
-        acc[slug] = { name: article.categories.name, articles: [] }
+      if (!acc[article.categories.slug]) {
+        acc[article.categories.slug] = {
+          name: article.categories.name,
+          articles: []
+        }
       }
-      acc[slug].articles.push(article)
+      acc[article.categories.slug].articles.push(article)
     }
     return acc
   }, {} as Record<string, { name: string; articles: Article[] }>) || {}
 
-  const categoryColors: Record<string, { bg: string; border: string }> = {
+  const categoryColors = {
     locales: { bg: "bg-secondary", border: "border-secondary" },
-    policiales: { bg: "bg-background", border: "border-primary" },
-    deportes: { bg: "bg-secondary", border: "border-secondary" },
-    politica: { bg: "bg-background", border: "border-primary" },
-    economia: { bg: "bg-secondary", border: "border-secondary" },
+    provinciales: { bg: "bg-background", border: "border-primary" },
+    policiales: { bg: "bg-secondary", border: "border-secondary" },
+    deportes: { bg: "bg-background", border: "border-primary" },
+    politica: { bg: "bg-secondary", border: "border-secondary" },
+    economia: { bg: "bg-background", border: "border-primary" },
+    "cultura-y-espectaculos": { bg: "bg-secondary", border: "border-secondary" },
+    tecnologia: { bg: "bg-background", border: "border-primary" },
+    salud: { bg: "bg-secondary", border: "border-secondary" },
+    agroindustria: { bg: "bg-background", border: "border-primary" },
+    internacionales: { bg: "bg-secondary", border: "border-secondary" },
   }
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-6">
       {/* Hero Section - Featured Article + Secondary Articles */}
-      <section className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-        {/* Main Featured Article - Left */}
-        <div className="lg:col-span-2">
-          {isLoading ? (
-            <ArticleSkeleton variant="featured" />
-          ) : featuredArticle ? (
-            <ArticleCard article={featuredArticle} variant="featured" />
-          ) : allOtherArticles[0] ? (
-            <ArticleCard article={allOtherArticles[0]} variant="featured" />
-          ) : null}
-        </div>
-
-        {/* Three Secondary Features - Right (in framed box) */}
-        <div className="bg-card rounded-lg border-2 border-border overflow-hidden">
-          <div className="bg-muted px-4 py-2 border-b border-border">
-            <h2 className="font-bold text-sm uppercase tracking-wide text-foreground">
-              Destacados
-            </h2>
-          </div>
-          <div className="divide-y divide-border">
+      <section className="mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Main Featured Article - Left */}
+          <div className="lg:col-span-8">
             {isLoading ? (
-              <>
-                <ArticleSkeleton variant="secondary" />
-                <ArticleSkeleton variant="secondary" />
-                <ArticleSkeleton variant="secondary" />
-              </>
-            ) : (
-              secondaryArticles.map((article) => (
-                <Link 
-                  key={article.id} 
-                  href={`/noticia/${article.slug}`}
-                  className="flex gap-3 p-3 hover:bg-muted/50 transition-colors"
-                >
-                  {article.image_url && (
-                    <div className="w-24 h-20 flex-shrink-0 rounded-md overflow-hidden">
+              <ArticleSkeleton variant="featured" />
+            ) : featuredArticle ? (
+              <Link href={`/noticia/${featuredArticle.slug}`} className="block group">
+                <div className="relative">
+                  <div className="aspect-[825/490] w-full max-h-[490px] overflow-hidden rounded-lg">
+                    {featuredArticle.image_url && (
                       <img
-                        src={article.image_url}
-                        alt={article.title}
-                        className="w-full h-full object-cover"
+                        src={featuredArticle.image_url}
+                        alt={featuredArticle.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-semibold text-foreground line-clamp-2 leading-snug mb-1">
-                      {article.title}
-                    </h3>
-                    {article.categories && (
-                      <span className="text-xs text-primary font-medium">
-                        {article.categories.name}
-                      </span>
                     )}
                   </div>
-                </Link>
-              ))
-            )}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
+                    <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-2 line-clamp-3">
+                      {featuredArticle.title}
+                    </h1>
+                    <p className="text-white/90 text-sm md:text-base line-clamp-2 mb-3">
+                      {featuredArticle.excerpt}
+                    </p>
+                    <div className="flex items-center justify-between">
+                      {featuredArticle.categories && (
+                        <span className="bg-primary text-white px-3 py-1 rounded-full text-xs font-medium">
+                          {featuredArticle.categories.name}
+                        </span>
+                      )}
+                      <span className="text-white/70 text-xs">
+                        {new Date(featuredArticle.published_at).toLocaleDateString("es-AR", {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ) : secondaryArticles[0] ? (
+              <Link href={`/noticia/${secondaryArticles[0].slug}`} className="block group">
+                <div className="relative">
+                  <div className="aspect-[825/490] w-full max-h-[490px] overflow-hidden rounded-lg">
+                    {secondaryArticles[0].image_url && (
+                      <img
+                        src={secondaryArticles[0].image_url}
+                        alt={secondaryArticles[0].title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    )}
+                  </div>
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
+                    <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-2 line-clamp-3">
+                      {secondaryArticles[0].title}
+                    </h1>
+                    <p className="text-white/90 text-sm md:text-base line-clamp-2 mb-3">
+                      {secondaryArticles[0].excerpt}
+                    </p>
+                    <div className="flex items-center justify-between">
+                      {secondaryArticles[0].categories && (
+                        <span className="bg-primary text-white px-3 py-1 rounded-full text-xs font-medium">
+                          {secondaryArticles[0].categories.name}
+                        </span>
+                      )}
+                      <span className="text-white/70 text-xs">
+                        {new Date(secondaryArticles[0].published_at).toLocaleDateString("es-AR", {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ) : null}
+          </div>
+
+          {/* Five Secondary Features - Right (in framed box) */}
+          <div className="lg:col-span-4 bg-card rounded-lg border-2 border-border overflow-hidden">
+            <div className="bg-muted px-4 py-2 border-b border-border">
+              <h2 className="font-bold text-sm uppercase tracking-wide text-foreground">
+                Destacados
+              </h2>
+            </div>
+            <div className="divide-y divide-border max-h-[490px] overflow-y-auto">
+              {isLoading ? (
+                <>
+                  {[...Array(5)].map((_, i) => (
+                    <ArticleSkeleton key={i} variant="secondary" />
+                  ))}
+                </>
+              ) : (
+                secondaryArticles.slice(0, 5).map((article) => (
+                  <Link 
+                    key={article.id} 
+                    href={`/noticia/${article.slug}`}
+                    className="flex gap-3 p-3 hover:bg-muted/50 transition-colors"
+                  >
+                    {article.image_url && (
+                      <div className="w-20 h-16 flex-shrink-0 rounded-md overflow-hidden">
+                        <img
+                          src={article.image_url}
+                          alt={article.title}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-xs font-semibold text-foreground line-clamp-2 leading-snug mb-1">
+                        {article.title}
+                      </h3>
+                      {article.categories && (
+                        <span className="text-xs text-primary font-medium">
+                          {article.categories.name}
+                        </span>
+                      )}
+                    </div>
+                  </Link>
+                ))
+              )}
+            </div>
           </div>
         </div>
       </section>
@@ -223,7 +277,7 @@ export function HomeContent() {
       </section>
 
       {/* Category Sections with themed backgrounds */}
-      {Object.entries(articlesByCategory).slice(0, 4).map(([slug, { name, articles: categoryArticles }], index) => {
+      {Object.entries(articlesByCategory).map(([slug, { name, articles: categoryArticles }], index) => {
         const colors = categoryColors[slug] || { bg: index % 2 === 0 ? "bg-secondary" : "bg-background", border: "border-border" }
         const isAltBg = index % 2 === 0
         

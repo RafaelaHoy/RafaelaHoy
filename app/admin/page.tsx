@@ -28,11 +28,13 @@ export default async function AdminPage() {
       is_featured,
       published_at,
       created_at,
+      sort_order,
       categories (
         name,
         slug
       )
     `)
+    .order("sort_order", { ascending: true })
     .order("created_at", { ascending: false })
 
   // Fetch categories
