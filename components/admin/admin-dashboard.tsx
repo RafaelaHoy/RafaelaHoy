@@ -755,44 +755,6 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
           </form>
         </DialogContent>
       </Dialog>
-    </div>
-                            size="icon"
-                            onClick={() => handleToggleFeatured(article)}
-                            title={article.is_featured ? "Quitar destacado" : "Destacar"}
-                          >
-                            <Star
-                              className={`h-4 w-4 ${
-                                article.is_featured ? "text-primary fill-primary" : ""
-                              }`}
-                            />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openEditDialog(article)}
-                            title="Editar"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteArticle(article.id)}
-                            title="Eliminar"
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </DialogContent>
-      </Dialog>
       </main>
     </div>
   )
