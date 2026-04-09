@@ -661,7 +661,7 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
           </div>
           <ServicesManagementSection />
         </section>
-      </div>
+      </main>
 
       {/* Edit Dialog */}
       <Dialog open={!!editingArticle} onOpenChange={(open) => !open && setEditingArticle(null)}>
@@ -792,12 +792,8 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
               </TableBody>
             </Table>
           </CardContent>
-        </Card>
-        
-        {/* Services Management */}
-        <ServicesManagementSection />
-      </main>
+        </DialogContent>
+      </Dialog>
     </div>
   )
-}
 }
