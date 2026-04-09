@@ -382,6 +382,7 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
   const featuredCount = articles.filter((a) => a.is_featured).length
 
   return (
+    <>
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="bg-secondary text-white border-b border-white/10">
@@ -661,101 +662,122 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
           </div>
           <ServicesManagementSection />
         </section>
-        
-        {/* Edit Dialog */}
-        <Dialog open={!!editingArticle} onOpenChange={(open) => !open && setEditingArticle(null)}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Editar artículo</DialogTitle>
-              <DialogDescription>
-                Modifica los campos del artículo.
-              </DialogDescription>
-            </DialogHeader>
-          <form onSubmit={handleUpdateArticle} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-title">Título</Label>
-              <Input
-                id="edit-title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-excerpt">Extracto</Label>
-              <Textarea
-                id="edit-excerpt"
-                value={excerpt}
-                onChange={(e) => setExcerpt(e.target.value)}
-                rows={3}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-image_url">Imagen principal (URL)</Label>
-              <Input
-                id="edit-image_url"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="https://ejemplo.com/imagen.jpg"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-category">Categoría</Label>
-              <Select value={categoryId} onValueChange={setCategoryId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona una categoría" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="edit-isPublished"
-                  checked={isPublished}
-                  onCheckedChange={setIsPublished}
-                />
-                <Label htmlFor="edit-isPublished">Publicado</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="edit-isFeatured"
-                  checked={isFeatured}
-                  onCheckedChange={setIsFeatured}
-                />
-                <Label htmlFor="edit-isFeatured">Destacar</Label>
-              </div>
-            </div>
-
-            {/* Media Manager */}
-            <MediaManager
-              articleId={editingArticle?.id}
-              mediaItems={currentMedia}
-              onMediaChange={setCurrentMedia}
-            />
-
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setEditingArticle(null)}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Guardando..." : "Guardar cambios"}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
       </main>
     </div>
-  )
+
+    <Dialog open={!!editingArticle} onOpenChange={(open) => !open && setEditingArticle(null)}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Editar artículo</DialogTitle>
+          <DialogDescription>
+            Modifica los campos del artículo.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleUpdateArticle} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-title">Título</Label>
+            <Input
+              id="edit-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-excerpt">Extracto</Label>
+            <Textarea
+              id="edit-excerpt"
+              value={excerpt}
+              onChange={(e) => setExcerpt(e.target.value)}
+              rows={3}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-content">Contenido</Label>
+            <Textarea
+              id="edit-content"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              rows={10}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-image">URL de imagen</Label>
+            <Input
+              id="edit-image"
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              placeholder="https://ejemplo.com/imagen.jpg"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-category">Categoría</Label>
+            <select
+              id="edit-category"
+              value={categoryId}
+              onChange={(e) => setCategoryId(e.target.value)}
+              className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+              required
+            >
+              <option value="">Seleccionar categoría</option>
+              {categories?.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-slug">Slug (URL amigable)</Label>
+            <Input
+              id="edit-slug"
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+              placeholder="titulo-del-articulo"
+              required
+            />
+          </div>
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="edit-featured"
+              checked={isFeatured}
+              onChange={(e) => setIsFeatured(e.target.checked)}
+              className="rounded border-input"
+            />
+            <Label htmlFor="edit-featured">Artículo destacado</Label>
+          </div>
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="edit-published"
+              checked={isPublished}
+              onChange={(e) => setIsPublished(e.target.checked)}
+              className="rounded border-input"
+            />
+            <Label htmlFor="edit-published">Publicado</Label>
+          </div>
+          <MediaManager
+            media={currentMedia}
+            onMediaChange={setCurrentMedia}
+            articleId={editingArticle?.id}
+          />
+          <div className="flex justify-end space-x-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setEditingArticle(null)}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "Guardando..." : "Guardar cambios"}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  </>
+)
 }
