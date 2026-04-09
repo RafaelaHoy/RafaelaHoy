@@ -661,17 +661,16 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
           </div>
           <ServicesManagementSection />
         </section>
-      </main>
-
-      {/* Edit Dialog */}
-      <Dialog open={!!editingArticle} onOpenChange={(open) => !open && setEditingArticle(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Editar artículo</DialogTitle>
-            <DialogDescription>
-              Modifica los campos del artículo.
-            </DialogDescription>
-          </DialogHeader>
+        
+        {/* Edit Dialog */}
+        <Dialog open={!!editingArticle} onOpenChange={(open) => !open && setEditingArticle(null)}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Editar artículo</DialogTitle>
+              <DialogDescription>
+                Modifica los campos del artículo.
+              </DialogDescription>
+            </DialogHeader>
           <form onSubmit={handleUpdateArticle} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="edit-title">Título</Label>
@@ -794,6 +793,7 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
           </CardContent>
         </DialogContent>
       </Dialog>
+      </main>
     </div>
   )
 }
