@@ -135,7 +135,8 @@ export function HomeContent() {
               <ArticleSkeleton variant="featured" />
             ) : featuredArticle ? (
               <Link href={`/noticia/${featuredArticle.slug}`} className="block group">
-                <div className="relative">
+                <div className="space-y-4">
+                  {/* Image */}
                   <div className="aspect-[825/490] w-full max-h-[490px] overflow-hidden rounded-lg">
                     {featuredArticle.image_url && (
                       <img
@@ -145,11 +146,13 @@ export function HomeContent() {
                       />
                     )}
                   </div>
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
-                    <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-2 line-clamp-3">
+                  
+                  {/* Content - Below image on mobile, overlay on desktop */}
+                  <div className="lg:absolute lg:bottom-0 lg:left-0 lg:right-0 lg:bg-gradient-to-t lg:from-black/80 lg:to-transparent lg:p-6 lg:space-y-0">
+                    <h1 className="text-xl md:text-2xl lg:text-4xl font-bold text-foreground lg:text-white mb-2 lg:mb-2 line-clamp-3">
                       {featuredArticle.title}
                     </h1>
-                    <p className="text-white/90 text-sm md:text-base line-clamp-2 mb-3">
+                    <p className="text-muted-foreground lg:text-white/90 text-sm md:text-base line-clamp-2 mb-3">
                       {featuredArticle.excerpt}
                     </p>
                     <div className="flex items-center justify-between">
@@ -158,7 +161,7 @@ export function HomeContent() {
                           {featuredArticle.categories.name}
                         </span>
                       )}
-                      <span className="text-white/70 text-xs">
+                      <span className="text-muted-foreground lg:text-white/70 text-xs">
                         {new Date(featuredArticle.published_at).toLocaleDateString("es-AR", {
                           day: "numeric",
                           month: "long",
@@ -171,7 +174,8 @@ export function HomeContent() {
               </Link>
             ) : secondaryArticles[0] ? (
               <Link href={`/noticia/${secondaryArticles[0].slug}`} className="block group">
-                <div className="relative">
+                <div className="space-y-4">
+                  {/* Image */}
                   <div className="aspect-[825/490] w-full max-h-[490px] overflow-hidden rounded-lg">
                     {secondaryArticles[0].image_url && (
                       <img
@@ -181,11 +185,13 @@ export function HomeContent() {
                       />
                     )}
                   </div>
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
-                    <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-white mb-2 line-clamp-3">
+                  
+                  {/* Content - Below image on mobile, overlay on desktop */}
+                  <div className="lg:absolute lg:bottom-0 lg:left-0 lg:right-0 lg:bg-gradient-to-t lg:from-black/80 lg:to-transparent lg:p-6 lg:space-y-0">
+                    <h1 className="text-xl md:text-2xl lg:text-4xl font-bold text-foreground lg:text-white mb-2 lg:mb-2 line-clamp-3">
                       {secondaryArticles[0].title}
                     </h1>
-                    <p className="text-white/90 text-sm md:text-base line-clamp-2 mb-3">
+                    <p className="text-muted-foreground lg:text-white/90 text-sm md:text-base line-clamp-2 mb-3">
                       {secondaryArticles[0].excerpt}
                     </p>
                     <div className="flex items-center justify-between">
@@ -194,7 +200,7 @@ export function HomeContent() {
                           {secondaryArticles[0].categories.name}
                         </span>
                       )}
-                      <span className="text-white/70 text-xs">
+                      <span className="text-muted-foreground lg:text-white/70 text-xs">
                         {new Date(secondaryArticles[0].published_at).toLocaleDateString("es-AR", {
                           day: "numeric",
                           month: "long",

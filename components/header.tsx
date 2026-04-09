@@ -54,14 +54,14 @@ export function Header() {
       {/* Top bar with services */}
       <div className="bg-secondary text-white">
         <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center justify-between h-10 text-sm">
+          <div className="flex items-center justify-between h-10 md:h-10 text-sm">
             {/* Left spacer */}
             <div className="flex-1"></div>
             
-            {/* Center section with weather and date */}
-            <div className="flex items-center gap-4">
+            {/* Center section with weather - only on desktop */}
+            <div className="hidden md:flex items-center gap-4">
               {/* Weather Widget */}
-              <div className="hidden md:flex items-center">
+              <div className="flex items-center">
                 <WeatherWidget />
               </div>
               
@@ -78,8 +78,34 @@ export function Header() {
               </div>
             </div>
             
-            {/* Right section with social media */}
-            <div className="flex-1 flex justify-end">
+            {/* Right section - Date and Weather on mobile, Social on desktop */}
+            <div className="flex-1 flex justify-end items-center gap-2 md:gap-4">
+              {/* Weather and Date on mobile */}
+              <div className="md:hidden flex items-center gap-2">
+                <WeatherWidget />
+                <span className="text-white/60 text-xs">
+                  {new Date().toLocaleDateString("es-AR", {
+                    weekday: "short",
+                    day: "numeric",
+                    month: "short",
+                  })}
+                </span>
+              </div>
+              
+              {/* Weather and Date on desktop */}
+              <div className="hidden md:flex items-center gap-4">
+                <WeatherWidget />
+                <span className="text-white/60 text-xs">
+                  {new Date().toLocaleDateString("es-AR", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </span>
+              </div>
+              
+              {/* Social media on desktop */}
               <div className="hidden md:flex items-center gap-4">
                 <a
                   href="#"
@@ -253,6 +279,8 @@ export function Header() {
                 </Link>
               ))}
             </div>
+            
+            {/* Más Section */}
             <div className="mt-4 pt-4 border-t border-white/10">
               <p className="text-xs text-white/50 mb-2">Más secciones</p>
               <div className="grid grid-cols-2 gap-2">
@@ -261,6 +289,23 @@ export function Header() {
                     key={item.slug}
                     href={`/categoria/${item.slug}`}
                     className="px-2 py-1.5 text-xs text-white/70 hover:text-white hover:bg-white/10 rounded-md transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    {item.name}
+                  </Link>
+                ))}
+              </div>
+            </div>
+            
+            {/* Services Section */}
+            <div className="mt-4 pt-4 border-t border-white/10">
+              <p className="text-xs text-white/50 mb-2">Servicios</p>
+              <div className="grid grid-cols-1 gap-2">
+                {serviciosDropdownItems.map((item) => (
+                  <Link
+                    key={item.slug}
+                    href={`/servicios/${item.slug}`}
+                    className="px-3 py-2 text-xs text-white/70 hover:text-white hover:bg-white/10 rounded-md transition-colors"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >
                     {item.name}
