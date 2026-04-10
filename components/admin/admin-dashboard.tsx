@@ -651,8 +651,6 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
               </Table>
             </CardContent>
           </Card>
-        
-        {/* Servicios Section */}
         <section>
           <div className="flex items-center gap-3 mb-6">
             <h1 className="text-3xl font-bold flex items-center gap-3">
@@ -662,122 +660,121 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
           </div>
           <ServicesManagementSection />
         </section>
+        <Dialog open={!!editingArticle} onOpenChange={(open) => !open && setEditingArticle(null)}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Editar artículo</DialogTitle>
+              <DialogDescription>
+                Modifica los campos del artículo.
+              </DialogDescription>
+            </DialogHeader>
+          <form onSubmit={handleUpdateArticle} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-title">Título</Label>
+              <Input
+                id="edit-title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-excerpt">Extracto</Label>
+              <Textarea
+                id="edit-excerpt"
+                value={excerpt}
+                onChange={(e) => setExcerpt(e.target.value)}
+                rows={3}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-content">Contenido</Label>
+              <Textarea
+                id="edit-content"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                rows={10}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-image">URL de imagen</Label>
+              <Input
+                id="edit-image"
+                value={imageUrl}
+                onChange={(e) => setImageUrl(e.target.value)}
+                placeholder="https://ejemplo.com/imagen.jpg"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-category">Categoría</Label>
+              <select
+                id="edit-category"
+                value={categoryId}
+                onChange={(e) => setCategoryId(e.target.value)}
+                className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                required
+              >
+                <option value="">Seleccionar categoría</option>
+                {categories?.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-slug">Slug (URL amigable)</Label>
+              <Input
+                id="edit-slug"
+                value={slug}
+                onChange={(e) => setSlug(e.target.value)}
+                placeholder="titulo-del-articulo"
+                required
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="edit-featured"
+                checked={isFeatured}
+                onChange={(e) => setIsFeatured(e.target.checked)}
+                className="rounded border-input"
+              />
+              <Label htmlFor="edit-featured">Artículo destacado</Label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="edit-published"
+                checked={isPublished}
+                onChange={(e) => setIsPublished(e.target.checked)}
+                className="rounded border-input"
+              />
+              <Label htmlFor="edit-published">Publicado</Label>
+            </div>
+            <MediaManager
+              media={currentMedia}
+              onMediaChange={setCurrentMedia}
+              articleId={editingArticle?.id}
+            />
+            <div className="flex justify-end space-x-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditingArticle(null)}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? "Guardando..." : "Guardar cambios"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
       </main>
     </div>
-
-    <Dialog open={!!editingArticle} onOpenChange={(open) => !open && setEditingArticle(null)}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Editar artículo</DialogTitle>
-          <DialogDescription>
-            Modifica los campos del artículo.
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleUpdateArticle} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="edit-title">Título</Label>
-            <Input
-              id="edit-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="edit-excerpt">Extracto</Label>
-            <Textarea
-              id="edit-excerpt"
-              value={excerpt}
-              onChange={(e) => setExcerpt(e.target.value)}
-              rows={3}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="edit-content">Contenido</Label>
-            <Textarea
-              id="edit-content"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              rows={10}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="edit-image">URL de imagen</Label>
-            <Input
-              id="edit-image"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              placeholder="https://ejemplo.com/imagen.jpg"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="edit-category">Categoría</Label>
-            <select
-              id="edit-category"
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-              className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-              required
-            >
-              <option value="">Seleccionar categoría</option>
-              {categories?.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="edit-slug">Slug (URL amigable)</Label>
-            <Input
-              id="edit-slug"
-              value={slug}
-              onChange={(e) => setSlug(e.target.value)}
-              placeholder="titulo-del-articulo"
-              required
-            />
-          </div>
-          <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              id="edit-featured"
-              checked={isFeatured}
-              onChange={(e) => setIsFeatured(e.target.checked)}
-              className="rounded border-input"
-            />
-            <Label htmlFor="edit-featured">Artículo destacado</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              id="edit-published"
-              checked={isPublished}
-              onChange={(e) => setIsPublished(e.target.checked)}
-              className="rounded border-input"
-            />
-            <Label htmlFor="edit-published">Publicado</Label>
-          </div>
-          <MediaManager
-            media={currentMedia}
-            onMediaChange={setCurrentMedia}
-            articleId={editingArticle?.id}
-          />
-          <div className="flex justify-end space-x-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setEditingArticle(null)}
-            >
-              Cancelar
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? "Guardando..." : "Guardar cambios"}
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
   </>
 )
 }
