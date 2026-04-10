@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Logo } from "@/components/logo"
@@ -8,22 +8,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 import {
   Dialog,
   DialogContent,
@@ -34,6 +18,22 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Switch } from "@/components/ui/switch"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { LogOut, Plus, Pencil, Trash2, FileText, Eye, EyeOff, Star, ChevronUp, ChevronDown, Settings } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -149,14 +149,14 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
         .from("articles")
         .insert({
           title,
-          slug,
           content,
           excerpt: excerpt || null,
           image_url: imageUrl || null,
           category_id: categoryId || null,
           is_published: isPublished,
           is_featured: isFeatured,
-          published_at: isPublished ? new Date().toISOString() : null,
+          slug,
+          sort_order: 0,
         })
         .select(`
           id,
@@ -166,6 +166,7 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
           is_featured,
           published_at,
           created_at,
+          sort_order,
           categories (
             name,
             slug
@@ -187,7 +188,6 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
 
   const handleUpdateArticle = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!editingArticle) return
     setIsLoading(true)
 
     try {
@@ -205,7 +205,7 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
           is_featured: isFeatured,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", editingArticle.id)
+        .eq("id", editingArticle!.id)
         .select(`
           id,
           title,
@@ -224,7 +224,11 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
 
       if (error) throw error
 
-      setArticles(articles.map((a) => (a.id === editingArticle.id ? (data as Article) : a)))
+      setArticles(
+        articles.map((article) =>
+          article.id === editingArticle!.id ? data as Article : article
+        )
+      )
       setEditingArticle(null)
       resetForm()
     } catch (error) {
@@ -234,37 +238,19 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
     }
   }
 
-  const handleDeleteArticle = async (id: string) => {
-    if (!confirm("¿Estás seguro de que deseas eliminar este artículo?")) return
-
-    try {
-      const supabase = createClient()
-      const { error } = await supabase.from("articles").delete().eq("id", id)
-
-      if (error) throw error
-
-      setArticles(articles.filter((a) => a.id !== id))
-    } catch (error) {
-      console.error("Error deleting article:", error)
-    }
-  }
-
-  const handleTogglePublished = async (article: Article) => {
+  const togglePublished = async (id: string, published: boolean) => {
     try {
       const supabase = createClient()
       const { error } = await supabase
         .from("articles")
-        .update({
-          is_published: !article.is_published,
-          published_at: !article.is_published ? new Date().toISOString() : article.published_at,
-        })
-        .eq("id", article.id)
+        .update({ is_published: published, updated_at: new Date().toISOString() })
+        .eq("id", id)
 
       if (error) throw error
 
       setArticles(
-        articles.map((a) =>
-          a.id === article.id ? { ...a, is_published: !a.is_published } : a
+        articles.map((article) =>
+          article.id === id ? { ...article, is_published: published } : article
         )
       )
     } catch (error) {
@@ -272,19 +258,19 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
     }
   }
 
-  const handleToggleFeatured = async (article: Article) => {
+  const toggleFeatured = async (id: string, featured: boolean) => {
     try {
       const supabase = createClient()
       const { error } = await supabase
         .from("articles")
-        .update({ is_featured: !article.is_featured })
-        .eq("id", article.id)
+        .update({ is_featured: featured, updated_at: new Date().toISOString() })
+        .eq("id", id)
 
       if (error) throw error
 
       setArticles(
-        articles.map((a) =>
-          a.id === article.id ? { ...a, is_featured: !a.is_featured } : a
+        articles.map((article) =>
+          article.id === id ? { ...article, is_featured: featured } : article
         )
       )
     } catch (error) {
@@ -292,65 +278,48 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
     }
   }
 
-  const handleMoveUp = async (article: Article) => {
-    const currentIndex = articles.findIndex(a => a.id === article.id)
-    if (currentIndex === 0) return // Already at top
-
-    const prevArticle = articles[currentIndex - 1]
-    
+  const moveArticle = async (id: string, direction: "up" | "down") => {
     try {
       const supabase = createClient()
-      
-      // Swap sort_order values
-      await Promise.all([
-        supabase
-          .from("articles")
-          .update({ sort_order: prevArticle.sort_order })
-          .eq("id", article.id),
-        supabase
-          .from("articles")
-          .update({ sort_order: article.sort_order })
-          .eq("id", prevArticle.id)
-      ])
+      const article = articles.find((a) => a.id === id)
+      if (!article) return
 
-      // Update local state
+      const currentIndex = articles.findIndex((a) => a.id === id)
+      const newIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1
+      
+      if (newIndex < 0 || newIndex >= articles.length) return
+
+      const { error } = await supabase
+        .from("articles")
+        .update({ sort_order: newIndex, updated_at: new Date().toISOString() })
+        .eq("id", id)
+
+      if (error) throw error
+
       const newArticles = [...articles]
-      newArticles[currentIndex] = prevArticle
-      newArticles[currentIndex - 1] = article
+      const [movedArticle] = newArticles.splice(currentIndex, 1)
+      newArticles.splice(newIndex, 0, movedArticle)
       setArticles(newArticles)
     } catch (error) {
-      console.error("Error moving article up:", error)
+      console.error("Error moving article:", error)
     }
   }
 
-  const handleMoveDown = async (article: Article) => {
-    const currentIndex = articles.findIndex(a => a.id === article.id)
-    if (currentIndex === articles.length - 1) return // Already at bottom
+  const deleteArticle = async (id: string) => {
+    if (!confirm("¿Estás seguro de que quieres eliminar este artículo?")) return
 
-    const nextArticle = articles[currentIndex + 1]
-    
     try {
       const supabase = createClient()
-      
-      // Swap sort_order values
-      await Promise.all([
-        supabase
-          .from("articles")
-          .update({ sort_order: nextArticle.sort_order })
-          .eq("id", article.id),
-        supabase
-          .from("articles")
-          .update({ sort_order: article.sort_order })
-          .eq("id", nextArticle.id)
-      ])
+      const { error } = await supabase
+        .from("articles")
+        .delete()
+        .eq("id", id)
 
-      // Update local state
-      const newArticles = [...articles]
-      newArticles[currentIndex] = nextArticle
-      newArticles[currentIndex + 1] = article
-      setArticles(newArticles)
+      if (error) throw error
+
+      setArticles(articles.filter((article) => article.id !== id))
     } catch (error) {
-      console.error("Error moving article down:", error)
+      console.error("Error deleting article:", error)
     }
   }
 
@@ -382,7 +351,6 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
   const featuredCount = articles.filter((a) => a.is_featured).length
 
   return (
-    <>
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="bg-secondary text-white border-b border-white/10">
@@ -651,6 +619,9 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
               </Table>
             </CardContent>
           </Card>
+        </section>
+
+        {/* Servicios Section */}
         <section>
           <div className="flex items-center gap-3 mb-6">
             <h1 className="text-3xl font-bold flex items-center gap-3">
@@ -660,14 +631,17 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
           </div>
           <ServicesManagementSection />
         </section>
-        <Dialog open={!!editingArticle} onOpenChange={(open) => !open && setEditingArticle(null)}>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Editar artículo</DialogTitle>
-              <DialogDescription>
-                Modifica los campos del artículo.
-              </DialogDescription>
-            </DialogHeader>
+      </main>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editingArticle} onOpenChange={(open) => !open && setEditingArticle(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar artículo</DialogTitle>
+            <DialogDescription>
+              Modifica los campos del artículo.
+            </DialogDescription>
+          </DialogHeader>
           <form onSubmit={handleUpdateArticle} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="edit-title">Título</Label>
@@ -688,19 +662,9 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-content">Contenido</Label>
-              <Textarea
-                id="edit-content"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                rows={10}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-image">URL de imagen</Label>
+              <Label htmlFor="edit-image_url">Imagen principal (URL)</Label>
               <Input
-                id="edit-image"
+                id="edit-image_url"
                 value={imageUrl}
                 onChange={(e) => setImageUrl(e.target.value)}
                 placeholder="https://ejemplo.com/imagen.jpg"
@@ -708,57 +672,46 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-category">Categoría</Label>
-              <select
-                id="edit-category"
-                value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-                className="w-full px-3 py-2 border border-input bg-background text-foreground rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-                required
-              >
-                <option value="">Seleccionar categoría</option>
-                {categories?.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
+              <Select value={categoryId} onValueChange={setCategoryId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecciona una categoría" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((category) => (
+                    <SelectItem key={category.id} value={category.id}>
+                      {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-slug">Slug (URL amigable)</Label>
-              <Input
-                id="edit-slug"
-                value={slug}
-                onChange={(e) => setSlug(e.target.value)}
-                placeholder="titulo-del-articulo"
-                required
-              />
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="edit-isPublished"
+                  checked={isPublished}
+                  onCheckedChange={setIsPublished}
+                />
+                <Label htmlFor="edit-isPublished">Publicado</Label>
+              </div>
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="edit-isFeatured"
+                  checked={isFeatured}
+                  onCheckedChange={setIsFeatured}
+                />
+                <Label htmlFor="edit-isFeatured">Destacar</Label>
+              </div>
             </div>
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="edit-featured"
-                checked={isFeatured}
-                onChange={(e) => setIsFeatured(e.target.checked)}
-                className="rounded border-input"
-              />
-              <Label htmlFor="edit-featured">Artículo destacado</Label>
-            </div>
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="edit-published"
-                checked={isPublished}
-                onChange={(e) => setIsPublished(e.target.checked)}
-                className="rounded border-input"
-              />
-              <Label htmlFor="edit-published">Publicado</Label>
-            </div>
+
+            {/* Media Manager */}
             <MediaManager
-              media={currentMedia}
-              onMediaChange={setCurrentMedia}
               articleId={editingArticle?.id}
+              mediaItems={currentMedia}
+              onMediaChange={setCurrentMedia}
             />
-            <div className="flex justify-end space-x-2">
+
+            <div className="flex justify-end gap-2">
               <Button
                 type="button"
                 variant="outline"
@@ -773,8 +726,6 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
           </form>
         </DialogContent>
       </Dialog>
-      </main>
     </div>
-  </>
-)
+  )
 }
