@@ -78,8 +78,20 @@ export function Header() {
               </div>
             </div>
             
-            {/* Right section - Social on desktop */}
+            {/* Right section - Weather on mobile, Social on desktop */}
             <div className="flex-1 flex justify-end items-center gap-2 md:gap-4">
+              {/* Weather and Date on mobile */}
+              <div className="md:hidden flex items-center gap-2">
+                <WeatherWidget />
+                <span className="text-white/60 text-xs">
+                  {new Date().toLocaleDateString("es-AR", {
+                    weekday: "short",
+                    day: "numeric",
+                    month: "short",
+                  })}
+                </span>
+              </div>
+              
               {/* Social media on desktop */}
               <div className="hidden md:flex items-center gap-4">
                 <a

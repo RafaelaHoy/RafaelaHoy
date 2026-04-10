@@ -146,13 +146,13 @@ export function HomeContent() {
                       />
                     )}
                     
-                    {/* Content - Below image on mobile, overlay on desktop */}
-                    <div className="lg:absolute lg:bottom-0 lg:left-0 lg:right-0 lg:bg-gradient-to-t lg:from-black/80 lg:to-transparent lg:p-6 lg:space-y-0">
+                    {/* Overlay content - Desktop only */}
+                    <div className="lg:absolute lg:bottom-0 lg:left-0 lg:right-0 lg:bg-gradient-to-t lg:from-black/80 lg:to-transparent lg:p-6 lg:space-y-0 hidden lg:block">
                       <div className="max-w-4xl">
-                        <h1 className="text-xl md:text-2xl lg:text-4xl font-bold text-foreground lg:text-white mb-2 lg:mb-2 line-clamp-3">
+                        <h1 className="text-xl md:text-2xl lg:text-4xl font-bold text-white mb-2 line-clamp-3">
                           {featuredArticle.title}
                         </h1>
-                        <p className="text-muted-foreground lg:text-white/90 text-sm md:text-base line-clamp-2 mb-3">
+                        <p className="text-white/90 text-sm md:text-base line-clamp-2 mb-3">
                           {featuredArticle.excerpt}
                         </p>
                         <div className="flex items-center justify-between">
@@ -161,7 +161,7 @@ export function HomeContent() {
                               {featuredArticle.categories.name}
                             </span>
                           )}
-                          <span className="text-muted-foreground lg:text-white/70 text-xs">
+                          <span className="text-white/70 text-xs">
                             {new Date(featuredArticle.published_at).toLocaleDateString("es-AR", {
                               day: "numeric",
                               month: "long",
@@ -170,6 +170,30 @@ export function HomeContent() {
                           </span>
                         </div>
                       </div>
+                    </div>
+                  </div>
+                  
+                  {/* Mobile content - Below image */}
+                  <div className="lg:hidden space-y-4">
+                    <h1 className="text-xl md:text-2xl font-bold text-foreground mb-2 line-clamp-3">
+                      {featuredArticle.title}
+                    </h1>
+                    <p className="text-muted-foreground text-sm md:text-base line-clamp-2 mb-3">
+                      {featuredArticle.excerpt}
+                    </p>
+                    <div className="flex items-center justify-between">
+                      {featuredArticle.categories && (
+                        <span className="bg-primary text-white px-3 py-1 rounded-full text-xs font-medium">
+                          {featuredArticle.categories.name}
+                        </span>
+                      )}
+                      <span className="text-muted-foreground text-xs">
+                        {new Date(featuredArticle.published_at).toLocaleDateString("es-AR", {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        })}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -187,13 +211,13 @@ export function HomeContent() {
                       />
                     )}
                     
-                    {/* Content - Below image on mobile, overlay on desktop */}
-                    <div className="lg:absolute lg:bottom-0 lg:left-0 lg:right-0 lg:bg-gradient-to-t lg:from-black/80 lg:to-transparent lg:p-6 lg:space-y-0">
+                    {/* Overlay content - Desktop only */}
+                    <div className="lg:absolute lg:bottom-0 lg:left-0 lg:right-0 lg:bg-gradient-to-t lg:from-black/80 lg:to-transparent lg:p-6 lg:space-y-0 hidden lg:block">
                       <div className="max-w-4xl">
-                        <h1 className="text-xl md:text-2xl lg:text-4xl font-bold text-foreground lg:text-white mb-2 lg:mb-2 line-clamp-3">
+                        <h1 className="text-xl md:text-2xl lg:text-4xl font-bold text-white mb-2 line-clamp-3">
                           {secondaryArticles[0].title}
                         </h1>
-                        <p className="text-muted-foreground lg:text-white/90 text-sm md:text-base line-clamp-2 mb-3">
+                        <p className="text-white/90 text-sm md:text-base line-clamp-2 mb-3">
                           {secondaryArticles[0].excerpt}
                         </p>
                         <div className="flex items-center justify-between">
@@ -202,7 +226,7 @@ export function HomeContent() {
                               {secondaryArticles[0].categories.name}
                             </span>
                           )}
-                          <span className="text-muted-foreground lg:text-white/70 text-xs">
+                          <span className="text-white/70 text-xs">
                             {new Date(secondaryArticles[0].published_at).toLocaleDateString("es-AR", {
                               day: "numeric",
                               month: "long",
@@ -211,6 +235,30 @@ export function HomeContent() {
                           </span>
                         </div>
                       </div>
+                    </div>
+                  </div>
+                  
+                  {/* Mobile content - Below image */}
+                  <div className="lg:hidden space-y-4">
+                    <h1 className="text-xl md:text-2xl font-bold text-foreground mb-2 line-clamp-3">
+                      {secondaryArticles[0].title}
+                    </h1>
+                    <p className="text-muted-foreground text-sm md:text-base line-clamp-2 mb-3">
+                      {secondaryArticles[0].excerpt}
+                    </p>
+                    <div className="flex items-center justify-between">
+                      {secondaryArticles[0].categories && (
+                        <span className="bg-primary text-white px-3 py-1 rounded-full text-xs font-medium">
+                          {secondaryArticles[0].categories.name}
+                        </span>
+                      )}
+                      <span className="text-muted-foreground text-xs">
+                        {new Date(secondaryArticles[0].published_at).toLocaleDateString("es-AR", {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        })}
+                      </span>
                     </div>
                   </div>
                 </div>
