@@ -17,23 +17,24 @@ import {
 const mainNavItems = [
   { name: "Inicio", slug: "", isHome: true },
   { name: "Locales", slug: "locales" },
+  { name: "Regionales", slug: "regionales" },
   { name: "Provinciales", slug: "provinciales" },
   { name: "Policiales", slug: "policiales" },
   { name: "Deportes", slug: "deportes" },
-  { name: "Política", slug: "politica" },
 ]
 
 const masDropdownItems = [
+  { name: "Política", slug: "politica" },
   { name: "Economía", slug: "economia" },
-  { name: "Nacionales", slug: "nacionales" },
-  { name: "Internacionales", slug: "internacionales" },
-  { name: "Gremiales", slug: "gremiales" },
   { name: "Educación", slug: "educacion" },
-  { name: "Cultura y Espectáculos", slug: "cultura-y-espectaculos" },
   { name: "Judiciales", slug: "judiciales" },
-  { name: "Tecnología", slug: "tecnologia" },
+  { name: "Cultura y Espectáculos", slug: "cultura-y-espectaculos" },
   { name: "Salud", slug: "salud" },
   { name: "Agroindustria", slug: "agroindustria" },
+  { name: "Interés general", slug: "interes-general" },
+  { name: "Tecnología", slug: "tecnologia" },
+  { name: "Virales", slug: "virales" },
+  { name: "Internacionales", slug: "internacionales" },
 ]
 
 const serviciosDropdownItems = [

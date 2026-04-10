@@ -40,6 +40,7 @@ import { es } from "date-fns/locale"
 import Link from "next/link"
 import { ServicesManagementSection } from "./services-management-section"
 import { MediaManager } from "./media-manager"
+import { ObituariesManager } from "./obituaries-manager"
 
 interface MediaItem {
   id: string
@@ -630,6 +631,11 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
             </h1>
           </div>
           <ServicesManagementSection />
+        </section>
+
+        {/* Obituaries Section */}
+        <section>
+          <ObituariesManager />
         </section>
       </main>
 
