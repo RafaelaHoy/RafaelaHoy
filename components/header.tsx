@@ -40,7 +40,7 @@ const masDropdownItems = [
 const serviciosDropdownItems = [
   { name: "Farmacias de Turno", slug: "farmacias" },
   { name: "Necrológicas", slug: "necrologicas" },
-  { name: "Servicios Municipales", slug: "municipales" },
+  { name: "Clima", slug: "clima" },
 ]
 
 

@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     siteName: "Rafaela Hoy",
     images: [
       {
-        url: "/images/logo.jpg",
+        url: "/images/logo.png",
         width: 180,
         height: 60,
         alt: "Rafaela Hoy",
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Rafaela Hoy - Noticias de Rafaela y la región",
     description: "El portal de noticias líder de Rafaela y la región. Información actualizada las 24 horas sobre lo que pasa en tu ciudad.",
-    images: ["/images/logo.jpg"],
+    images: ["/images/logo.png"],
   },
   icons: {
     icon: [

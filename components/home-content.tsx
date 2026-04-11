@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import useSWR from "swr"
 import { createClient } from "@/lib/supabase/client"
 import { ArticleCard } from './article-card'
@@ -8,6 +9,7 @@ import { ChevronRight } from 'lucide-react'
 import { WeatherWidget } from './widgets/weather-widget'
 import { CurrencyWidget } from './widgets/currency-widget'
 import { ObituariesWidget } from './widgets/obituaries-widget'
+import { PharmacyWidget } from './widgets/pharmacy-widget'
 
 function ArticleSkeleton({ variant }: { variant?: "featured" | "secondary" }) {
   if (variant === "secondary") {
@@ -93,6 +95,19 @@ export function HomeContent() {
     )
   }
 
+  // Desktop detection
+  const [isDesktop, setIsDesktop] = useState(false)
+  
+  useEffect(() => {
+    const checkDesktop = () => {
+      setIsDesktop(window.innerWidth >= 1024)
+    }
+    
+    checkDesktop()
+    window.addEventListener('resize', checkDesktop)
+    return () => window.removeEventListener('resize', checkDesktop)
+  }, [])
+
   // Separate featured and other articles
   const allFeaturedArticles = articles?.filter(article => article.is_featured) || []
   const featuredArticle = allFeaturedArticles[0] // La más destacada (principal)
@@ -143,7 +158,7 @@ export function HomeContent() {
       case 2: // Style C - Sections 3, 6
         return {
           bg: 'bg-red-600 text-white',
-          border: 'border-white',
+          border: 'border-secondary',
           button: 'bg-secondary text-white hover:bg-red-700'
         }
       default:
@@ -167,8 +182,8 @@ export function HomeContent() {
             ) : featuredArticle ? (
               <Link href={`/noticia/${featuredArticle.slug}`} className="block group">
                 <div className="space-y-4">
-                  {/* Image */}
-                  <div className="relative aspect-[825/490] w-full max-h-[490px] overflow-hidden rounded-lg border border-red-600">
+                  {/* Image - Desktop only */}
+                  <div className="hidden lg:block relative aspect-[825/490] w-full max-h-[490px] overflow-hidden rounded-lg border border-red-600">
                     {featuredArticle.image_url && (
                       <img
                         src={featuredArticle.image_url}
@@ -177,7 +192,7 @@ export function HomeContent() {
                       />
                     )}
                     
-                    {/* Section badge - Top left */}
+                    {/* Section badge - Top left inside image */}
                     <div className="lg:absolute lg:top-6 lg:left-6 hidden lg:block">
                       {featuredArticle.categories && (
                         <span className="bg-red-600 text-white px-3 py-1 rounded-full text-xs font-medium">
@@ -199,23 +214,31 @@ export function HomeContent() {
                   </div>
                   
                   {/* Mobile content - Below image */}
-                  <div className="lg:hidden space-y-4">
-                    <div className="bg-secondary p-4 rounded-lg">
-                      <h1 className="text-xl md:text-2xl font-bold text-white line-clamp-3">
-                        {featuredArticle.title}
-                      </h1>
-                    </div>
-                    <p className="text-muted-foreground text-sm md:text-base line-clamp-2 mb-3">
-                      {featuredArticle.excerpt}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground text-xs">
-                        {new Date(featuredArticle.published_at).toLocaleDateString("es-AR", {
-                          day: "numeric",
-                          month: "long",
-                          year: "numeric",
-                        })}
-                      </span>
+                  <div className="lg:hidden">
+                    <div className="bg-card rounded-lg overflow-hidden border border-red-600 hover:border-primary transition-colors">
+                      {/* Image */}
+                      <div className="aspect-video overflow-hidden">
+                        {featuredArticle.image_url && (
+                          <img
+                            src={featuredArticle.image_url}
+                            alt={featuredArticle.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        )}
+                      </div>
+                      {/* Content */}
+                      <div className="p-4 space-y-2">
+                        {/* Category */}
+                        {featuredArticle.categories && (
+                          <div className="text-red-600 font-bold text-xs uppercase tracking-wide">
+                            {featuredArticle.categories.name}
+                          </div>
+                        )}
+                        {/* Title */}
+                        <h1 className="font-semibold text-black line-clamp-3 leading-relaxed text-base">
+                          {featuredArticle.title}
+                        </h1>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -228,12 +251,12 @@ export function HomeContent() {
               {isLoading ? (
                 <>
                   {[...Array(3)].map((_, i) => (
-                    <div key={i} className="flex h-40 bg-secondary border border-red-600 rounded-lg overflow-hidden">
-                      <div className="w-[40%] bg-muted"></div>
-                      <div className="flex-1 p-3 space-y-2">
-                        <div className="h-3 bg-red-600 rounded w-20"></div>
-                        <div className="h-4 bg-white rounded w-full"></div>
-                        <div className="h-4 bg-white rounded w-3/4"></div>
+                    <div key={i} className="flex h-[140px] bg-secondary border border-red-600 rounded-lg overflow-hidden">
+                      <div className="w-[200px] bg-muted"></div>
+                      <div className="w-[200px] p-4 space-y-2">
+                        <div className="h-2 bg-red-600 rounded w-20"></div>
+                        <div className="h-5 bg-white rounded w-full"></div>
+                        <div className="h-5 bg-white rounded w-full"></div>
                       </div>
                     </div>
                   ))}
@@ -243,11 +266,11 @@ export function HomeContent() {
                   <Link 
                     key={article.id} 
                     href={`/noticia/${article.slug}`}
-                    className="block group h-40 bg-secondary border border-red-600 rounded-lg overflow-hidden hover:bg-secondary/90 transition-colors"
+                    className="block group h-[140px] bg-secondary border border-red-600 rounded-lg overflow-hidden hover:bg-secondary/90 transition-colors"
                   >
                     <div className="flex h-full">
                       {/* Thumbnail - Left */}
-                      <div className="w-[40%] relative overflow-hidden">
+                      <div className="w-[200px] relative overflow-hidden">
                         {article.image_url && (
                           <img
                             src={article.image_url}
@@ -257,15 +280,15 @@ export function HomeContent() {
                         )}
                       </div>
                       {/* Content Block - Right */}
-                      <div className="flex-1 p-3 flex flex-col justify-start space-y-2">
-                        {/* Category - Red */}
+                      <div className="w-[200px] p-4 flex flex-col justify-start">
+                        {/* Category */}
                         {article.categories && (
-                          <div className="text-red-600 font-bold text-xs uppercase tracking-wide">
+                          <div className="text-red-600 font-bold text-xs uppercase tracking-wide mb-2 border-b border-white">
                             {article.categories.name}
                           </div>
                         )}
-                        {/* Title - White */}
-                        <h3 className="text-white font-medium text-sm leading-tight line-clamp-3">
+                        {/* Title */}
+                        <h3 className="font-bold text-white text-base leading-tight">
                           {article.title}
                         </h3>
                       </div>
@@ -279,11 +302,8 @@ export function HomeContent() {
       </section>
       {/* Latest News Grid - 2 Columns + Sidebar */}
       <section className="mb-8">
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4">
           <h2 className="text-2xl font-bold text-foreground">Últimas Noticias</h2>
-          <Link href="/categorias" className="text-primary hover:underline flex items-center gap-1">
-            Ver todas <ChevronRight className="h-4 w-4" />
-          </Link>
         </div>
         {/* 3 Column Grid: 2 for news, 1 for sidebar */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -292,7 +312,7 @@ export function HomeContent() {
             {isLoading ? (
               <>
                 {[...Array(10)].map((_, i) => (
-                  <div key={i} className="bg-card rounded-lg overflow-hidden border border-blue-600">
+                  <div key={i} className="bg-card rounded-lg overflow-hidden border border-secondary">
                     <div className="aspect-video bg-muted"></div>
                     <div className="p-4 space-y-2">
                       <div className="h-3 bg-red-600 rounded w-20"></div>
@@ -305,7 +325,7 @@ export function HomeContent() {
             ) : (
               gridArticles.slice(0, 10).map((article) => (
                 <Link key={article.id} href={`/noticia/${article.slug}`} className="group h-full">
-                  <div className="bg-card rounded-lg overflow-hidden border border-blue-600 hover:border-primary transition-colors h-full flex flex-col">
+                  <div className="bg-card rounded-lg overflow-hidden border border-secondary hover:border-primary transition-colors h-full flex flex-col">
                     {/* Image */}
                     <div className="aspect-video overflow-hidden">
                       {article.image_url && (
@@ -351,13 +371,9 @@ export function HomeContent() {
               <ObituariesWidget />
             </div>
             
-            {/* Advertisement Widget */}
-            <div className="bg-muted border-2 border-dashed border-red-600 rounded-lg p-8 text-center">
-              <div className="text-muted-foreground">
-                <div className="text-4xl mb-2">📢</div>
-                <p className="font-medium">Espacio Publicitario</p>
-                <p className="text-sm mt-1">300x250px</p>
-              </div>
+            {/* Pharmacy Widget */}
+            <div className="border border-red-600 rounded-lg overflow-hidden">
+              <PharmacyWidget />
             </div>
           </div>
         </div>
@@ -381,8 +397,8 @@ export function HomeContent() {
               </Link>
             </div>
             <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {categoryArticles.slice(0, 3).map((article) => (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                {categoryArticles.slice(0, isDesktop ? 4 : 3).map((article) => (
                   <Link key={article.id} href={`/noticia/${article.slug}`} className="group">
                     <div className="overflow-hidden">
                       {/* Image */}

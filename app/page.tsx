@@ -15,6 +15,27 @@ export default function HomePage() {
     setTimeout(() => setShowContent(true), 100)
   }, [])
 
+  useEffect(() => {
+    // Check if user has already seen loading screen
+    const hasSeenLoading = sessionStorage.getItem("hasSeenLoading")
+    console.log('hasSeenLoading:', hasSeenLoading)
+    
+    if (hasSeenLoading === "true") {
+      console.log('Skipping loading screen - user already saw it')
+      setIsLoading(false)
+      setShowContent(true)
+    } else {
+      console.log('Showing loading screen for first time')
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!isLoading) {
+      sessionStorage.setItem("hasSeenLoading", "true")
+      console.log('Set hasSeenLoading to true')
+    }
+  }, [isLoading])
+
   return (
     <>
       {isLoading && <LoadingScreen onComplete={handleLoadingComplete} />}

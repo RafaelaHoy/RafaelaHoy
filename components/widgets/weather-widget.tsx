@@ -65,17 +65,15 @@ export function WeatherWidget() {
     const today = new Date()
     const tomorrow = new Date(today)
     tomorrow.setDate(tomorrow.getDate() + 1)
-    const dayAfter = new Date(today)
-    dayAfter.setDate(dayAfter.getDate() + 2)
 
     if (date.toDateString() === today.toDateString()) {
       return 'Hoy'
     } else if (date.toDateString() === tomorrow.toDateString()) {
       return 'Mañana'
-    } else if (date.toDateString() === dayAfter.toDateString()) {
-      return 'Pasado'
     } else {
-      return date.toLocaleDateString('es-AR', { weekday: 'short' })
+      // Para el tercer día y siguientes, mostrar el nombre del día capitalizado
+      const dayName = date.toLocaleDateString('es-AR', { weekday: 'long' })
+      return dayName.charAt(0).toUpperCase() + dayName.slice(1)
     }
   }
 

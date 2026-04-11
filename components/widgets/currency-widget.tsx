@@ -138,7 +138,7 @@ export function CurrencyWidget() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-3">
+        <div className="space-y-4">
           {/* Dólar Oficial */}
           <div className="flex justify-between items-center">
             <div>
@@ -146,10 +146,10 @@ export function CurrencyWidget() {
               <div className="text-xs text-white/70">Compra/Venta</div>
             </div>
             <div className="text-right">
-              <div className="font-medium">
+              <div className="font-bold text-lg text-blue-300">
                 {currencyData ? formatCurrency(currencyData.dolar_oficial.venta) : '---'}
               </div>
-              <div className="text-xs text-white/70">
+              <div className="text-sm text-white/70">
                 {currencyData ? formatCurrency(currencyData.dolar_oficial.compra) : '---'}
               </div>
             </div>
@@ -164,10 +164,10 @@ export function CurrencyWidget() {
               </div>
             </div>
             <div className="text-right">
-              <div className="font-medium text-green-400">
+              <div className="font-bold text-lg text-green-400">
                 {currencyData ? formatCurrency(currencyData.dolar_blue.venta) : '---'}
               </div>
-              <div className="text-xs text-white/70">
+              <div className="text-sm text-white/70">
                 {currencyData ? formatCurrency(currencyData.dolar_blue.compra) : '---'}
               </div>
             </div>
@@ -180,10 +180,10 @@ export function CurrencyWidget() {
               <div className="text-xs text-white/70">Compra/Venta</div>
             </div>
             <div className="text-right">
-              <div className="font-medium">
+              <div className="font-bold text-lg text-yellow-300">
                 {currencyData ? formatCurrency(currencyData.euro.venta) : '---'}
               </div>
-              <div className="text-xs text-white/70">
+              <div className="text-sm text-white/70">
                 {currencyData ? formatCurrency(currencyData.euro.compra) : '---'}
               </div>
             </div>

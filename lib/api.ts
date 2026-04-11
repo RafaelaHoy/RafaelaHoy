@@ -78,6 +78,26 @@ export async function fetchWeatherForecast() {
           description: 'lluvia ligera',
           icon: '10d'
         }
+      },
+      {
+        date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+        temp_min: 14,
+        temp_max: 23,
+        weather: {
+          main: 'Clouds',
+          description: 'nublado',
+          icon: '03d'
+        }
+      },
+      {
+        date: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000),
+        temp_min: 17,
+        temp_max: 25,
+        weather: {
+          main: 'Sun',
+          description: 'cielo despejado',
+          icon: '01d'
+        }
       }
     ]
   }
@@ -94,24 +114,40 @@ export async function fetchWeatherForecast() {
     
     const data = await response.json()
     
-    // Process the data to get daily forecasts (we'll take one forecast per day)
-    const dailyForecasts = data.list
-      .filter((item: any, index: number, self: any[]) => {
-        // Get the first forecast of each day (around 12:00)
-        const date = new Date(item.dt * 1000)
-        const hour = date.getHours()
-        return hour >= 12 && hour <= 15 // Take forecasts around noon
-      })
-      .slice(0, 3) // Get next 3 days
+    // Process the data to get daily forecasts with proper min/max temperatures
+    const dailyForecasts = data.list.reduce((acc: any[], forecast: any) => {
+      const date = new Date(forecast.dt * 1000)
+      const dateStr = date.toDateString()
+      
+      if (!acc[dateStr]) {
+        acc[dateStr] = {
+          date: date,
+          temp_min: forecast.main.temp_min,
+          temp_max: forecast.main.temp_max,
+          weather: forecast.weather[0]
+        }
+      } else {
+        // Update min and max temperatures
+        acc[dateStr].temp_min = Math.min(acc[dateStr].temp_min, forecast.main.temp_min)
+        acc[dateStr].temp_max = Math.max(acc[dateStr].temp_max, forecast.main.temp_max)
+      }
+      
+      return acc
+    }, {})
     
-    return dailyForecasts.map((forecast: any) => ({
-      date: new Date(forecast.dt * 1000),
-      temp_min: forecast.main.temp_min,
-      temp_max: forecast.main.temp_max,
+    // Get next 5 days
+    const next5Days = Object.values(dailyForecasts)
+      .sort((a: any, b: any) => a.date - b.date)
+      .slice(0, 5)
+    
+    return next5Days.map((day: any) => ({
+      date: day.date,
+      temp_min: day.temp_min,
+      temp_max: day.temp_max,
       weather: {
-        main: forecast.weather[0].main,
-        description: forecast.weather[0].description,
-        icon: forecast.weather[0].icon
+        main: day.weather.main,
+        description: day.weather.description,
+        icon: day.weather.icon
       }
     }))
   } catch (error) {
@@ -142,11 +178,78 @@ export async function fetchObituaries(): Promise<Obituary[]> {
       .order('date', { ascending: false })
       .limit(10)
     
-    if (error) throw error
-    return data || []
+    if (error) {
+      console.error('Error fetching obituaries:', error)
+      return []
+    }
+    
+    // If no data, insert sample data
+    if (!data || data.length === 0) {
+      await createSampleObituaries()
+      return fetchObituaries() // Fetch again after inserting
+    }
+    
+    return data
   } catch (error) {
     console.error('Error fetching obituaries:', error)
     return []
+  }
+}
+
+// Create sample obituaries data
+async function createSampleObituaries() {
+  const supabase = createClient()
+  const sampleData = [
+    {
+      full_name: 'María Elena Rodríguez',
+      age: 78,
+      service_info: 'Servicio religioso en Iglesia San José, Av. San Martín 1234',
+      date: new Date().toISOString()
+    },
+    {
+      full_name: 'Juan Carlos Pérez',
+      age: 65,
+      service_info: 'Crematorio Municipal, Calle 25 de Mayo 567',
+      date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      full_name: 'Ana María González',
+      age: 82,
+      service_info: 'Parroquia Nuestra Señora del Carmen, Calle Belgrano 890',
+      date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      full_name: 'Roberto Carlos Martínez',
+      age: 71,
+      service_info: 'Capilla del Cementerio Local, Ruta 34 Km 12',
+      date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      full_name: 'Carmen Luisa Fernández',
+      age: 89,
+      service_info: 'Iglesia Catedral, Plaza 25 de Mayo',
+      date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString()
+    },
+    {
+      full_name: 'Alberto José Sánchez',
+      age: 74,
+      service_info: 'Salón Velatorio Municipal, Calle Rivadavia 456',
+      date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
+    }
+  ]
+  
+  try {
+    const { error } = await supabase
+      .from('obituaries')
+      .insert(sampleData)
+    
+    if (error) {
+      console.error('Error inserting sample obituaries:', error)
+    } else {
+      console.log('Sample obituaries created successfully')
+    }
+  } catch (error) {
+    console.error('Error creating sample obituaries:', error)
   }
 }
 

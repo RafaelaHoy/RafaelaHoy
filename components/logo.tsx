@@ -1,4 +1,5 @@
 import Link from "next/link"
+import Image from "next/image"
 
 interface LogoProps {
   className?: string
@@ -16,17 +17,39 @@ export function Logo({ className = "", size = "md", noLink = false }: LogoProps)
   const s = sizes[size]
 
   const logoImage = (
-    <img 
-      src="/images/logo.jpg" 
-      alt="Rafaela Hoy" 
-      width={s.width}
-      height={s.height}
-      className="object-contain"
-    />
+    <div className={`relative flex-shrink-0 ${className}`} style={{ width: s.width, height: s.height }}>
+      <Image
+        src="/images/logo.png" 
+        alt="Rafaela Hoy" 
+        width={s.width}
+        height={s.height}
+        className="object-contain transition-opacity duration-300"
+        style={{
+          backgroundColor: 'transparent',
+          borderRadius: '0'
+        }}
+        priority
+        unoptimized={false}
+        onError={(e: any) => {
+          console.error('Error loading logo:', e)
+          const target = e.target as HTMLImageElement
+          // Ocultar imagen rota pero mantener el espacio
+          target.style.opacity = '0'
+          target.style.visibility = 'hidden'
+        }}
+        onLoad={(e: any) => {
+          console.log('Logo loaded successfully')
+          const target = e.target as HTMLImageElement
+          // Asegurar que sea visible al cargar
+          target.style.opacity = '1'
+          target.style.visibility = 'visible'
+        }}
+      />
+    </div>
   )
 
   if (noLink) {
-    return <div className={`flex items-center ${className}`}>{logoImage}</div>
+    return logoImage
   }
 
   return (

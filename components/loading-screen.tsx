@@ -1,46 +1,62 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 
 export function LoadingScreen({ onComplete }: { onComplete: () => void }) {
   const [progress, setProgress] = useState(0)
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const safetyTimerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
-    // Check if user has already seen loading screen
-    const hasSeenLoading = sessionStorage.getItem("hasSeenLoading")
-    if (hasSeenLoading) {
-      onComplete()
-      return
-    }
-
-    const timer = setInterval(() => {
+    timerRef.current = setInterval(() => {
       setProgress((prev) => {
         if (prev >= 100) {
-          clearInterval(timer)
-          // Mark as seen and complete
-          sessionStorage.setItem("hasSeenLoading", "true")
-          onComplete()
+          if (timerRef.current) {
+            clearInterval(timerRef.current)
+          }
+          // Usar requestAnimationFrame para evitar setState durante renderizado
+          requestAnimationFrame(() => {
+            onComplete()
+          })
           return 100
         }
         return prev + 10 // Incremento más rápido
       })
     }, 50) // Intervalo más corto
 
-    return () => clearInterval(timer)
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+      }
+    }
   }, [onComplete])
 
   // Timeout de seguridad para forzar completado
   useEffect(() => {
-    const hasSeenLoading = sessionStorage.getItem("hasSeenLoading")
-    if (hasSeenLoading) return
-
-    const safetyTimer = setTimeout(() => {
-      sessionStorage.setItem("hasSeenLoading", "true")
-      onComplete()
+    safetyTimerRef.current = setTimeout(() => {
+      requestAnimationFrame(() => {
+        onComplete()
+      })
     }, 3000) // Forzar completado después de 3 segundos
 
-    return () => clearTimeout(safetyTimer)
+    return () => {
+      if (safetyTimerRef.current) {
+        clearTimeout(safetyTimerRef.current)
+      }
+    }
   }, [onComplete])
+
+  // Cleanup
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+      }
+      if (safetyTimerRef.current) {
+        clearTimeout(safetyTimerRef.current)
+      }
+    }
+  }, [])
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-secondary">
