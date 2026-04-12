@@ -96,14 +96,18 @@ export function Header() {
               {/* Social media on desktop */}
               <div className="hidden md:flex items-center gap-4">
                 <a
-                  href="#"
+                  href="https://www.instagram.com/rafaela.hoy?igsh=dzd5ZWJqemljb3l3&utm_source=qr"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="flex items-center justify-center w-8 h-8 rounded-full bg-[#E21F1D] hover:bg-red-700 transition-colors"
                   aria-label="Instagram"
                 >
                   <Instagram className="h-4 w-4 text-white" />
                 </a>
                 <a
-                  href="#"
+                  href="https://www.facebook.com/share/18SiBdchQp/?mibextid=wwXIfr"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="flex items-center justify-center w-8 h-8 rounded-full bg-[#E21F1D] hover:bg-red-700 transition-colors"
                   aria-label="Facebook"
                 >
@@ -119,7 +123,7 @@ export function Header() {
       <div className="bg-secondary border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-start -mt-9 -ml-4">
+            <div className="flex items-start -mt-15 -ml-4">
               <Logo size="md" />
             </div>
 

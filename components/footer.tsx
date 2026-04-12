@@ -40,7 +40,7 @@ export function Footer() {
               &quot;Donde la noticia ocurre&quot;
             </p>
             <p className="mt-3 text-sm text-white/70 leading-relaxed">
-              El portal de noticias líder de Rafaela y la región. Información actualizada las 24 horas sobre lo que pasa en tu ciudad.
+              El portal de noticias de Rafaela y la Región. Información actualizada las 24 horas sobre lo que pasa en tu localidad.
             </p>
           </div>
 
@@ -62,14 +62,18 @@ export function Footer() {
             <h3 className="font-semibold text-white mt-6 mb-4 text-base">Redes Sociales</h3>
             <div className="flex items-center gap-3">
               <a
-                href="#"
+                href="https://www.instagram.com/rafaela.hoy?igsh=dzd5ZWJqemljb3l3&utm_source=qr"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="p-2 bg-primary/20 rounded-full hover:bg-primary transition-colors"
                 aria-label="Instagram"
               >
                 <Instagram className="h-5 w-5 text-primary" />
               </a>
               <a
-                href="#"
+                href="https://www.facebook.com/share/18SiBdchQp/?mibextid=wwXIfr"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="p-2 bg-primary/20 rounded-full hover:bg-primary transition-colors"
                 aria-label="Facebook"
               >

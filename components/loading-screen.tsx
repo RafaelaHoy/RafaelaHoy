@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useRef } from "react"
+import { Logo } from "./logo"
 
 export function LoadingScreen({ onComplete }: { onComplete: () => void }) {
   const [progress, setProgress] = useState(0)
@@ -20,9 +21,9 @@ export function LoadingScreen({ onComplete }: { onComplete: () => void }) {
           })
           return 100
         }
-        return prev + 10 // Incremento más rápido
+        return prev + 2 // Incremento más lento
       })
-    }, 50) // Intervalo más corto
+    }, 100) // Intervalo más largo
 
     return () => {
       if (timerRef.current) {
@@ -37,7 +38,7 @@ export function LoadingScreen({ onComplete }: { onComplete: () => void }) {
       requestAnimationFrame(() => {
         onComplete()
       })
-    }, 3000) // Forzar completado después de 3 segundos
+    }, 6000) // Forzar completado después de 6 segundos
 
     return () => {
       if (safetyTimerRef.current) {
@@ -61,10 +62,9 @@ export function LoadingScreen({ onComplete }: { onComplete: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-secondary">
       <div className="flex flex-col items-center gap-8">
-        {/* Logo simplificado */}
-        <div className="flex flex-col items-center gap-2">
-          <div className="w-16 h-16 bg-primary rounded-full animate-pulse"></div>
-          <div className="text-2xl font-bold text-white">Rafaela Hoy</div>
+        {/* Logo real */}
+        <div className="flex flex-col items-center gap-4">
+          <Logo size="lg" className="animate-pulse" />
         </div>
 
         {/* Loading Bar */}
@@ -76,7 +76,7 @@ export function LoadingScreen({ onComplete }: { onComplete: () => void }) {
             />
           </div>
           <p className="text-center text-white/70 text-sm mt-3">
-            Cargando... {progress}%
+            {progress}%
           </p>
         </div>
       </div>

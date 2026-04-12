@@ -151,15 +151,15 @@ export function HomeContent() {
         }
       case 1: // Style B - Sections 2, 5
         return {
-          bg: 'bg-white text-black',
-          border: 'border-secondary',
-          button: 'bg-red-500 text-white hover:bg-red-600'
-        }
-      case 2: // Style C - Sections 3, 6
-        return {
           bg: 'bg-red-600 text-white',
           border: 'border-secondary',
           button: 'bg-secondary text-white hover:bg-red-700'
+        }
+      case 2: // Style C - Sections 3, 6
+        return {
+          bg: 'bg-white text-black',
+          border: 'border-secondary',
+          button: 'bg-red-500 text-white hover:bg-red-600'
         }
       default:
         return {
@@ -205,7 +205,7 @@ export function HomeContent() {
                     <div className="lg:absolute lg:bottom-0 lg:left-0 lg:right-0 lg:bg-gradient-to-t lg:from-black/80 lg:to-transparent lg:p-6 hidden lg:block">
                       <div className="max-w-4xl">
                         <div className="bg-secondary px-4 py-2 rounded-lg">
-                          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-white line-clamp-3">
+                          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold text-white">
                             {featuredArticle.title}
                           </h1>
                         </div>
@@ -235,7 +235,7 @@ export function HomeContent() {
                           </div>
                         )}
                         {/* Title */}
-                        <h1 className="font-semibold text-black line-clamp-3 leading-relaxed text-base">
+                        <h1 className="font-semibold text-black leading-relaxed text-base">
                           {featuredArticle.title}
                         </h1>
                       </div>
@@ -247,7 +247,7 @@ export function HomeContent() {
           </div>
           {/* Three Featured Articles - Right */}
           <div className="lg:col-span-4 order-2 lg:order-1">
-            <div className="space-y-3">
+            <div className="space-y-8">
               {isLoading ? (
                 <>
                   {[...Array(3)].map((_, i) => (
@@ -345,7 +345,7 @@ export function HomeContent() {
                         </div>
                       )}
                       {/* Title */}
-                      <h3 className="font-semibold text-foreground line-clamp-2 leading-tight flex-1">
+                      <h3 className="font-semibold text-foreground leading-tight flex-1">
                         {article.title}
                       </h3>
                     </div>
@@ -412,7 +412,7 @@ export function HomeContent() {
                         )}
                       </div>
                       {/* Title */}
-                      <h3 className="font-semibold line-clamp-2 leading-tight">
+                      <h3 className="font-semibold leading-tight">
                         {article.title}
                       </h3>
                     </div>

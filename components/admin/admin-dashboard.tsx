@@ -5,19 +5,8 @@ import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Logo } from "@/components/logo"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import {
   Table,
   TableBody,
@@ -26,44 +15,29 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Switch } from "@/components/ui/switch"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { LogOut, Plus, Pencil, Trash2, FileText, Eye, EyeOff, Star, ChevronUp, ChevronDown, Settings } from "lucide-react"
-import { format } from "date-fns"
-import { es } from "date-fns/locale"
+import { LogOut, Plus, Pencil, Trash2, FileText, Eye, EyeOff, Star, Settings } from "lucide-react"
 import Link from "next/link"
 import { ServicesManagementSection } from "./services-management-section"
-import { MediaManager } from "./media-manager"
 import { ObituariesManager } from "./obituaries-manager"
-
-interface MediaItem {
-  id: string
-  type: 'image' | 'video'
-  url: string
-  alt_text?: string
-  caption?: string
-  sort_order: number
-}
 
 interface Article {
   id: string
   title: string
-  slug: string
+  excerpt: string
+  content: string
+  category_id: string
+  author: string
   is_published: boolean
   is_featured: boolean
-  published_at: string | null
-  created_at: string
+  image_url: string
+  slug: string
   sort_order: number
-  categories: {
+  created_at: string
+  updated_at: string
+  published_at: string
+  categories?: {
     name: string
-    slug: string
-  } | null
+  }
 }
 
 interface Category {
@@ -78,45 +52,9 @@ interface AdminDashboardProps {
   userEmail: string
 }
 
-function generateSlug(title: string): string {
-  return title
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .trim()
-}
-
 export function AdminDashboard({ articles: initialArticles, categories, userEmail }: AdminDashboardProps) {
   const [articles, setArticles] = useState(initialArticles)
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const [editingArticle, setEditingArticle] = useState<Article | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [currentMedia, setCurrentMedia] = useState<MediaItem[]>([])
   const router = useRouter()
-
-  // Form state
-  const [title, setTitle] = useState("")
-  const [content, setContent] = useState("")
-  const [excerpt, setExcerpt] = useState("")
-  const [imageUrl, setImageUrl] = useState("")
-  const [categoryId, setCategoryId] = useState("")
-  const [isPublished, setIsPublished] = useState(true)
-  const [isFeatured, setIsFeatured] = useState(false)
-
-  const resetForm = () => {
-    setTitle("")
-    setContent("")
-    setExcerpt("")
-    setImageUrl("")
-    setCategoryId("")
-    setIsPublished(true)
-    setIsFeatured(false)
-    setEditingArticle(null)
-    setCurrentMedia([])
-  }
 
   const handleLogout = async () => {
     const supabase = createClient()
@@ -125,226 +63,79 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
     router.refresh()
   }
 
-  const loadArticleMedia = async (articleId: string) => {
+  const togglePublished = async (articleId: string, currentStatus: boolean) => {
     const supabase = createClient()
-    const { data, error } = await supabase
-      .from('article_media')
-      .select('*')
-      .eq('article_id', articleId)
-      .order('sort_order', { ascending: true })
-
-    if (!error && data) {
-      setCurrentMedia(data)
-    }
-  }
-
-  const handleCreateArticle = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-
-    try {
-      const supabase = createClient()
-      const slug = generateSlug(title)
-
-      const { data, error } = await supabase
-        .from("articles")
-        .insert({
-          title,
-          content,
-          excerpt: excerpt || null,
-          image_url: imageUrl || null,
-          category_id: categoryId || null,
-          is_published: isPublished,
-          is_featured: isFeatured,
-          slug,
-          sort_order: 0,
-        })
-        .select(`
-          id,
-          title,
-          slug,
-          is_published,
-          is_featured,
-          published_at,
-          created_at,
-          sort_order,
-          categories (
-            name,
-            slug
-          )
-        `)
-        .single()
-
-      if (error) throw error
-
-      setArticles([data as Article, ...articles])
-      setIsCreateDialogOpen(false)
-      resetForm()
-    } catch (error) {
-      console.error("Error creating article:", error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleUpdateArticle = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-
-    try {
-      const supabase = createClient()
-
-      const { data, error } = await supabase
-        .from("articles")
-        .update({
-          title,
-          content,
-          excerpt: excerpt || null,
-          image_url: imageUrl || null,
-          category_id: categoryId || null,
-          is_published: isPublished,
-          is_featured: isFeatured,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", editingArticle!.id)
-        .select(`
-          id,
-          title,
-          slug,
-          is_published,
-          is_featured,
-          published_at,
-          created_at,
-          sort_order,
-          categories (
-            name,
-            slug
-          )
-        `)
-        .single()
-
-      if (error) throw error
-
-      setArticles(
-        articles.map((article) =>
-          article.id === editingArticle!.id ? data as Article : article
-        )
-      )
-      setEditingArticle(null)
-      resetForm()
-    } catch (error) {
-      console.error("Error updating article:", error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const togglePublished = async (id: string, published: boolean) => {
-    try {
-      const supabase = createClient()
-      const { error } = await supabase
-        .from("articles")
-        .update({ is_published: published, updated_at: new Date().toISOString() })
-        .eq("id", id)
-
-      if (error) throw error
-
-      setArticles(
-        articles.map((article) =>
-          article.id === id ? { ...article, is_published: published } : article
-        )
-      )
-    } catch (error) {
-      console.error("Error toggling published:", error)
-    }
-  }
-
-  const toggleFeatured = async (id: string, featured: boolean) => {
-    try {
-      const supabase = createClient()
-      const { error } = await supabase
-        .from("articles")
-        .update({ is_featured: featured, updated_at: new Date().toISOString() })
-        .eq("id", id)
-
-      if (error) throw error
-
-      setArticles(
-        articles.map((article) =>
-          article.id === id ? { ...article, is_featured: featured } : article
-        )
-      )
-    } catch (error) {
-      console.error("Error toggling featured:", error)
-    }
-  }
-
-  const moveArticle = async (id: string, direction: "up" | "down") => {
-    try {
-      const supabase = createClient()
-      const article = articles.find((a) => a.id === id)
-      if (!article) return
-
-      const currentIndex = articles.findIndex((a) => a.id === id)
-      const newIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1
-      
-      if (newIndex < 0 || newIndex >= articles.length) return
-
-      const { error } = await supabase
-        .from("articles")
-        .update({ sort_order: newIndex, updated_at: new Date().toISOString() })
-        .eq("id", id)
-
-      if (error) throw error
-
-      const newArticles = [...articles]
-      const [movedArticle] = newArticles.splice(currentIndex, 1)
-      newArticles.splice(newIndex, 0, movedArticle)
-      setArticles(newArticles)
-    } catch (error) {
-      console.error("Error moving article:", error)
-    }
-  }
-
-  const deleteArticle = async (id: string) => {
-    if (!confirm("¿Estás seguro de que quieres eliminar este artículo?")) return
-
-    try {
-      const supabase = createClient()
-      const { error } = await supabase
-        .from("articles")
-        .delete()
-        .eq("id", id)
-
-      if (error) throw error
-
-      setArticles(articles.filter((article) => article.id !== id))
-    } catch (error) {
-      console.error("Error deleting article:", error)
-    }
-  }
-
-  const openEditDialog = async (article: Article) => {
-    const supabase = createClient()
-    const { data } = await supabase
+    const { error } = await supabase
       .from("articles")
-      .select("*")
-      .eq("id", article.id)
-      .single()
+      .update({ is_published: !currentStatus })
+      .eq("id", articleId)
 
-    if (data) {
-      setTitle(data.title)
-      setContent(data.content)
-      setExcerpt(data.excerpt || "")
-      setImageUrl(data.image_url || "")
-      setCategoryId(data.category_id || "")
-      setIsPublished(data.is_published)
-      setIsFeatured(data.is_featured)
-      setEditingArticle(article)
-      
-      // Load media for this article
-      await loadArticleMedia(article.id)
+    if (!error) {
+      setArticles(
+        articles.map((article) =>
+          article.id === articleId
+            ? { ...article, is_published: !currentStatus }
+            : article
+        )
+      )
     }
+  }
+
+  const toggleFeatured = async (articleId: string, currentStatus: boolean) => {
+    const supabase = createClient()
+    const { error } = await supabase
+      .from("articles")
+      .update({ is_featured: !currentStatus })
+      .eq("id", articleId)
+
+    if (!error) {
+      setArticles(
+        articles.map((article) =>
+          article.id === articleId
+            ? { ...article, is_featured: !currentStatus }
+            : article
+        )
+      )
+    }
+  }
+
+  const deleteArticle = async (articleId: string) => {
+    if (!confirm("¿Estás seguro de que quieres eliminar este artículo?")) {
+      return
+    }
+
+    const supabase = createClient()
+    const { error } = await supabase
+      .from("articles")
+      .delete()
+      .eq("id", articleId)
+
+    if (!error) {
+      setArticles(articles.filter((article) => article.id !== articleId))
+    }
+  }
+
+  const moveArticle = async (articleId: string, direction: "up" | "down") => {
+    const currentIndex = articles.findIndex(a => a.id === articleId)
+    if (currentIndex === -1) return
+
+    const newIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1
+    if (newIndex < 0 || newIndex >= articles.length) return
+
+    const reorderedArticles = [...articles]
+    const [movedArticle] = reorderedArticles.splice(currentIndex, 1)
+    reorderedArticles.splice(newIndex, 0, movedArticle)
+
+    // Update sort_order in database
+    const supabase = createClient()
+    for (let i = 0; i < reorderedArticles.length; i++) {
+      await supabase
+        .from("articles")
+        .update({ sort_order: i })
+        .eq("id", reorderedArticles[i].id)
+    }
+
+    setArticles(reorderedArticles)
   }
 
   const publishedCount = articles.filter((a) => a.is_published).length
@@ -413,104 +204,12 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
                   Ver sitio
                 </Link>
               </Button>
-              <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button onClick={() => resetForm()}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Nuevo artículo
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Crear nuevo artículo</DialogTitle>
-                    <DialogDescription>
-                      Completa los campos para crear una nueva noticia.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <form onSubmit={handleCreateArticle} className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="title">Título</Label>
-                      <Input
-                        id="title"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="excerpt">Extracto</Label>
-                      <Textarea
-                        id="excerpt"
-                        value={excerpt}
-                        onChange={(e) => setExcerpt(e.target.value)}
-                        rows={3}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="image_url">Imagen principal (URL)</Label>
-                      <Input
-                        id="image_url"
-                        value={imageUrl}
-                        onChange={(e) => setImageUrl(e.target.value)}
-                        placeholder="https://ejemplo.com/imagen.jpg"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="category">Categoría</Label>
-                      <Select value={categoryId} onValueChange={setCategoryId}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecciona una categoría" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map((category) => (
-                            <SelectItem key={category.id} value={category.id}>
-                              {category.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          id="isPublished"
-                          checked={isPublished}
-                          onCheckedChange={setIsPublished}
-                        />
-                        <Label htmlFor="isPublished">Publicado</Label>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          id="isFeatured"
-                          checked={isFeatured}
-                          onCheckedChange={setIsFeatured}
-                        />
-                        <Label htmlFor="isFeatured">Destacar</Label>
-                      </div>
-                    </div>
-
-                    {/* Media Manager */}
-                    <MediaManager
-                      articleId={null}
-                      mediaItems={currentMedia}
-                      onMediaChange={setCurrentMedia}
-                    />
-
-                    <div className="flex justify-end gap-2 pt-4">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setIsCreateDialogOpen(false)}
-                      >
-                        Cancelar
-                      </Button>
-                      <Button type="submit" disabled={isLoading}>
-                        {isLoading ? "Creando..." : "Crear artículo"}
-                      </Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
+              <Button asChild>
+                <Link href="/admin/noticias/crear">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Nuevo artículo
+                </Link>
+              </Button>
             </div>
           </div>
 
@@ -523,6 +222,7 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
                     <TableHead className="w-[40%]">Título</TableHead>
                     <TableHead>Categoría</TableHead>
                     <TableHead>Estado</TableHead>
+                    <TableHead>Destacado</TableHead>
                     <TableHead>Fecha</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
@@ -530,41 +230,48 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
                 <TableBody>
                   {articles.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                        <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        No hay artículos. Crea el primero.
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        No hay artículos creados aún.
                       </TableCell>
                     </TableRow>
                   ) : (
                     articles.map((article) => (
                       <TableRow key={article.id}>
-                        <TableCell className="font-medium">
-                          <Link
-                            href={`/noticia/${article.slug}`}
-                            className="hover:text-primary transition-colors"
-                            target="_blank"
-                          >
-                            {article.title}
-                          </Link>
+                        <TableCell>
+                          <div className="max-w-md">
+                            <p className="font-medium truncate">{article.title}</p>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {article.excerpt}
+                            </p>
+                          </div>
                         </TableCell>
                         <TableCell>
                           {article.categories ? (
-                            <Badge variant="secondary">{article.categories.name}</Badge>
+                            <Badge variant="secondary">
+                              {article.categories.name}
+                            </Badge>
                           ) : (
                             <span className="text-muted-foreground">Sin categoría</span>
                           )}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2">
-                            {article.is_published ? (
-                              <Badge className="bg-green-100 text-green-800">Publicado</Badge>
+                          <Badge variant={article.is_published ? "default" : "secondary"}>
+                            {article.is_published ? "Publicado" : "Borrador"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => toggleFeatured(article.id, !article.is_featured)}
+                            className="h-8 w-8"
+                          >
+                            {article.is_featured ? (
+                              <Star className="h-4 w-4 fill-current text-primary" />
                             ) : (
-                              <Badge variant="secondary">Borrador</Badge>
+                              <Star className="h-4 w-4" />
                             )}
-                            {article.is_featured && (
-                              <Badge className="bg-yellow-100 text-yellow-800">Destacado</Badge>
-                            )}
-                          </div>
+                          </Button>
                         </TableCell>
                         <TableCell>
                           {new Date(article.published_at || article.created_at).toLocaleDateString("es-AR")}
@@ -574,22 +281,12 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => openEditDialog(article)}
+                              asChild
                               className="h-8 w-8"
                             >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => toggleFeatured(article.id, !article.is_featured)}
-                              className="h-8 w-8"
-                            >
-                              {article.is_featured ? (
-                                <Star className="h-4 w-4 fill-current text-primary" />
-                              ) : (
-                                <Star className="h-4 w-4" />
-                              )}
+                              <Link href={`/admin/noticias/editar/${article.id}`}>
+                                <Pencil className="h-4 w-4" />
+                              </Link>
                             </Button>
                             <Button
                               variant="ghost"
@@ -638,100 +335,6 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
           <ObituariesManager />
         </section>
       </main>
-
-      {/* Edit Dialog */}
-      <Dialog open={!!editingArticle} onOpenChange={(open) => !open && setEditingArticle(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Editar artículo</DialogTitle>
-            <DialogDescription>
-              Modifica los campos del artículo.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleUpdateArticle} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-title">Título</Label>
-              <Input
-                id="edit-title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-excerpt">Extracto</Label>
-              <Textarea
-                id="edit-excerpt"
-                value={excerpt}
-                onChange={(e) => setExcerpt(e.target.value)}
-                rows={3}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-image_url">Imagen principal (URL)</Label>
-              <Input
-                id="edit-image_url"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="https://ejemplo.com/imagen.jpg"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-category">Categoría</Label>
-              <Select value={categoryId} onValueChange={setCategoryId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecciona una categoría" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="edit-isPublished"
-                  checked={isPublished}
-                  onCheckedChange={setIsPublished}
-                />
-                <Label htmlFor="edit-isPublished">Publicado</Label>
-              </div>
-              <div className="flex items-center gap-2">
-                <Switch
-                  id="edit-isFeatured"
-                  checked={isFeatured}
-                  onCheckedChange={setIsFeatured}
-                />
-                <Label htmlFor="edit-isFeatured">Destacar</Label>
-              </div>
-            </div>
-
-            {/* Media Manager */}
-            <MediaManager
-              articleId={editingArticle?.id}
-              mediaItems={currentMedia}
-              onMediaChange={setCurrentMedia}
-            />
-
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setEditingArticle(null)}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? "Guardando..." : "Guardar cambios"}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

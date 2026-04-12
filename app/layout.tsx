@@ -8,7 +8,7 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "Rafaela Hoy - Noticias de Rafaela y la región",
-  description: "El portal de noticias líder de Rafaela y la región. Información actualizada las 24 horas sobre lo que pasa en tu ciudad.",
+  description: "El portal de noticias de Rafaela y la Región. Información actualizada las 24 horas sobre lo que pasa en tu localidad.",
   keywords: ["noticias", "rafaela", "santa fe", "argentina", "información", "actualidad"],
   authors: [{ name: "Rafaela Hoy" }],
   creator: "Rafaela Hoy",
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
     locale: "es_AR",
     url: "https://rafaelahoy.com",
     title: "Rafaela Hoy - Noticias de Rafaela y la región",
-    description: "El portal de noticias líder de Rafaela y la región. Información actualizada las 24 horas sobre lo que pasa en tu ciudad.",
+    description: "El portal de noticias de Rafaela y la Región. Información actualizada las 24 horas sobre lo que pasa en tu localidad.",
     siteName: "Rafaela Hoy",
     images: [
       {
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "Rafaela Hoy - Noticias de Rafaela y la región",
-    description: "El portal de noticias líder de Rafaela y la región. Información actualizada las 24 horas sobre lo que pasa en tu ciudad.",
+    description: "El portal de noticias de Rafaela y la Región. Información actualizada las 24 horas sobre lo que pasa en tu localidad.",
     images: ["/images/logo.png"],
   },
   icons: {
