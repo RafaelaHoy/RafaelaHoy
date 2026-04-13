@@ -32,50 +32,74 @@ interface MediaItem {
   caption?: string
 }
 
-// Componente de editor de texto enriquecido personalizado
+// Componente de editor de texto enriquecido personalizado (alternativa con textarea)
 const RichTextEditor = ({ value, onChange, placeholder }: { 
   value: string; 
   onChange: (value: string) => void; 
   placeholder?: string;
 }) => {
-  const editorRef = useRef<HTMLDivElement>(null)
+  const [content, setContent] = useState(value || '')
 
-  const execCommand = (command: string, value?: string) => {
-    document.execCommand(command, false, value)
-    if (editorRef.current) {
-      onChange(editorRef.current.innerHTML)
-    }
+  useEffect(() => {
+    setContent(value || '')
+  }, [value])
+
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value
+    setContent(newValue)
+    onChange(newValue)
   }
 
-  const insertLink = () => {
-    const url = prompt('Ingrese la URL del enlace:')
-    if (url) {
-      execCommand('createLink', url)
-    }
-  }
+  const execCommand = (command: string, commandValue?: string) => {
+    const textarea = document.querySelector('#rich-editor-edit') as HTMLTextAreaElement
+    if (!textarea) return
 
-  const insertImage = () => {
-    const url = prompt('Ingrese la URL de la imagen:')
-    if (url) {
-      execCommand('insertImage', url)
-    }
-  }
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const selectedText = textarea.value.substring(start, end)
+    let newValue = ''
 
-  const insertVideo = () => {
-    const url = prompt('Ingrese la URL del video (YouTube/Vimeo):')
-    if (url) {
-      const iframe = `<iframe src="${url}" width="560" height="315" frameborder="0" allowfullscreen></iframe>`
-      document.execCommand('insertHTML', false, iframe)
-      if (editorRef.current) {
-        onChange(editorRef.current.innerHTML)
-      }
+    switch (command) {
+      case 'bold':
+        newValue = `**${selectedText}**`
+        break
+      case 'italic':
+        newValue = `*${selectedText}*`
+        break
+      case 'underline':
+        newValue = `<u>${selectedText}</u>`
+        break
+      case 'insertUnorderedList':
+        newValue = `\n• ${selectedText}`
+        break
+      case 'insertOrderedList':
+        newValue = `\n1. ${selectedText}`
+        break
+      case 'createLink':
+        const url = prompt('Ingrese la URL del enlace:')
+        if (url) newValue = `[${selectedText}](${url})`
+        break
+      case 'insertImage':
+        const imgUrl = prompt('Ingrese la URL de la imagen:')
+        if (imgUrl) newValue = `![${selectedText}](${imgUrl})`
+        break
+      case 'insertVideo':
+        const videoUrl = prompt('Ingrese la URL del video (YouTube/Vimeo):')
+        if (videoUrl) newValue = `<iframe src="${videoUrl}" width="560" height="315" frameborder="0" allowfullscreen></iframe>`
+        break
+      default:
+        newValue = selectedText
     }
-  }
 
-  const handleInput = () => {
-    if (editorRef.current) {
-      onChange(editorRef.current.innerHTML)
-    }
+    const newContent = textarea.value.substring(0, start) + newValue + textarea.value.substring(end)
+    setContent(newContent)
+    onChange(newContent)
+    
+    // Restaurar cursor
+    setTimeout(() => {
+      textarea.focus()
+      textarea.setSelectionRange(start + newValue.length, start + newValue.length)
+    }, 0)
   }
 
   return (
@@ -143,7 +167,7 @@ const RichTextEditor = ({ value, onChange, placeholder }: {
           type="button"
           variant="ghost"
           size="sm"
-          onClick={insertLink}
+          onClick={() => execCommand('createLink')}
           className="h-8 w-8 p-0"
         >
           <LinkIcon className="h-4 w-4" />
@@ -152,7 +176,7 @@ const RichTextEditor = ({ value, onChange, placeholder }: {
           type="button"
           variant="ghost"
           size="sm"
-          onClick={insertImage}
+          onClick={() => execCommand('insertImage')}
           className="h-8 w-8 p-0"
         >
           <Image className="h-4 w-4" />
@@ -161,7 +185,7 @@ const RichTextEditor = ({ value, onChange, placeholder }: {
           type="button"
           variant="ghost"
           size="sm"
-          onClick={insertVideo}
+          onClick={() => execCommand('insertVideo')}
           className="h-8 w-8 p-0"
         >
           <Video className="h-4 w-4" />
@@ -169,13 +193,17 @@ const RichTextEditor = ({ value, onChange, placeholder }: {
       </div>
       
       {/* Editor */}
-      <div
-        ref={editorRef}
-        contentEditable
-        className="min-h-[400px] p-4 focus:outline-none bg-white"
-        onInput={handleInput}
-        dangerouslySetInnerHTML={{ __html: value }}
-        style={{ minHeight: '400px' }}
+      <textarea
+        id="rich-editor-edit"
+        value={content}
+        onChange={handleChange}
+        placeholder={placeholder || "Escribe el contenido aquí..."}
+        className="min-h-[400px] w-full p-4 focus:outline-none bg-white resize-none border-0 ltr text-left"
+        style={{ 
+          direction: 'ltr',
+          textAlign: 'left',
+          unicodeBidi: 'normal'
+        }}
       />
     </div>
   )
@@ -187,12 +215,13 @@ interface Article {
   excerpt: string
   content: string
   category_id: string
-  author: string
   published: boolean
   image_url: string
   slug: string
-  published_at: string
   sort_order: number
+  created_at: string
+  updated_at: string
+  published_at: string
 }
 
 export default function EditNewsPage() {
@@ -334,7 +363,6 @@ export default function EditNewsPage() {
           excerpt: excerpt.trim(),
           content: content.trim(),
           category_id: categoryId,
-          author: 'Rafaela hoy',
           is_published: isPublished,
           image_url: featuredImage,
           slug: newSlug,
@@ -483,6 +511,23 @@ export default function EditNewsPage() {
             </div>
           </div>
 
+          {/* Imagen de portada - debajo del desarrollo */}
+          {featuredImage && (
+            <div className="bg-card rounded-lg border p-6">
+              <div className="space-y-4">
+                <h3 className="font-semibold">Portada</h3>
+                <img
+                  src={featuredImage}
+                  alt="Portada"
+                  className="w-full h-64 object-cover rounded-lg border"
+                />
+                <p className="text-sm text-muted-foreground">
+                  La primera imagen subida se usa como portada automáticamente
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Columna lateral - Metadatos y configuración */}
           <div className="space-y-6">
             {/* Metadatos */}
@@ -508,15 +553,6 @@ export default function EditNewsPage() {
                 </Select>
               </div>
 
-              {/* Autor (fijo) */}
-              <div className="space-y-2 mb-4">
-                <Label>Autor</Label>
-                <Input value="Rafaela hoy" disabled className="bg-muted" />
-                <p className="text-xs text-muted-foreground">
-                  El autor es fijo y no se puede modificar
-                </p>
-              </div>
-
               {/* Estado */}
               <div className="flex items-center justify-between">
                 <Label htmlFor="published">Publicado</Label>
@@ -529,31 +565,11 @@ export default function EditNewsPage() {
               </div>
             </div>
 
-            {/* Galería de medios */}
+            {/* Galería de medios - sin título y sin imagen de portada */}
             <div className="bg-card rounded-lg border p-6">
-              <h3 className="font-semibold mb-4">Galería de Medios</h3>
-              
-              {/* Imagen destacada actual */}
-              {featuredImage && (
-                <div className="mb-4">
-                  <Label className="text-sm font-medium">Portada actual</Label>
-                  <div className="mt-2">
-                    <img
-                      src={featuredImage}
-                      alt="Portada"
-                      className="w-full h-32 object-cover rounded-lg border"
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      La primera imagen de la galería se usa como portada
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Media Manager */}
               <MediaManager
                 articleId={articleId}
-                mediaItems={mediaItems}
+                mediaItems={mediaItems.filter(item => item.url !== featuredImage)}
                 onMediaChange={(newMedia) => {
                   setMediaItems(newMedia)
                   // Actualizar la imagen destacada (primera imagen)

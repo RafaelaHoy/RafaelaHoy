@@ -21,6 +21,7 @@ const mainNavItems = [
   { name: "Provinciales", slug: "provinciales" },
   { name: "Policiales", slug: "policiales" },
   { name: "Deportes", slug: "deportes" },
+  { name: "Servicios", slug: "servicios" },
 ]
 
 const masDropdownItems = [

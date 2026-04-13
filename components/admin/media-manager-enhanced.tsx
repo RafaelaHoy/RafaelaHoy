@@ -29,18 +29,14 @@ export function MediaManager({ articleId, mediaItems, onMediaChange }: MediaMana
   const supabase = createClient()
 
   const handleFileUpload = async (files: FileList) => {
-    if (!articleId) {
-      alert('Primero guarda el artículo para poder subir imágenes')
-      return
-    }
-
     setUploading(true)
     const newMedia: MediaItem[] = []
 
     try {
       for (const file of Array.from(files)) {
         const fileExt = file.name.split('.').pop()
-        const fileName = `${articleId}/${Date.now()}.${fileExt}`
+        const tempId = `temp-${Date.now()}`
+        const fileName = articleId ? `${articleId}/${Date.now()}.${fileExt}` : `temp/${tempId}.${fileExt}`
         const filePath = `article-media/${fileName}`
 
         // Determine file type
@@ -61,20 +57,36 @@ export function MediaManager({ articleId, mediaItems, onMediaChange }: MediaMana
           .from('media')
           .getPublicUrl(filePath)
 
-        // Insert into database
-        const { data: mediaData, error: insertError } = await supabase
-          .from('article_media')
-          .insert({
-            article_id: articleId,
+        // Insert into database (solo si hay articleId)
+        let mediaData = null
+        if (articleId) {
+          const { data: dbData, error: insertError } = await supabase
+            .from('article_media')
+            .insert({
+              article_id: articleId,
+              type: fileType,
+              url: publicUrl,
+              alt_text: file.name,
+              sort_order: mediaItems.length + newMedia.length
+            })
+            .select()
+            .single()
+
+          if (!insertError && dbData) {
+            mediaData = dbData
+          }
+        } else {
+          // Crear objeto temporal sin guardar en BD
+          mediaData = {
+            id: tempId,
             type: fileType,
             url: publicUrl,
             alt_text: file.name,
             sort_order: mediaItems.length + newMedia.length
-          })
-          .select()
-          .single()
+          }
+        }
 
-        if (!insertError && mediaData) {
+        if (mediaData) {
           newMedia.push(mediaData)
         }
       }
@@ -125,36 +137,26 @@ export function MediaManager({ articleId, mediaItems, onMediaChange }: MediaMana
     try {
       const supabase = createClient()
       
-      // Delete from database
-      const { error } = await supabase
-        .from('article_media')
-        .delete()
-        .eq('id', mediaId)
-
-      if (!error) {
-        // Update local state
+      // Si es un archivo temporal (empieza con "temp-")
+      if (mediaId.startsWith('temp-')) {
+        // Solo eliminar del estado local
         onMediaChange(mediaItems.filter(item => item.id !== mediaId))
+      } else {
+        // Eliminar de la base de datos
+        const { error } = await supabase
+          .from('article_media')
+          .delete()
+          .eq('id', mediaId)
+
+        if (!error) {
+          // Update local state
+          onMediaChange(mediaItems.filter(item => item.id !== mediaId))
+        }
       }
     } catch (error) {
       console.error('Error eliminando medio:', error)
       alert('Error al eliminar el medio')
     }
-  }
-
-  if (!articleId) {
-    return (
-      <div className="space-y-4">
-        <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-8 text-center">
-          <Upload className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <p className="text-muted-foreground mb-2">
-            El gestor de medios estará disponible después de crear el artículo
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Primero guarda el artículo, luego podrás subir imágenes desde la edición
-          </p>
-        </div>
-      </div>
-    )
   }
 
   return (
@@ -194,7 +196,6 @@ export function MediaManager({ articleId, mediaItems, onMediaChange }: MediaMana
       {/* Media List */}
       {mediaItems.length > 0 && (
         <div className="space-y-2">
-          <h4 className="text-sm font-medium">Archivos subidos</h4>
           <div className="max-h-64 overflow-y-auto space-y-2">
             {mediaItems.map((item) => (
               <div key={item.id} className="flex items-center gap-3 p-3 border rounded-lg bg-card">

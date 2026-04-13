@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { LogOut, Plus, Pencil, Trash2, FileText, Eye, EyeOff, Star, Settings } from "lucide-react"
+import { LogOut, Plus, Pencil, Trash2, FileText, Eye, EyeOff, Star, Settings, ChevronUp, ChevronDown } from "lucide-react"
 import Link from "next/link"
 import { ServicesManagementSection } from "./services-management-section"
 import { ObituariesManager } from "./obituaries-manager"
@@ -26,7 +26,6 @@ interface Article {
   excerpt: string
   content: string
   category_id: string
-  author: string
   is_published: boolean
   is_featured: boolean
   image_url: string
@@ -61,42 +60,6 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
     await supabase.auth.signOut()
     router.push("/admin/login")
     router.refresh()
-  }
-
-  const togglePublished = async (articleId: string, currentStatus: boolean) => {
-    const supabase = createClient()
-    const { error } = await supabase
-      .from("articles")
-      .update({ is_published: !currentStatus })
-      .eq("id", articleId)
-
-    if (!error) {
-      setArticles(
-        articles.map((article) =>
-          article.id === articleId
-            ? { ...article, is_published: !currentStatus }
-            : article
-        )
-      )
-    }
-  }
-
-  const toggleFeatured = async (articleId: string, currentStatus: boolean) => {
-    const supabase = createClient()
-    const { error } = await supabase
-      .from("articles")
-      .update({ is_featured: !currentStatus })
-      .eq("id", articleId)
-
-    if (!error) {
-      setArticles(
-        articles.map((article) =>
-          article.id === articleId
-            ? { ...article, is_featured: !currentStatus }
-            : article
-        )
-      )
-    }
   }
 
   const deleteArticle = async (articleId: string) => {
@@ -139,8 +102,6 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
   }
 
   const publishedCount = articles.filter((a) => a.is_published).length
-  const draftCount = articles.filter((a) => !a.is_published).length
-  const featuredCount = articles.filter((a) => a.is_featured).length
 
   return (
     <div className="min-h-screen bg-background">
@@ -169,7 +130,7 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
 
       <main className="max-w-7xl mx-auto px-4 py-6 space-y-8">
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card>
             <CardContent className="p-6">
               <div className="text-2xl font-bold text-primary">{articles.length}</div>
@@ -180,12 +141,6 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
             <CardContent className="p-6">
               <div className="text-2xl font-bold text-green-600">{publishedCount}</div>
               <p className="text-sm text-muted-foreground">Publicados</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6">
-              <div className="text-2xl font-bold text-orange-600">{draftCount}</div>
-              <p className="text-sm text-muted-foreground">Borradores</p>
             </CardContent>
           </Card>
         </div>
@@ -221,21 +176,20 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
                   <TableRow>
                     <TableHead className="w-[40%]">Título</TableHead>
                     <TableHead>Categoría</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Destacado</TableHead>
                     <TableHead>Fecha</TableHead>
+                    <TableHead className="text-right">Orden</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {articles.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                         No hay artículos creados aún.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    articles.map((article) => (
+                    articles.map((article, index) => (
                       <TableRow key={article.id}>
                         <TableCell>
                           <div className="max-w-md">
@@ -255,26 +209,29 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
                           )}
                         </TableCell>
                         <TableCell>
-                          <Badge variant={article.is_published ? "default" : "secondary"}>
-                            {article.is_published ? "Publicado" : "Borrador"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => toggleFeatured(article.id, !article.is_featured)}
-                            className="h-8 w-8"
-                          >
-                            {article.is_featured ? (
-                              <Star className="h-4 w-4 fill-current text-primary" />
-                            ) : (
-                              <Star className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </TableCell>
-                        <TableCell>
                           {new Date(article.published_at || article.created_at).toLocaleDateString("es-AR")}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => moveArticle(article.id, "up")}
+                              disabled={index === 0}
+                              className="h-8 w-8"
+                            >
+                              <ChevronUp className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => moveArticle(article.id, "down")}
+                              disabled={index === articles.length - 1}
+                              className="h-8 w-8"
+                            >
+                              <ChevronDown className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
@@ -287,18 +244,6 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
                               <Link href={`/admin/noticias/editar/${article.id}`}>
                                 <Pencil className="h-4 w-4" />
                               </Link>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => togglePublished(article.id, !article.is_published)}
-                              className="h-8 w-8"
-                            >
-                              {article.is_published ? (
-                                <EyeOff className="h-4 w-4" />
-                              ) : (
-                                <Eye className="h-4 w-4" />
-                              )}
                             </Button>
                             <Button
                               variant="ghost"

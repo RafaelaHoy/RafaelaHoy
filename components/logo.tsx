@@ -24,10 +24,6 @@ export function Logo({ className = "", size = "md", noLink = false }: LogoProps)
         width={s.width}
         height={s.height}
         className="object-contain transition-opacity duration-300"
-        style={{
-          backgroundColor: 'transparent',
-          borderRadius: '0'
-        }}
         priority
         unoptimized={false}
         onError={(e: any) => {

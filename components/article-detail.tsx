@@ -10,6 +10,31 @@ import useSWR from "swr"
 import { createClient } from "@/lib/supabase/client"
 import { ArticleCard } from "./article-card"
 
+// Componente para procesar el contenido del artículo
+function ArticleContent({ content }: { content: string }) {
+  // Si el contenido contiene HTML, procesarlo
+  if (content.includes('<')) {
+    return (
+      <div 
+        className="text-foreground leading-relaxed [&_img]:w-full [&_img]:h-auto [&_img]:max-h-96 [&_img]:object-cover [&_img]:rounded-lg [&_img]:my-6 [&_img]:block [&_p]:mb-4"
+        dangerouslySetInnerHTML={{ __html: content }}
+      />
+    )
+  }
+  
+  // Si es texto plano, mostrar como párrafos
+  const paragraphs = content.split("\n").filter(p => p.trim())
+  return (
+    <>
+      {paragraphs.map((paragraph, index) => (
+        <p key={index} className="text-foreground leading-relaxed mb-4">
+          {paragraph}
+        </p>
+      ))}
+    </>
+  )
+}
+
 interface Article {
   id: string
   title: string
@@ -216,14 +241,20 @@ export function ArticleDetail({ article }: { article: Article }) {
         </div>
       )}
 
-      {/* Media Gallery */}
+      {/* Content */}
+      <div className="prose prose-lg max-w-none">
+        <ArticleContent content={article.content} />
+      </div>
+
+      {/* Media Gallery - debajo del contenido */}
       {mediaItems && mediaItems.length > 0 && (
         <section className="mb-8">
-          <h2 className="text-xl font-bold mb-4">Galería de medios</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {mediaItems.map((media) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {mediaItems
+              .filter(media => media.url !== article.image_url) // Excluir imagen de portada
+              .map((media) => (
               <div key={media.id} className="relative group">
-                <div className="aspect-video rounded-lg overflow-hidden bg-muted">
+                <div className="aspect-video rounded-lg overflow-hidden bg-muted relative">
                   {media.type === 'image' ? (
                     <Image
                       src={media.url}
@@ -249,15 +280,6 @@ export function ArticleDetail({ article }: { article: Article }) {
           </div>
         </section>
       )}
-
-      {/* Content */}
-      <div className="prose prose-lg max-w-none">
-        {article.content.split("\n").map((paragraph, index) => (
-          <p key={index} className="text-foreground leading-relaxed mb-4">
-            {paragraph}
-          </p>
-        ))}
-      </div>
 
       {/* Related articles */}
       {relatedArticles && relatedArticles.length > 0 && (
