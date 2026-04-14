@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const serviceName = serviceNames[slug] || "Servicio"
 
   return {
-    title: `${serviceName} - Rafaela Hoy`,
+    title: `${serviceName} - Rafaela hoy`,
     description: `Información sobre ${serviceName.toLowerCase()} en Rafaela.`,
   }
 }

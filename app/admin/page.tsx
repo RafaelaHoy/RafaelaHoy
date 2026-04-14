@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import { AdminDashboard } from "@/components/admin/admin-dashboard"
 
 export const metadata = {
-  title: "Panel de Administración - Rafaela Hoy",
+  title: "Panel de Administración - Rafaela hoy",
 }
 
 export default async function AdminPage() {

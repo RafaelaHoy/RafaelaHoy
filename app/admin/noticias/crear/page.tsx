@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
+import { Image as ImageIcon } from "lucide-react"
 import {
   Select,
   SelectContent,
@@ -307,7 +308,7 @@ export default function CreateNewsPage() {
             .trim('-'),
           published_at: isPublished ? new Date().toISOString() : null,
           sort_order: 0,
-          author: null  // Agregar campo author como null para evitar error
+          author: 'Rafaela hoy'  // Siempre autor Rafaela hoy
         })
         .select()
         .single()
@@ -371,9 +372,9 @@ export default function CreateNewsPage() {
 
       {/* Contenido principal */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
           {/* Columna principal - Campos principales */}
-          <div className="lg:col-span-3 space-y-6">
+          <div className="xl:col-span-3 space-y-6">
             {/* Título */}
             <div>
               <Label htmlFor="title" className="text-base font-medium">
@@ -419,26 +420,9 @@ export default function CreateNewsPage() {
             </div>
           </div>
 
-          {/* Imagen de portada - debajo del desarrollo */}
-          {featuredImage && (
-            <div className="bg-card rounded-lg border p-6">
-              <div className="space-y-4">
-                <h3 className="font-semibold">Portada</h3>
-                <img
-                  src={featuredImage}
-                  alt="Portada"
-                  className="w-full h-64 object-cover rounded-lg border"
-                />
-                <p className="text-sm text-muted-foreground">
-                  La primera imagen subida se usará como portada automáticamente
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Columna lateral - Metadatos y configuración */}
-          <div className="space-y-6">
-            {/* Metadatos */}
+          {/* Columna derecha - Configuración y Galería */}
+          <div className="xl:col-span-1 space-y-6">
+            {/* Configuración - Categoría y Autor */}
             <div className="bg-card rounded-lg border p-6">
               <h3 className="font-semibold mb-4">Configuración</h3>
               
@@ -461,31 +445,30 @@ export default function CreateNewsPage() {
                 </Select>
               </div>
 
-              {/* Estado */}
-              <div className="flex items-center justify-between">
-                <Label htmlFor="published">Publicado</Label>
-                <Switch
-                  id="published"
-                  checked={isPublished}
-                  onCheckedChange={setIsPublished}
-                  disabled={saving}
+              {/* Autor */}
+              <div className="space-y-2">
+                <Label htmlFor="author">Autor</Label>
+                <Input
+                  id="author"
+                  value="Rafaela hoy"
+                  disabled
+                  className="bg-muted"
                 />
               </div>
             </div>
 
-            {/* Galería de medios - sin título */}
+            {/* Galería de medios */}
             <div className="bg-card rounded-lg border p-6">
+              <h3 className="font-semibold mb-4">Galería de Imágenes</h3>
               <MediaManager
                 articleId={undefined} // Sin articleId para creación
-                mediaItems={mediaItems.filter(item => item.url !== featuredImage)}
+                mediaItems={mediaItems}
                 onMediaChange={(newMedia) => {
                   setMediaItems(newMedia)
                   // Actualizar la imagen destacada (primera imagen)
                   const firstImage = newMedia.find(item => item.type === 'image')
                   if (firstImage) {
                     setFeaturedImage(firstImage.url)
-                  } else {
-                    setFeaturedImage("")
                   }
                 }}
               />

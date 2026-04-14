@@ -7,12 +7,12 @@ const inter = Inter({ subsets: ["latin"] })
 const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Rafaela Hoy - Noticias de Rafaela y la región",
+  title: "Rafaela hoy",
   description: "El portal de noticias de Rafaela y la Región. Información actualizada las 24 horas sobre lo que pasa en tu localidad.",
   keywords: ["noticias", "rafaela", "santa fe", "argentina", "información", "actualidad"],
-  authors: [{ name: "Rafaela Hoy" }],
-  creator: "Rafaela Hoy",
-  publisher: "Rafaela Hoy",
+  authors: [{ name: "Rafaela hoy" }],
+  creator: "Rafaela hoy",
+  publisher: "Rafaela hoy",
   formatDetection: { email: false, address: false, telephone: false },
   metadataBase: new URL("https://rafaelahoy.com"),
   alternates: {
@@ -22,21 +22,21 @@ export const metadata: Metadata = {
     type: "website",
     locale: "es_AR",
     url: "https://rafaelahoy.com",
-    title: "Rafaela Hoy - Noticias de Rafaela y la región",
+    title: "Rafaela hoy",
     description: "El portal de noticias de Rafaela y la Región. Información actualizada las 24 horas sobre lo que pasa en tu localidad.",
-    siteName: "Rafaela Hoy",
+    siteName: "Rafaela hoy",
     images: [
       {
         url: "/images/logo.png",
         width: 180,
         height: 60,
-        alt: "Rafaela Hoy",
+        alt: "Rafaela hoy",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Rafaela Hoy - Noticias de Rafaela y la región",
+    title: "Rafaela hoy",
     description: "El portal de noticias de Rafaela y la Región. Información actualizada las 24 horas sobre lo que pasa en tu localidad.",
     images: ["/images/logo.png"],
   },

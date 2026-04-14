@@ -377,7 +377,7 @@ export default function EditNewsPage() {
           slug: newSlug,
           published_at: isPublished ? new Date().toISOString() : null,
           updated_at: new Date().toISOString(),
-          author: null  // Agregar campo author como null para evitar error
+          author: 'Rafaela hoy'  // Siempre autor Rafaela hoy
         })
         .eq('id', articleId)
 
@@ -473,9 +473,9 @@ export default function EditNewsPage() {
 
       {/* Contenido principal */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
           {/* Columna principal - Campos principales */}
-          <div className="lg:col-span-3 space-y-6">
+          <div className="xl:col-span-3 space-y-6">
             {/* Título */}
             <div>
               <Label htmlFor="title" className="text-base font-medium">
@@ -521,26 +521,9 @@ export default function EditNewsPage() {
             </div>
           </div>
 
-          {/* Imagen de portada - debajo del desarrollo */}
-          {featuredImage && (
-            <div className="bg-card rounded-lg border p-6">
-              <div className="space-y-4">
-                <h3 className="font-semibold">Portada</h3>
-                <img
-                  src={featuredImage}
-                  alt="Portada"
-                  className="w-full h-64 object-cover rounded-lg border"
-                />
-                <p className="text-sm text-muted-foreground">
-                  La primera imagen subida se usa como portada automáticamente
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Columna lateral - Metadatos y configuración */}
-          <div className="space-y-6">
-            {/* Metadatos */}
+          {/* Columna izquierda - Galería y configuración */}
+          <div className="xl:col-span-1 space-y-6">
+            {/* Configuración - Categoría y Autor */}
             <div className="bg-card rounded-lg border p-6">
               <h3 className="font-semibold mb-4">Configuración</h3>
               
@@ -563,23 +546,24 @@ export default function EditNewsPage() {
                 </Select>
               </div>
 
-              {/* Estado */}
-              <div className="flex items-center justify-between">
-                <Label htmlFor="published">Publicado</Label>
-                <Switch
-                  id="published"
-                  checked={isPublished}
-                  onCheckedChange={setIsPublished}
-                  disabled={saving}
+              {/* Autor */}
+              <div className="space-y-2">
+                <Label htmlFor="author">Autor</Label>
+                <Input
+                  id="author"
+                  value="Rafaela hoy"
+                  disabled
+                  className="bg-muted"
                 />
               </div>
             </div>
 
-            {/* Galería de medios - sin título y sin imagen de portada */}
+            {/* Galería de medios */}
             <div className="bg-card rounded-lg border p-6">
+              <h3 className="font-semibold mb-4">Galería de Imágenes</h3>
               <MediaManager
                 articleId={articleId}
-                mediaItems={mediaItems.filter(item => item.url !== featuredImage)}
+                mediaItems={mediaItems}
                 onMediaChange={(newMedia) => {
                   setMediaItems(newMedia)
                   // Actualizar la imagen destacada (primera imagen)

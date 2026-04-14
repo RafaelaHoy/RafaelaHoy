@@ -20,7 +20,7 @@ export function Logo({ className = "", size = "md", noLink = false }: LogoProps)
     <div className={`relative flex-shrink-0 ${className}`} style={{ width: s.width, height: s.height }}>
       <Image
         src="/images/logo.png" 
-        alt="Rafaela Hoy" 
+        alt="Rafaela hoy" 
         width={s.width}
         height={s.height}
         className="object-contain transition-opacity duration-300"

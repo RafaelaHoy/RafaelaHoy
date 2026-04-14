@@ -20,11 +20,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     .single()
 
   if (!category) {
-    return { title: "Categoria no encontrada - Rafaela Hoy" }
+    return { title: "Categoria no encontrada - Rafaela hoy" }
   }
 
   return {
-    title: `${category.name} - Rafaela Hoy`,
+    title: `${category.name} - Rafaela hoy`,
     description: `Ultimas noticias de ${category.name} en Rafaela y la region.`,
   }
 }

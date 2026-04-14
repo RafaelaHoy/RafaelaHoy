@@ -30,8 +30,8 @@ export function Footer() {
           {/* Logo and slogan */}
           <div className="md:col-span-1">
             <img 
-              src="/images/logo2.jpg" 
-              alt="Rafaela Hoy" 
+              src="/images/logo2.png" 
+              alt="Rafaela hoy" 
               width={140}
               height={50}
               className="object-contain mb-3"
@@ -86,7 +86,7 @@ export function Footer() {
         {/* Bottom bar */}
         <div className="mt-10 pt-6 border-t border-white/10">
           <div className="flex flex-col md:flex-row items-center justify-between gap-3 text-sm text-white/50">
-            <p>&copy; {new Date().getFullYear()} Rafaela Hoy. Todos los derechos reservados.</p>
+            <p>&copy; {new Date().getFullYear()} Rafaela hoy. Todos los derechos reservados.</p>
             {/* Admin access - discreet lock icon */}
             <Link 
               href="/admin/login" 

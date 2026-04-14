@@ -26,8 +26,8 @@ export async function generateMetadata({ searchParams }: SearchPageProps): Promi
   const { q } = await searchParams
   
   return {
-    title: q ? `Buscar: "${q}" - Rafaela Hoy` : "Buscar - Rafaela Hoy",
-    description: q ? `Resultados de búsqueda para "${q}" en Rafaela Hoy.` : "Busca noticias en Rafaela Hoy.",
+    title: q ? `Buscar: "${q}" - Rafaela hoy` : "Buscar - Rafaela hoy",
+    description: q ? `Resultados de búsqueda para "${q}" en Rafaela hoy.` : "Busca noticias en Rafaela hoy.",
   }
 }
 

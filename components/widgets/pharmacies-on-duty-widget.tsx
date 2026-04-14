@@ -62,20 +62,6 @@ export function PharmaciesOnDutyWidget() {
     window.open(`https://www.google.com/maps/search/?api=1&query=${encodedAddress}`, '_blank')
   }
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    const today = new Date()
-    
-    if (date.toDateString() === today.toDateString()) {
-      return 'Hoy'
-    } else {
-      return date.toLocaleDateString('es-AR', {
-        day: 'numeric',
-        month: 'short'
-      })
-    }
-  }
-
   if (loading) {
     return (
       <Card className="bg-secondary text-white">
@@ -143,14 +129,9 @@ export function PharmaciesOnDutyWidget() {
         <div className="space-y-3">
           {pharmacies.map((pharmacy) => (
             <div key={pharmacy.id} className="space-y-1">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Building className="h-4 w-4 text-white/70" />
-                  <span className="font-medium text-sm">{pharmacy.name}</span>
-                </div>
-                <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full">
-                  {formatDate(pharmacy.date)}
-                </span>
+              <div className="flex items-center gap-2">
+                <Building className="h-4 w-4 text-white/70" />
+                <span className="font-medium text-sm">{pharmacy.name}</span>
               </div>
               <div className="flex items-center gap-2 text-xs text-white/70">
                 <MapPin className="h-3 w-3" />

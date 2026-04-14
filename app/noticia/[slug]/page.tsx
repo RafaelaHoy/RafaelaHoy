@@ -20,11 +20,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     .single()
 
   if (!article) {
-    return { title: "Noticia no encontrada - Rafaela Hoy" }
+    return { title: "Noticia no encontrada - Rafaela hoy" }
   }
 
   return {
-    title: `${article.title} - Rafaela Hoy`,
+    title: `${article.title} - Rafaela hoy`,
     description: article.excerpt || undefined,
     openGraph: {
       title: article.title,
