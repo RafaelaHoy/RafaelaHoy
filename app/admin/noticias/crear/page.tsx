@@ -33,7 +33,7 @@ interface MediaItem {
   caption?: string
 }
 
-// Componente de editor de texto enriquecido personalizado (alternativa con textarea)
+// Componente de editor de texto enriquecido mejorado para móviles
 const RichTextEditor = ({ value, onChange, placeholder }: { 
   value: string; 
   onChange: (value: string) => void; 
@@ -46,18 +46,9 @@ const RichTextEditor = ({ value, onChange, placeholder }: {
   }, [value])
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const textarea = e.target
-    const newValue = textarea.value
-    const cursorPosition = textarea.selectionStart
-    
+    const newValue = e.target.value
     setContent(newValue)
     onChange(newValue)
-    
-    // Restaurar la posición del cursor después del update
-    setTimeout(() => {
-      textarea.selectionStart = cursorPosition
-      textarea.selectionEnd = cursorPosition
-    }, 0)
   }
 
   const execCommand = (command: string, commandValue?: string) => {
@@ -77,7 +68,7 @@ const RichTextEditor = ({ value, onChange, placeholder }: {
         newValue = `*${selectedText}*`
         break
       case 'underline':
-        newValue = `<u>${selectedText}</u>`
+        newValue = `__${selectedText}__`
         break
       case 'insertUnorderedList':
         newValue = `\n• ${selectedText}`
@@ -85,31 +76,40 @@ const RichTextEditor = ({ value, onChange, placeholder }: {
       case 'insertOrderedList':
         newValue = `\n1. ${selectedText}`
         break
+      case 'formatBlock':
+        newValue = `\n> ${selectedText}`
+        break
       case 'createLink':
-        const url = prompt('Ingrese la URL del enlace:')
-        if (url) newValue = `[${selectedText}](${url})`
+        const url = prompt('Ingrese la URL:', 'https://')
+        if (url) {
+          newValue = `[${selectedText}](${url})`
+        }
         break
       case 'insertImage':
-        const imgUrl = prompt('Ingrese la URL de la imagen:')
-        if (imgUrl) newValue = `![${selectedText}](${imgUrl})`
+        const imageUrl = prompt('Ingrese la URL de la imagen:', 'https://')
+        if (imageUrl) {
+          newValue = `![${selectedText}](${imageUrl})`
+        }
         break
       case 'insertVideo':
-        const videoUrl = prompt('Ingrese la URL del video (YouTube/Vimeo):')
-        if (videoUrl) newValue = `<iframe src="${videoUrl}" width="560" height="315" frameborder="0" allowfullscreen></iframe>`
+        const videoUrl = prompt('Ingrese la URL del video:', 'https://')
+        if (videoUrl) {
+          newValue = `[${selectedText}](${videoUrl})`
+        }
         break
       default:
-        newValue = selectedText
+        return
     }
 
     const newContent = textarea.value.substring(0, start) + newValue + textarea.value.substring(end)
     setContent(newContent)
     onChange(newContent)
     
-    // Restaurar cursor
+    // Restaurar foco y posición (mejorado para móviles)
     setTimeout(() => {
       textarea.focus()
       textarea.setSelectionRange(start + newValue.length, start + newValue.length)
-    }, 0)
+    }, 10)
   }
 
   return (
@@ -208,11 +208,15 @@ const RichTextEditor = ({ value, onChange, placeholder }: {
         value={content}
         onChange={handleChange}
         placeholder={placeholder || "Escribe el contenido aquí..."}
-        className="min-h-[400px] w-full p-4 focus:outline-none bg-white resize-none border-0 ltr text-left"
+        className="min-h-[400px] w-full p-4 focus:outline-none bg-white resize-none border-0 ltr text-left touch-manipulation-auto"
         style={{ 
           direction: 'ltr',
           textAlign: 'left',
-          unicodeBidi: 'normal'
+          unicodeBidi: 'normal',
+          WebkitTapHighlightColor: 'transparent',
+          WebkitUserSelect: 'text',
+          userSelect: 'text',
+          touchAction: 'manipulation'
         }}
       />
     </div>
@@ -385,8 +389,14 @@ export default function CreateNewsPage() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Ingresa el título de la noticia"
-                className="text-lg mt-2"
+                className="text-lg mt-2 touch-manipulation-auto"
                 disabled={saving}
+                style={{
+                  WebkitTapHighlightColor: 'transparent',
+                  WebkitUserSelect: 'text',
+                  userSelect: 'text',
+                  touchAction: 'manipulation'
+                }}
               />
             </div>
 

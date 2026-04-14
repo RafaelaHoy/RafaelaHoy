@@ -486,8 +486,14 @@ export default function EditNewsPage() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Ingresa el título de la noticia"
-                className="text-lg mt-2"
+                className="text-lg mt-2 touch-manipulation-auto"
                 disabled={saving}
+                style={{
+                  WebkitTapHighlightColor: 'transparent',
+                  WebkitUserSelect: 'text',
+                  userSelect: 'text',
+                  touchAction: 'manipulation'
+                }}
               />
             </div>
 
@@ -501,8 +507,14 @@ export default function EditNewsPage() {
                 value={excerpt}
                 onChange={(e) => setExcerpt(e.target.value)}
                 placeholder="Breve resumen de la noticia (aparecerá en listados y redes sociales)"
-                className="w-full mt-2 p-3 border rounded-md resize-none h-24"
+                className="w-full mt-2 p-3 border rounded-md resize-none h-24 touch-manipulation-auto"
                 disabled={saving}
+                style={{
+                  WebkitTapHighlightColor: 'transparent',
+                  WebkitUserSelect: 'text',
+                  userSelect: 'text',
+                  touchAction: 'manipulation'
+                }}
               />
             </div>
 
