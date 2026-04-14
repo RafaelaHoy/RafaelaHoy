@@ -47,7 +47,6 @@ export default async function AdminPage() {
     <AdminDashboard
       articles={articles || []}
       categories={categories || []}
-      userEmail={user.email || ""}
     />
   )
 }

@@ -5,7 +5,6 @@ import { LoadingScreen } from "@/components/loading-screen"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { HomeContent } from "@/components/home-content"
-import { PharmaciesOnDuty } from "@/components/pharmacies-on-duty"
 
 export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true)
@@ -48,9 +47,6 @@ export default function HomePage() {
         <Header />
         <main>
           <HomeContent />
-          <div className="container mx-auto px-4 py-8">
-            <PharmaciesOnDuty />
-          </div>
         </main>
         <Footer />
       </div>

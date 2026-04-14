@@ -9,7 +9,7 @@ import { ChevronRight } from 'lucide-react'
 import { WeatherWidget } from './widgets/weather-widget'
 import { CurrencyWidget } from './widgets/currency-widget'
 import { ObituariesWidget } from './widgets/obituaries-widget'
-import { PharmacyWidget } from './widgets/pharmacy-widget'
+import { PharmaciesOnDutyWidget } from './widgets/pharmacies-on-duty-widget'
 
 function ArticleSkeleton({ variant }: { variant?: "featured" | "secondary" }) {
   if (variant === "secondary") {
@@ -371,9 +371,9 @@ export function HomeContent() {
               <ObituariesWidget />
             </div>
             
-            {/* Pharmacy Widget */}
+            {/* Pharmacies On Duty Widget */}
             <div className="border border-red-600 rounded-lg overflow-hidden">
-              <PharmacyWidget />
+              <PharmaciesOnDutyWidget />
             </div>
           </div>
         </div>

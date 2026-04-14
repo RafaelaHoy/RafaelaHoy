@@ -45,9 +45,18 @@ const RichTextEditor = ({ value, onChange, placeholder }: {
   }, [value])
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newValue = e.target.value
+    const textarea = e.target
+    const newValue = textarea.value
+    const cursorPosition = textarea.selectionStart
+    
     setContent(newValue)
     onChange(newValue)
+    
+    // Restaurar la posición del cursor después del update
+    setTimeout(() => {
+      textarea.selectionStart = cursorPosition
+      textarea.selectionEnd = cursorPosition
+    }, 0)
   }
 
   const execCommand = (command: string, commandValue?: string) => {
@@ -297,7 +306,8 @@ export default function CreateNewsPage() {
             .replace(/-+/g, '-')
             .trim('-'),
           published_at: isPublished ? new Date().toISOString() : null,
-          sort_order: 0
+          sort_order: 0,
+          author: null  // Agregar campo author como null para evitar error
         })
         .select()
         .single()

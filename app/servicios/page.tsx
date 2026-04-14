@@ -2,7 +2,6 @@
 
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
-import { PharmaciesOnDuty } from "@/components/pharmacies-on-duty"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Cloud, Heart, MapPin, Stethoscope } from "lucide-react"
 import Link from "next/link"
@@ -45,11 +44,6 @@ export default function ServiciosPage() {
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               Accedé a todos los servicios y herramientas que ofrecemos para la comunidad de Rafaela
             </p>
-          </div>
-
-          {/* Farmacias de Turno Widget */}
-          <div className="mb-12">
-            <PharmaciesOnDuty />
           </div>
 
           {/* Other Services Grid */}

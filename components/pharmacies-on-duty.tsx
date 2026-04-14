@@ -215,20 +215,6 @@ export function PharmaciesOnDuty() {
                 </div>
               </div>
             ))}
-            
-            <div className="mt-4 pt-4 border-t border-blue-200">
-              <p className="text-xs text-muted-foreground text-center">
-                Datos actualizados automáticamente desde{" "}
-                <a 
-                  href="https://circulorafaela.com.ar/farmacias" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline"
-                >
-                  Círculo Médico de Rafaela
-                </a>
-              </p>
-            </div>
           </div>
         )}
       </CardContent>
