@@ -247,16 +247,16 @@ export function HomeContent() {
           </div>
           {/* Three Featured Articles - Right */}
           <div className="lg:col-span-4 order-2 lg:order-1">
-            <div className="space-y-8">
+            <div className="space-y-6">
               {isLoading ? (
                 <>
                   {[...Array(3)].map((_, i) => (
                     <div key={i} className="flex h-[140px] bg-secondary border border-red-600 rounded-lg overflow-hidden">
-                      <div className="w-[200px] bg-muted"></div>
-                      <div className="w-[200px] p-4 space-y-2">
+                      <div className="w-[45%] bg-muted"></div>
+                      <div className="w-[55%] p-3 space-y-2">
                         <div className="h-2 bg-red-600 rounded w-20"></div>
-                        <div className="h-5 bg-white rounded w-full"></div>
-                        <div className="h-5 bg-white rounded w-full"></div>
+                        <div className="h-4 bg-white rounded w-full"></div>
+                        <div className="h-4 bg-white rounded w-3/4"></div>
                       </div>
                     </div>
                   ))}
@@ -269,8 +269,8 @@ export function HomeContent() {
                     className="block group h-[140px] bg-secondary border border-red-600 rounded-lg overflow-hidden hover:bg-secondary/90 transition-colors"
                   >
                     <div className="flex h-full">
-                      {/* Thumbnail - Left */}
-                      <div className="w-[200px] relative overflow-hidden">
+                      {/* Thumbnail - Left (45%) */}
+                      <div className="w-[45%] relative overflow-hidden">
                         {article.image_url && (
                           <img
                             src={article.image_url}
@@ -279,8 +279,8 @@ export function HomeContent() {
                           />
                         )}
                       </div>
-                      {/* Content Block - Right */}
-                      <div className="w-[200px] p-4 flex flex-col justify-start">
+                      {/* Content Block - Right (55%) */}
+                      <div className="w-[55%] p-3 flex flex-col justify-start">
                         {/* Category */}
                         {article.categories && (
                           <div className="text-red-600 font-bold text-xs uppercase tracking-wide mb-2 border-b border-white">
@@ -288,7 +288,7 @@ export function HomeContent() {
                           </div>
                         )}
                         {/* Title */}
-                        <h3 className="font-bold text-white text-base leading-tight">
+                        <h3 className="font-bold text-white text-sm leading-tight">
                           {article.title}
                         </h3>
                       </div>

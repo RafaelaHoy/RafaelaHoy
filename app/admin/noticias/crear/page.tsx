@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { ArrowLeft, Save, X, Bold, Italic, Underline, List, ListOrdered, Quote, LinkIcon, Image, Video, Upload } from "lucide-react"
+import { ArrowLeft, Save, X, Bold, Italic, Underline, List, ListOrdered, Quote, LinkIcon, Image, Video, Upload, Type, Heading3, Heading4 } from "lucide-react"
 import Link from "next/link"
 import { MediaManager } from "@/components/admin/media-manager-enhanced"
 
@@ -33,7 +33,39 @@ interface MediaItem {
   caption?: string
 }
 
-// Componente de editor de texto enriquecido mejorado para móviles
+// Función para procesar Markdown a HTML
+const processMarkdownToHTML = (markdown: string): string => {
+  return markdown
+    // Headers
+    .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+    .replace(/^#### (.*$)/gim, '<h4>$1</h4>')
+    // Bold
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    // Italic
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    // Underline
+    .replace(/<u>(.+?)<\/u>/g, '<u>$1</u>')
+    // Links
+    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>')
+    // Images
+    .replace(/!\[(.+?)\]\((.+?)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; height: auto;" />')
+    // Blockquotes
+    .replace(/^> (.+$)/gim, '<blockquote>$1</blockquote>')
+    // Unordered lists
+    .replace(/^- (.+$)/gim, '<ul><li>$1</li></ul>')
+    // Ordered lists
+    .replace(/^1\. (.+$)/gim, '<ol><li>$1</li></ol>')
+    // Paragraphs (multiple lines)
+    .replace(/\n\n/g, '</p><p>')
+    // Wrap in paragraphs
+    .replace(/^(.+)$/gm, '<p>$1</p>')
+    // Clean up empty paragraphs
+    .replace(/<p><\/p>/g, '')
+    .replace(/<p>(<h|<ul|<ol|<blockquote)/g, '$1')
+    .replace(/(<\/h3>|<\/h4>|<\/ul>|<\/ol>|<\/blockquote>)<\/p>/g, '$1')
+}
+
+// Componente de editor de texto enriquecido con textarea y Markdown
 const RichTextEditor = ({ value, onChange, placeholder }: { 
   value: string; 
   onChange: (value: string) => void; 
@@ -68,48 +100,58 @@ const RichTextEditor = ({ value, onChange, placeholder }: {
         newValue = `*${selectedText}*`
         break
       case 'underline':
-        newValue = `__${selectedText}__`
-        break
-      case 'insertUnorderedList':
-        newValue = `\n• ${selectedText}`
-        break
-      case 'insertOrderedList':
-        newValue = `\n1. ${selectedText}`
+        newValue = `<u>${selectedText}</u>`
         break
       case 'formatBlock':
-        newValue = `\n> ${selectedText}`
+        if (commandValue === 'p') {
+          newValue = `\n${selectedText || 'Nuevo párrafo'}\n`
+        } else if (commandValue === 'h3') {
+          newValue = `\n### ${selectedText || 'Título 3'}\n`
+        } else if (commandValue === 'h4') {
+          newValue = `\n#### ${selectedText || 'Título 4'}\n`
+        } else {
+          newValue = `\n> ${selectedText}\n`
+        }
+        break
+      case 'insertUnorderedList':
+        newValue = `\n- ${selectedText || 'Nuevo item'}`
+        break
+      case 'insertOrderedList':
+        newValue = `\n1. ${selectedText || 'Nuevo item'}`
         break
       case 'createLink':
         const url = prompt('Ingrese la URL:', 'https://')
         if (url) {
-          newValue = `[${selectedText}](${url})`
+          newValue = `[${selectedText || url}](${url})`
         }
         break
       case 'insertImage':
         const imageUrl = prompt('Ingrese la URL de la imagen:', 'https://')
         if (imageUrl) {
-          newValue = `![${selectedText}](${imageUrl})`
+          newValue = `![${selectedText || 'Imagen'}](${imageUrl})`
         }
         break
       case 'insertVideo':
         const videoUrl = prompt('Ingrese la URL del video:', 'https://')
         if (videoUrl) {
-          newValue = `[${selectedText}](${videoUrl})`
+          newValue = `[${selectedText || 'Video'}](${videoUrl})`
         }
         break
       default:
         return
     }
 
+    // Insertar el nuevo texto
     const newContent = textarea.value.substring(0, start) + newValue + textarea.value.substring(end)
     setContent(newContent)
     onChange(newContent)
     
-    // Restaurar foco y posición (mejorado para móviles)
+    // Restaurar la posición del cursor
     setTimeout(() => {
       textarea.focus()
-      textarea.setSelectionRange(start + newValue.length, start + newValue.length)
-    }, 10)
+      const newPosition = start + newValue.length
+      textarea.setSelectionRange(newPosition, newPosition)
+    }, 0)
   }
 
   return (
@@ -122,6 +164,7 @@ const RichTextEditor = ({ value, onChange, placeholder }: {
           size="sm"
           onClick={() => execCommand('bold')}
           className="h-8 w-8 p-0"
+          title="Negrita"
         >
           <Bold className="h-4 w-4" />
         </Button>
@@ -131,6 +174,7 @@ const RichTextEditor = ({ value, onChange, placeholder }: {
           size="sm"
           onClick={() => execCommand('italic')}
           className="h-8 w-8 p-0"
+          title="Cursiva"
         >
           <Italic className="h-4 w-4" />
         </Button>
@@ -140,16 +184,53 @@ const RichTextEditor = ({ value, onChange, placeholder }: {
           size="sm"
           onClick={() => execCommand('underline')}
           className="h-8 w-8 p-0"
+          title="Subrayado"
         >
           <Underline className="h-4 w-4" />
         </Button>
-        <div className="w-px bg-border mx-1" />
+        
+        <div className="w-px h-6 bg-border mx-1" />
+        
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => execCommand('formatBlock', 'p')}
+          className="h-8 w-8 p-0"
+          title="Párrafo"
+        >
+          <Type className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => execCommand('formatBlock', 'h3')}
+          className="h-8 w-8 p-0"
+          title="Título 3"
+        >
+          <Heading3 className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => execCommand('formatBlock', 'h4')}
+          className="h-8 w-8 p-0"
+          title="Título 4"
+        >
+          <Heading4 className="h-4 w-4" />
+        </Button>
+        
+        <div className="w-px h-6 bg-border mx-1" />
+        
         <Button
           type="button"
           variant="ghost"
           size="sm"
           onClick={() => execCommand('insertUnorderedList')}
           className="h-8 w-8 p-0"
+          title="Lista sin numerar"
         >
           <List className="h-4 w-4" />
         </Button>
@@ -159,26 +240,30 @@ const RichTextEditor = ({ value, onChange, placeholder }: {
           size="sm"
           onClick={() => execCommand('insertOrderedList')}
           className="h-8 w-8 p-0"
+          title="Lista numerada"
         >
           <ListOrdered className="h-4 w-4" />
         </Button>
-        <div className="w-px bg-border mx-1" />
         <Button
           type="button"
           variant="ghost"
           size="sm"
           onClick={() => execCommand('formatBlock', 'blockquote')}
           className="h-8 w-8 p-0"
+          title="Cita"
         >
           <Quote className="h-4 w-4" />
         </Button>
-        <div className="w-px bg-border mx-1" />
+        
+        <div className="w-px h-6 bg-border mx-1" />
+        
         <Button
           type="button"
           variant="ghost"
           size="sm"
           onClick={() => execCommand('createLink')}
           className="h-8 w-8 p-0"
+          title="Enlace"
         >
           <LinkIcon className="h-4 w-4" />
         </Button>
@@ -188,6 +273,7 @@ const RichTextEditor = ({ value, onChange, placeholder }: {
           size="sm"
           onClick={() => execCommand('insertImage')}
           className="h-8 w-8 p-0"
+          title="Imagen"
         >
           <Image className="h-4 w-4" />
         </Button>
@@ -197,18 +283,19 @@ const RichTextEditor = ({ value, onChange, placeholder }: {
           size="sm"
           onClick={() => execCommand('insertVideo')}
           className="h-8 w-8 p-0"
+          title="Video"
         >
           <Video className="h-4 w-4" />
         </Button>
       </div>
       
-      {/* Editor */}
+      {/* Editor - Textarea simple */}
       <textarea
         id="rich-editor"
         value={content}
         onChange={handleChange}
         placeholder={placeholder || "Escribe el contenido aquí..."}
-        className="min-h-[400px] w-full p-4 focus:outline-none bg-white resize-none border-0 ltr text-left touch-manipulation-auto"
+        className="min-h-[400px] w-full p-4 focus:outline-none bg-white resize-none border-0 ltr text-left touch-manipulation-auto font-mono text-sm"
         style={{ 
           direction: 'ltr',
           textAlign: 'left',
@@ -216,7 +303,8 @@ const RichTextEditor = ({ value, onChange, placeholder }: {
           WebkitTapHighlightColor: 'transparent',
           WebkitUserSelect: 'text',
           userSelect: 'text',
-          touchAction: 'manipulation'
+          touchAction: 'manipulation',
+          lineHeight: '1.5'
         }}
       />
     </div>
@@ -236,9 +324,27 @@ export default function CreateNewsPage() {
   const [isPublished, setIsPublished] = useState(false)
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
   const [featuredImage, setFeaturedImage] = useState<string>("")
+  const [slug, setSlug] = useState("")
   
   // Categories
   const [categories, setCategories] = useState<Category[]>([])
+
+  // Función para generar slug a partir del título
+  const generateSlug = (title: string) => {
+    return title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .trim('-')
+  }
+
+  // Generar slug automáticamente cuando cambia el título
+  useEffect(() => {
+    if (title) {
+      setSlug(generateSlug(title))
+    }
+  }, [title])
 
   // Cargar categorías
   useEffect(() => {
@@ -295,21 +401,26 @@ export default function CreateNewsPage() {
     try {
       const supabase = createClient()
       
+      // Procesar Markdown a HTML
+      const processedContent = processMarkdownToHTML(content.trim())
+      
+      // Debug: Verificar qué se está guardando
+      console.log('=== DEBUG GUARDAR ===')
+      console.log('Markdown original:', content.trim())
+      console.log('HTML procesado:', processedContent)
+      console.log('====================')
+      
       // Crear artículo
       const { data: article, error } = await supabase
         .from('articles')
         .insert({
           title: title.trim(),
           excerpt: excerpt.trim(),
-          content: content.trim(),
+          content: processedContent, // Guardar como HTML procesado
           category_id: categoryId,
           is_published: isPublished,
           image_url: featuredImage,
-          slug: title.toLowerCase()
-            .replace(/[^a-z0-9\s-]/g, '')
-            .replace(/\s+/g, '-')
-            .replace(/-+/g, '-')
-            .trim('-'),
+          slug: slug.trim() || generateSlug(title.trim()), // Usar slug del estado o generar uno
           published_at: isPublished ? new Date().toISOString() : null,
           sort_order: 0,
           author: 'Rafaela hoy'  // Siempre autor Rafaela hoy
@@ -398,6 +509,30 @@ export default function CreateNewsPage() {
                   touchAction: 'manipulation'
                 }}
               />
+            </div>
+
+            {/* URL/Slug */}
+            <div>
+              <Label htmlFor="slug" className="text-base font-medium">
+                URL (Slug) <span className="text-muted-foreground text-sm">- Se genera automáticamente</span>
+              </Label>
+              <div className="flex items-center mt-2">
+                <span className="text-muted-foreground text-sm mr-2">/noticia/</span>
+                <Input
+                  id="slug"
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value)}
+                  placeholder="url-de-la-noticia"
+                  className="touch-manipulation-auto"
+                  disabled={saving}
+                  style={{
+                    WebkitTapHighlightColor: 'transparent',
+                    WebkitUserSelect: 'text',
+                    userSelect: 'text',
+                    touchAction: 'manipulation'
+                  }}
+                />
+              </div>
             </div>
 
             {/* Extracto */}
