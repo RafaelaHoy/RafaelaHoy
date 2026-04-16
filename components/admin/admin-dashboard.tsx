@@ -284,7 +284,7 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
   const allFeaturedArticles = articles.filter(article => article.is_featured)
   const mainFeaturedArticle = allFeaturedArticles[0] || null
   const secondaryFeaturedArticles = allFeaturedArticles.slice(1, 4)
-  const latestArticles = articles.slice(4, 14)
+  const latestArticles = articles.slice(6, 16)
 
   return (
     <div className="min-h-screen bg-background">

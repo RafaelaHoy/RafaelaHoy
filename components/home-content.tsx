@@ -112,7 +112,7 @@ export function HomeContent() {
   const allFeaturedArticles = articles?.filter(article => article.is_featured) || []
   const featuredArticle = allFeaturedArticles[0] // La más destacada (principal)
   const sidebarFeaturedArticles = allFeaturedArticles.slice(1, 4) // Las siguientes 3 destacadas
-  const gridArticles = articles?.slice(6, 15) || []
+  const gridArticles = articles?.slice(6, 16) || []
 
   // Filter articles by category for the new sections
   const articlesByCategory = articles?.reduce((acc, article) => {
@@ -247,11 +247,11 @@ export function HomeContent() {
           </div>
           {/* Three Featured Articles - Right */}
           <div className="lg:col-span-4 order-2 lg:order-1">
-            <div className="space-y-6">
+            <div className="space-y-4">
               {isLoading ? (
                 <>
                   {[...Array(3)].map((_, i) => (
-                    <div key={i} className="flex h-[140px] bg-secondary border border-red-600 rounded-lg overflow-hidden">
+                    <div key={i} className="flex h-[150px] bg-secondary border border-red-600 rounded-lg overflow-hidden">
                       <div className="w-[45%] bg-muted"></div>
                       <div className="w-[55%] p-3 space-y-2">
                         <div className="h-2 bg-red-600 rounded w-20"></div>
@@ -266,7 +266,7 @@ export function HomeContent() {
                   <Link 
                     key={article.id} 
                     href={`/noticia/${article.slug}`}
-                    className="block group h-[140px] bg-secondary border border-red-600 rounded-lg overflow-hidden hover:bg-secondary/90 transition-colors"
+                    className="block group h-[150px] bg-secondary border border-red-600 rounded-lg overflow-hidden hover:bg-secondary/90 transition-colors"
                   >
                     <div className="flex h-full">
                       {/* Thumbnail - Left (45%) */}
