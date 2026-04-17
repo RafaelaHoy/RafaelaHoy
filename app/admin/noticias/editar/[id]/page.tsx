@@ -339,6 +339,7 @@ export default function EditNewsPage() {
   const [excerpt, setExcerpt] = useState("")
   const [content, setContent] = useState("")
   const [categoryId, setCategoryId] = useState("")
+  const [homeLocation, setHomeLocation] = useState("repositorio")
   const [isPublished, setIsPublished] = useState(false)
   const [originalSlug, setOriginalSlug] = useState("")
   const [featuredImage, setFeaturedImage] = useState("")
@@ -407,6 +408,7 @@ export default function EditNewsPage() {
       setExcerpt(data.excerpt || "")
       setContent(data.content || "")
       setCategoryId(data.category_id || "")
+      setHomeLocation(data.home_location || "repositorio")
       setIsPublished(data.is_published || false)
       setFeaturedImage(data.image_url || "")
       setOriginalSlug(data.slug || "")
@@ -454,6 +456,85 @@ export default function EditNewsPage() {
     loadMedia()
   }, [])
 
+  // Función para manejar el desplazamiento automático
+  const handleAutoReposition = async (supabase: any, newLocation: string, currentArticleId: string) => {
+    const movedArticles: string[] = []
+    
+    try {
+      if (newLocation === "principal") {
+        // Buscar si ya existe una noticia principal (que no sea la actual)
+        const { data: existingMain } = await supabase
+          .from('articles')
+          .select('*')
+          .eq('is_featured', true)
+          .eq('sort_order', 0)
+          .neq('id', currentArticleId)
+          .single()
+        
+        if (existingMain) {
+          // Ocultar la existente (despublicar) pero mantenerla como principal
+          await supabase
+            .from('articles')
+            .update({ 
+              is_published: false // Solo ocultar, no mover de ubicación
+            })
+            .eq('id', existingMain.id)
+          movedArticles.push(existingMain.title)
+        }
+      } else if (newLocation === "destacada") {
+        // Buscar las 3 destacadas actuales (que no sean la actual)
+        const { data: existingFeatured } = await supabase
+          .from('articles')
+          .select('*')
+          .eq('is_featured', true)
+          .in('sort_order', [1, 2, 3])
+          .neq('id', currentArticleId)
+          .order('sort_order', { ascending: true })
+        
+        if (existingFeatured && existingFeatured.length >= 3) {
+          // Mover la más antigua (sort_order 1) al repositorio
+          const oldest = existingFeatured[0]
+          await supabase
+            .from('articles')
+            .update({ 
+              is_featured: false, 
+              sort_order: 999,
+              home_location: 'repositorio'
+            })
+            .eq('id', oldest.id)
+          movedArticles.push(oldest.title)
+        }
+      } else if (newLocation === "ultimas") {
+        // Buscar las 10 últimas noticias actuales (que no sean la actual)
+        const { data: existingLatest } = await supabase
+          .from('articles')
+          .select('*')
+          .eq('is_featured', false)
+          .lt('sort_order', 100) // Últimas noticias tienen sort_order < 100
+          .neq('id', currentArticleId)
+          .order('sort_order', { ascending: true })
+        
+        if (existingLatest && existingLatest.length >= 10) {
+          // Mover la más antigua al repositorio
+          const oldest = existingLatest[0]
+          await supabase
+            .from('articles')
+            .update({ 
+              sort_order: 999,
+              home_location: 'repositorio'
+            })
+            .eq('id', oldest.id)
+          movedArticles.push(oldest.title)
+        }
+      }
+      
+      return movedArticles
+    } catch (error) {
+      console.error('Error en reubicación automática:', error)
+      return []
+    }
+  }
+
   const handleSave = async () => {
     if (!title.trim() || !excerpt.trim() || !content.trim() || !categoryId) {
       alert("Por favor completa todos los campos obligatorios")
@@ -472,7 +553,66 @@ export default function EditNewsPage() {
       console.log('=== DEBUG GUARDAR EDICIÓN ===')
       console.log('Markdown original:', content.trim())
       console.log('HTML procesado:', processedContent)
+      console.log('Ubicación en home:', homeLocation)
       console.log('============================')
+      
+      // Manejar reubicación automática
+      const movedArticles = await handleAutoReposition(supabase, homeLocation, articleId)
+      
+      // Determinar sort_order y is_featured según la ubicación
+      let sortOrder = 999 // Por defecto en repositorio
+      let isFeatured = false
+      
+      if (homeLocation === "principal") {
+        sortOrder = 0
+        isFeatured = true
+      } else if (homeLocation === "destacada") {
+        // Encontrar el siguiente sort_order disponible (1, 2, 3)
+        const { data: existingFeatured } = await supabase
+          .from('articles')
+          .select('sort_order')
+          .eq('is_featured', true)
+          .in('sort_order', [1, 2, 3])
+          .neq('id', articleId)
+          .order('sort_order', { ascending: true })
+        
+        if (existingFeatured && existingFeatured.length > 0) {
+          // Tomar el siguiente disponible
+          const usedOrders = existingFeatured.map(a => a.sort_order)
+          for (let i = 1; i <= 3; i++) {
+            if (!usedOrders.includes(i)) {
+              sortOrder = i
+              break
+            }
+          }
+          if (sortOrder === 999) sortOrder = 1 // Si todos están ocupados, usar 1
+        } else {
+          sortOrder = 1
+        }
+        isFeatured = true
+      } else if (homeLocation === "ultimas") {
+        // Encontrar el siguiente sort_order disponible para últimas noticias
+        const { data: existingLatest } = await supabase
+          .from('articles')
+          .select('sort_order')
+          .eq('is_featured', false)
+          .lt('sort_order', 100)
+          .neq('id', articleId)
+          .order('sort_order', { ascending: true })
+        
+        if (existingLatest && existingLatest.length > 0) {
+          const usedOrders = existingLatest.map(a => a.sort_order)
+          for (let i = 6; i <= 15; i++) {
+            if (!usedOrders.includes(i)) {
+              sortOrder = i
+              break
+            }
+          }
+          if (sortOrder === 999) sortOrder = 6 // Si todos están ocupados, usar 6
+        } else {
+          sortOrder = 6
+        }
+      }
       
       // Generar slug si cambió el título
       // El slug ya se maneja con el estado, no necesita lógica adicional
@@ -490,6 +630,9 @@ export default function EditNewsPage() {
           slug: slug.trim() || generateSlug(title.trim()), // Usar slug del estado
           published_at: isPublished ? new Date().toISOString() : null,
           updated_at: new Date().toISOString(),
+          sort_order: sortOrder,
+          is_featured: isFeatured,
+          home_location: homeLocation,
           author: 'Rafaela hoy'  // Siempre autor Rafaela hoy
         })
         .eq('id', articleId)
@@ -497,6 +640,14 @@ export default function EditNewsPage() {
       if (error) {
         console.error('Error de Supabase:', error)
         throw new Error(`Error al actualizar: ${error.message}`)
+      }
+
+      // Mostrar notificaciones de artículos movidos
+      if (movedArticles.length > 0) {
+        const message = movedArticles.map(title => 
+          `La noticia "${title}" ha sido ocultada para ceder el lugar en la sección principal.`
+        ).join('\n')
+        alert(message)
       }
 
       // Redirigir a la lista
@@ -693,6 +844,30 @@ export default function EditNewsPage() {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+
+              {/* Ubicación en Home */}
+              <div className="space-y-2 mb-4">
+                <Label htmlFor="homeLocation">
+                  Ubicación en Home
+                </Label>
+                <Select value={homeLocation} onValueChange={setHomeLocation} disabled={saving}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Seleccionar ubicación" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="principal">Noticia Principal</SelectItem>
+                    <SelectItem value="destacada">Noticia Destacada</SelectItem>
+                    <SelectItem value="ultimas">Últimas Noticias</SelectItem>
+                    <SelectItem value="repositorio">Repositorio (Solo Archivo)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  {homeLocation === "principal" && "Cupo: 1. Si ya existe una, será movida al repositorio."}
+                  {homeLocation === "destacada" && "Cupo: 3. Si hay 3, la más antigua será movida al repositorio."}
+                  {homeLocation === "ultimas" && "Cupo: 10. Si hay 10, la más antigua será movida al repositorio."}
+                  {homeLocation === "repositorio" && "La noticia solo estará disponible en el repositorio y búsqueda."}
+                </p>
               </div>
 
               {/* Autor */}

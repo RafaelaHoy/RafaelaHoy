@@ -12,6 +12,10 @@ import Link from "next/link"
 import { ObituariesManager } from "./obituaries-manager"
 import { PharmaciesManager } from "./pharmacies-manager"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { DndContext, DragEndEvent, DragOverEvent, DragStartEvent, closestCenter } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
+import { DndSection } from './dnd-section'
 
 interface Article {
   id: string
@@ -23,6 +27,7 @@ interface Article {
   is_featured: boolean
   is_published: boolean
   sort_order: number
+  home_location?: string
   categories: {
     name: string
     slug: string
@@ -165,80 +170,200 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
     router.refresh()
   }
 
-  // Funciones de reordenamiento - Ahora trabajan con el array completo
-  const moveArticleUp = async (articleId: string) => {
-    const articleIndex = articles.findIndex(a => a.id === articleId)
-    if (articleIndex <= 0) return
+  // Funciones de Drag & Drop
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    
+    if (!over) return
 
-    const articleToMove = articles[articleIndex]
-    const articleAbove = articles[articleIndex - 1]
+    const activeId = active.id as string
+    const overId = over.id as string
+
+    if (activeId === overId) return
+
+    const activeArticle = articles.find(a => a.id === activeId)
+    const overArticle = articles.find(a => a.id === overId)
+
+    if (!activeArticle || !overArticle) return
+
+    // Si se está moviendo una noticia a la posición principal (sort_order 0)
+    // y ya existe una noticia principal, ocultar la existente
+    if (overArticle.sort_order === 0 && activeArticle.sort_order !== 0) {
+      const existingMain = articles.find(a => a.sort_order === 0 && a.id !== activeId)
+      if (existingMain) {
+        try {
+          await createClient()
+            .from("articles")
+            .update({ 
+              is_published: false // Ocultar la existente
+            })
+            .eq("id", existingMain.id)
+        } catch (error) {
+          console.error("Error ocultando noticia principal:", error)
+          alert("Error al ocultar la noticia principal")
+          return
+        }
+      }
+    }
 
     // Intercambiar sort_order
-    const tempOrder = articleToMove.sort_order
-    articleToMove.sort_order = articleAbove.sort_order
-    articleAbove.sort_order = tempOrder
+    const tempOrder = activeArticle.sort_order
+    activeArticle.sort_order = overArticle.sort_order
+    overArticle.sort_order = tempOrder
 
     try {
       await Promise.all([
         createClient()
           .from("articles")
-          .update({ sort_order: articleToMove.sort_order })
-          .eq("id", articleToMove.id),
+          .update({ 
+            sort_order: activeArticle.sort_order,
+            home_location: getHomeLocationFromOrder(activeArticle.sort_order)
+          })
+          .eq("id", activeArticle.id),
         createClient()
           .from("articles")
-          .update({ sort_order: articleAbove.sort_order })
-          .eq("id", articleAbove.id)
+          .update({ 
+            sort_order: overArticle.sort_order,
+            home_location: getHomeLocationFromOrder(overArticle.sort_order)
+          })
+          .eq("id", overArticle.id)
       ])
 
-      // Actualizar estado local - reordenar todo el array
+      // Actualizar estado local
       const newArticles = [...articles]
-      newArticles[articleIndex] = articleAbove
-      newArticles[articleIndex - 1] = articleToMove
-      
-      // Reordenar por sort_order para mantener consistencia
       newArticles.sort((a, b) => a.sort_order - b.sort_order)
       setArticles(newArticles)
     } catch (error) {
-      console.error("Error moviendo artículo:", error)
-      alert("Error al mover la noticia")
+      console.error("Error reordenando artículo:", error)
+      alert("Error al reordenar la noticia")
     }
   }
 
-  const moveArticleDown = async (articleId: string) => {
-    const articleIndex = articles.findIndex(a => a.id === articleId)
-    if (articleIndex >= articles.length - 1) return
+  const handleMoveToSection = async (articleId: string, targetSection: string) => {
+    const article = articles.find(a => a.id === articleId)
+    if (!article) return
 
-    const articleToMove = articles[articleIndex]
-    const articleBelow = articles[articleIndex + 1]
+    let newSortOrder = 999 // Por defecto repositorio
+    let newIsFeatured = false
 
-    // Intercambiar sort_order
-    const tempOrder = articleToMove.sort_order
-    articleToMove.sort_order = articleBelow.sort_order
-    articleBelow.sort_order = tempOrder
+    switch (targetSection) {
+      case "principal":
+        newSortOrder = 0
+        newIsFeatured = true
+        break
+      case "destacada":
+        // Encontrar el siguiente sort_order disponible (1, 2, 3)
+        const existingFeatured = articles
+          .filter(a => a.is_featured && a.sort_order >= 1 && a.sort_order <= 3 && a.id !== articleId)
+          .sort((a, b) => a.sort_order - b.sort_order)
+        
+        if (existingFeatured.length >= 3) {
+          // Mover el más antiguo al repositorio
+          const oldest = existingFeatured[0]
+          await createClient()
+            .from("articles")
+            .update({ 
+              sort_order: 999,
+              is_featured: false,
+              home_location: 'repositorio'
+            })
+            .eq("id", oldest.id)
+        }
+        
+        // Encontrar el siguiente disponible
+        for (let i = 1; i <= 3; i++) {
+          if (!existingFeatured.find(a => a.sort_order === i)) {
+            newSortOrder = i
+            break
+          }
+        }
+        newIsFeatured = true
+        break
+      case "ultimas":
+        // Encontrar el siguiente sort_order disponible (6-15)
+        const existingLatest = articles
+          .filter(a => !a.is_featured && a.sort_order >= 6 && a.sort_order <= 15 && a.id !== articleId)
+          .sort((a, b) => a.sort_order - b.sort_order)
+        
+        if (existingLatest.length >= 10) {
+          // Mover el más antiguo al repositorio
+          const oldest = existingLatest[0]
+          await createClient()
+            .from("articles")
+            .update({ 
+              sort_order: 999,
+              home_location: 'repositorio'
+            })
+            .eq("id", oldest.id)
+        }
+        
+        // Encontrar el siguiente disponible
+        for (let i = 6; i <= 15; i++) {
+          if (!existingLatest.find(a => a.sort_order === i)) {
+            newSortOrder = i
+            break
+          }
+        }
+        break
+    }
 
     try {
-      await Promise.all([
-        createClient()
-          .from("articles")
-          .update({ sort_order: articleToMove.sort_order })
-          .eq("id", articleToMove.id),
-        createClient()
-          .from("articles")
-          .update({ sort_order: articleBelow.sort_order })
-          .eq("id", articleBelow.id)
-      ])
+      await createClient()
+        .from("articles")
+        .update({ 
+          sort_order: newSortOrder,
+          is_featured: newIsFeatured,
+          home_location: targetSection
+        })
+        .eq("id", articleId)
 
-      // Actualizar estado local - reordenar todo el array
-      const newArticles = [...articles]
-      newArticles[articleIndex] = articleBelow
-      newArticles[articleIndex + 1] = articleToMove
-      
-      // Reordenar por sort_order para mantener consistencia
+      // Actualizar estado local
+      const newArticles = articles.map(a => 
+        a.id === articleId 
+          ? { ...a, sort_order: newSortOrder, is_featured: newIsFeatured, home_location: targetSection }
+          : a
+      )
       newArticles.sort((a, b) => a.sort_order - b.sort_order)
       setArticles(newArticles)
     } catch (error) {
-      console.error("Error moviendo artículo:", error)
-      alert("Error al mover la noticia")
+      console.error("Error moviendo artículo a sección:", error)
+      alert("Error al mover la noticia a la sección")
+    }
+  }
+
+  const getHomeLocationFromOrder = (sortOrder: number): string => {
+    if (sortOrder === 0) return "principal"
+    if (sortOrder >= 1 && sortOrder <= 3) return "destacada"
+    if (sortOrder >= 6 && sortOrder <= 15) return "ultimas"
+    return "repositorio"
+  }
+
+  const handleReorderInSection = async (sectionArticles: Article[], newOrder: Article[]) => {
+    // Actualizar sort_order para los artículos reordenados
+    const updates = newOrder.map((article, index) => {
+      const originalArticle = sectionArticles.find(a => a.id === article.id)
+      if (originalArticle) {
+        return createClient()
+          .from("articles")
+          .update({ sort_order: originalArticle.sort_order })
+          .eq("id", article.id)
+      }
+      return null
+    }).filter(Boolean)
+
+    try {
+      await Promise.all(updates)
+      
+      // Actualizar estado local
+      const newArticles = articles.map(article => {
+        const updatedArticle = newOrder.find(a => a.id === article.id)
+        return updatedArticle || article
+      })
+      newArticles.sort((a, b) => a.sort_order - b.sort_order)
+      setArticles(newArticles)
+    } catch (error) {
+      console.error("Error reordenando en sección:", error)
+      alert("Error al reordenar las noticias")
     }
   }
 
@@ -341,124 +466,61 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
               </Button>
             </div>
 
-            {/* Bloque 1: Noticia Principal */}
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                  Noticia Principal
-                  <Badge variant="secondary">{mainFeaturedArticle ? 1 : 0}</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {mainFeaturedArticle ? (
-                  <ArticleRow
-                    article={mainFeaturedArticle}
-                    onMoveUp={moveArticleUp}
-                    onMoveDown={moveArticleDown}
-                    onTogglePublished={togglePublished}
-                    onDelete={deleteArticle}
-                    isFirst={true}
-                    isLast={false}
-                  />
-                ) : (
-                  <p className="text-muted-foreground text-center py-4">
-                    No hay noticia principal
-                  </p>
-                )}
-              </CardContent>
-            </Card>
+            {/* Sistema Drag & Drop para Noticias */}
+            <DndContext
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <div className="space-y-6">
+                {/* Bloque 1: Noticia Principal */}
+                <DndSection
+                  title="Noticia Principal"
+                  articles={mainFeaturedArticle ? [mainFeaturedArticle] : []}
+                  onTogglePublished={togglePublished}
+                  onDelete={deleteArticle}
+                  onReorder={handleReorderInSection}
+                  onMoveToSection={handleMoveToSection}
+                  sectionId="principal"
+                  maxItems={1}
+                  color="red"
+                />
 
-            {/* Bloque 2: Noticias Destacadas */}
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                  Noticias Destacadas
-                  <Badge variant="secondary">{secondaryFeaturedArticles.length}</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {secondaryFeaturedArticles.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-4">
-                    No hay noticias destacadas
-                  </p>
-                ) : (
-                  secondaryFeaturedArticles.map((article, index) => (
-                    <ArticleRow
-                      key={article.id}
-                      article={article}
-                      onMoveUp={moveArticleUp}
-                      onMoveDown={moveArticleDown}
-                      onTogglePublished={togglePublished}
-                      onDelete={deleteArticle}
-                      isFirst={false}
-                      isLast={false}
-                    />
-                  ))
-                )}
-              </CardContent>
-            </Card>
+                {/* Bloque 2: Noticias Destacadas */}
+                <DndSection
+                  title="Noticias Destacadas"
+                  articles={secondaryFeaturedArticles}
+                  onTogglePublished={togglePublished}
+                  onDelete={deleteArticle}
+                  onReorder={handleReorderInSection}
+                  onMoveToSection={handleMoveToSection}
+                  sectionId="destacada"
+                  maxItems={3}
+                />
 
-            {/* Bloque 3: Últimas Noticias */}
-            <Card className="mb-6">
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                  Últimas Noticias
-                  <Badge variant="secondary">{latestArticles.length}</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {latestArticles.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-4">
-                    No hay últimas noticias
-                  </p>
-                ) : (
-                  latestArticles.map((article, index) => (
-                    <ArticleRow
-                      key={article.id}
-                      article={article}
-                      onMoveUp={moveArticleUp}
-                      onMoveDown={moveArticleDown}
-                      onTogglePublished={togglePublished}
-                      onDelete={deleteArticle}
-                      isFirst={false}
-                      isLast={false}
-                    />
-                  ))
-                )}
-              </CardContent>
-            </Card>
+                {/* Bloque 3: Últimas Noticias */}
+                <DndSection
+                  title="Últimas Noticias"
+                  articles={latestArticles}
+                  onTogglePublished={togglePublished}
+                  onDelete={deleteArticle}
+                  onReorder={handleReorderInSection}
+                  onMoveToSection={handleMoveToSection}
+                  sectionId="ultimas"
+                  maxItems={10}
+                />
 
-            {/* Repositorio General de Noticias */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                  Repositorio General de Noticias
-                  <Badge variant="secondary">{articles.length - 14}</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {articles.length <= 14 ? (
-                  <p className="text-muted-foreground text-center py-8">
-                    No hay noticias en el repositorio
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {articles.slice(14).map((article) => (
-                      <ArticleRow
-                        key={article.id}
-                        article={article}
-                        onMoveUp={moveArticleUp}
-                        onMoveDown={moveArticleDown}
-                        onTogglePublished={togglePublished}
-                        onDelete={deleteArticle}
-                        isFirst={false}
-                        isLast={false}
-                      />
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                {/* Bloque 4: Repositorio General */}
+                <DndSection
+                  title="Repositorio General"
+                  articles={articles.filter(a => a.sort_order >= 999 || !a.home_location || a.home_location === 'repositorio')}
+                  onTogglePublished={togglePublished}
+                  onDelete={deleteArticle}
+                  onReorder={handleReorderInSection}
+                  onMoveToSection={handleMoveToSection}
+                  sectionId="repositorio"
+                />
+              </div>
+            </DndContext>
           </TabsContent>
 
           {/* Necrológicas Tab */}
