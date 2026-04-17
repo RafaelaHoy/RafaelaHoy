@@ -1131,7 +1131,6 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                   <CardHeader>
                     <CardTitle className="text-lg font-semibold flex items-center gap-2">
                       Noticias Destacadas
-                      <Badge variant="secondary">{secondaryFeaturedArticles.length}</Badge>
                       <Badge variant={secondaryFeaturedArticles.length >= 3 ? "destructive" : "outline"}>
                         {secondaryFeaturedArticles.length}/3
                       </Badge>
@@ -1168,7 +1167,6 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                   <CardHeader>
                     <CardTitle className="text-lg font-semibold flex items-center gap-2">
                       Últimas Noticias
-                      <Badge variant="secondary">{latestArticles.length}</Badge>
                       <Badge variant={latestArticles.length >= 10 ? "destructive" : "outline"}>
                         {latestArticles.length}/10
                       </Badge>

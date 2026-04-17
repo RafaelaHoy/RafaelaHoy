@@ -87,9 +87,6 @@ export function DraggableArticleRow({
           <Badge variant={article.is_published ? "default" : "secondary"} className="text-xs">
             {article.is_published ? "Publicado" : "Borrador"}
           </Badge>
-          <Badge variant="outline" className="text-xs">
-            {article.home_location || "repositorio"}
-          </Badge>
           <span className="text-xs text-muted-foreground">
             Orden: {article.sort_order}
           </span>
