@@ -108,11 +108,15 @@ export function HomeContent() {
     return () => window.removeEventListener('resize', checkDesktop)
   }, [])
 
-  // Separate featured and other articles
-  const allFeaturedArticles = articles?.filter(article => article.is_featured) || []
-  const featuredArticle = allFeaturedArticles[0] // La más destacada (principal)
-  const sidebarFeaturedArticles = allFeaturedArticles.slice(1, 4) // Las siguientes 3 destacadas
-  const gridArticles = articles?.slice(6, 16) || []
+  // Separate featured and other articles by sort_order (como en el admin)
+  const mainFeaturedArticle = articles?.find(a => a.sort_order === 0)
+  const secondaryFeaturedArticles = articles?.filter(a => a.sort_order >= 1 && a.sort_order <= 3).sort((a, b) => a.sort_order - b.sort_order) || []
+  const latestArticles = articles?.filter(a => a.sort_order >= 4 && a.sort_order <= 13).sort((a, b) => a.sort_order - b.sort_order) || []
+  
+  // Para compatibilidad con el código existente
+  const featuredArticle = mainFeaturedArticle
+  const sidebarFeaturedArticles = secondaryFeaturedArticles
+  const gridArticles = latestArticles
 
   // Filter articles by category for the new sections
   const articlesByCategory = articles?.reduce((acc, article) => {

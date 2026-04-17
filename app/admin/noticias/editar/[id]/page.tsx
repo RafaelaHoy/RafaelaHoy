@@ -472,13 +472,8 @@ export default function EditNewsPage() {
           .single()
         
         if (existingMain) {
-          // Ocultar la existente (despublicar) pero mantenerla como principal
-          await supabase
-            .from('articles')
-            .update({ 
-              is_published: false // Solo ocultar, no mover de ubicación
-            })
-            .eq('id', existingMain.id)
+          // La noticia principal existente se queda publicada, solo se actualiza la nueva
+          // No hacemos nada con la existente, simplemente dejamos que la nueva tome su lugar
           movedArticles.push(existingMain.title)
         }
       } else if (newLocation === "destacada") {
@@ -553,7 +548,7 @@ export default function EditNewsPage() {
       console.log('=== DEBUG GUARDAR EDICIÓN ===')
       console.log('Markdown original:', content.trim())
       console.log('HTML procesado:', processedContent)
-      console.log('Ubicación en home:', homeLocation)
+      console.log('Ubicación en incio:', homeLocation)
       console.log('============================')
       
       // Manejar reubicación automática
@@ -645,7 +640,7 @@ export default function EditNewsPage() {
       // Mostrar notificaciones de artículos movidos
       if (movedArticles.length > 0) {
         const message = movedArticles.map(title => 
-          `La noticia "${title}" ha sido ocultada para ceder el lugar en la sección principal.`
+          `La noticia "${title}" ha sido reemplazada por la nueva noticia principal.`
         ).join('\n')
         alert(message)
       }
@@ -846,10 +841,10 @@ export default function EditNewsPage() {
                 </Select>
               </div>
 
-              {/* Ubicación en Home */}
+              {/* Ubicación en Incio */}
               <div className="space-y-2 mb-4">
                 <Label htmlFor="homeLocation">
-                  Ubicación en Home
+                  Ubicación en Incio
                 </Label>
                 <Select value={homeLocation} onValueChange={setHomeLocation} disabled={saving}>
                   <SelectTrigger>

@@ -406,13 +406,8 @@ export default function CreateNewsPage() {
           .single()
         
         if (existingMain) {
-          // Ocultar la existente (despublicar) pero mantenerla como principal
-          await supabase
-            .from('articles')
-            .update({ 
-              is_published: false // Solo ocultar, no mover de ubicación
-            })
-            .eq('id', existingMain.id)
+          // La noticia principal existente se queda publicada, solo se actualiza la nueva
+          // No hacemos nada con la existente, simplemente dejamos que la nueva tome su lugar
           movedArticles.push(existingMain.title)
         }
       } else if (newLocation === "destacada") {
@@ -485,7 +480,7 @@ export default function CreateNewsPage() {
       console.log('=== DEBUG GUARDAR ===')
       console.log('Markdown original:', content.trim())
       console.log('HTML procesado:', processedContent)
-      console.log('Ubicación en home:', homeLocation)
+      console.log('Ubicación en incio:', homeLocation)
       console.log('====================')
       
       // Manejar reubicación automática
@@ -569,7 +564,7 @@ export default function CreateNewsPage() {
       // Mostrar notificaciones de artículos movidos
       if (movedArticles.length > 0) {
         const message = movedArticles.map(title => 
-          `La noticia "${title}" ha sido ocultada para ceder el lugar en la sección principal.`
+          `La noticia "${title}" ha sido reemplazada por la nueva noticia principal.`
         ).join('\n')
         alert(message)
       }
@@ -655,30 +650,6 @@ export default function CreateNewsPage() {
               />
             </div>
 
-            {/* URL/Slug */}
-            <div>
-              <Label htmlFor="slug" className="text-base font-medium">
-                URL (Slug) <span className="text-muted-foreground text-sm">- Se genera automáticamente</span>
-              </Label>
-              <div className="flex items-center mt-2">
-                <span className="text-muted-foreground text-sm mr-2">/noticia/</span>
-                <Input
-                  id="slug"
-                  value={slug}
-                  onChange={(e) => setSlug(e.target.value)}
-                  placeholder="url-de-la-noticia"
-                  className="touch-manipulation-auto"
-                  disabled={saving}
-                  style={{
-                    WebkitTapHighlightColor: 'transparent',
-                    WebkitUserSelect: 'text',
-                    userSelect: 'text',
-                    touchAction: 'manipulation'
-                  }}
-                />
-              </div>
-            </div>
-
             {/* Extracto */}
             <div>
               <Label htmlFor="excerpt" className="text-base font-medium">
@@ -734,10 +705,10 @@ export default function CreateNewsPage() {
                 </Select>
               </div>
 
-              {/* Ubicación en Home */}
+              {/* Ubicación en Incio */}
               <div className="space-y-2 mb-4">
                 <Label htmlFor="homeLocation">
-                  Ubicación en Home
+                  Ubicación en Incio
                 </Label>
                 <Select value={homeLocation} onValueChange={setHomeLocation} disabled={saving}>
                   <SelectTrigger>
@@ -750,12 +721,6 @@ export default function CreateNewsPage() {
                     <SelectItem value="repositorio">Repositorio (Solo Archivo)</SelectItem>
                   </SelectContent>
                 </Select>
-                <p className="text-xs text-muted-foreground">
-                  {homeLocation === "principal" && "Cupo: 1. Si ya existe una, será movida al repositorio."}
-                  {homeLocation === "destacada" && "Cupo: 3. Si hay 3, la más antigua será movida al repositorio."}
-                  {homeLocation === "ultimas" && "Cupo: 10. Si hay 10, la más antigua será movida al repositorio."}
-                  {homeLocation === "repositorio" && "La noticia solo estará disponible en el repositorio y búsqueda."}
-                </p>
               </div>
 
               {/* Autor */}

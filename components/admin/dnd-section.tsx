@@ -31,12 +31,12 @@ export function DndSection({
   onMoveToSection,
   sectionId,
   maxItems,
-  color = "default"
+  color
 }: DndSectionProps) {
   const [draggedArticle, setDraggedArticle] = useState<Article | null>(null)
 
-  // Collision detection personalizada para permitir arrastrar entre secciones
-  const collisionDetection: CollisionDetection = (args) => {
+  // Custom collision detection para permitir mover entre secciones
+  const customCollisionDetection: CollisionDetection = (args) => {
     if (draggedArticle) {
       // Primero verificar si está sobre otra sección
       const pointerCollisions = pointerWithin(args)
@@ -83,33 +83,45 @@ export function DndSection({
       }
     }
     // Si es otra sección, mover entre secciones
-    else if (over.data.current?.type === 'section' && onMoveToSection) {
-      onMoveToSection(activeId, over.data.current.sectionId)
+    else if (overId.includes('section') && onMoveToSection) {
+      // Extraer el ID de la sección del overId
+      const targetSectionId = overId.replace('-section', '')
+      onMoveToSection(activeId, targetSectionId)
     }
   }
 
   return (
-    <Card className={`mb-6 ${color === "red" ? "border-red-200 bg-red-50/50" : ""}`}>
-      <CardHeader>
-        <CardTitle className="text-lg font-semibold flex items-center gap-2">
-          {title}
-          <Badge variant="secondary">{articles.length}</Badge>
-          {maxItems && (
-            <Badge variant="outline" className="text-xs">
-              Máx: {maxItems}
-            </Badge>
-          )}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {articles.length === 0 ? (
-          <div className="text-center py-8 border-2 border-dashed border-muted rounded-lg">
-            <p className="text-muted-foreground">
-              {draggedArticle ? "Suelta aquí para mover" : "No hay noticias en esta sección"}
-            </p>
-          </div>
-        ) : (
-          <SortableContext items={articles.map(a => a.id)} strategy={verticalListSortingStrategy}>
+    <DndContext
+      collisionDetection={customCollisionDetection}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <SortableContext items={articles.map(a => a.id)} strategy={verticalListSortingStrategy}>
+        <Card className={`${maxItems && articles.length >= maxItems ? 'border-orange-200 bg-orange-50' : ''}`}>
+          <CardHeader className="pb-3">
+            <CardTitle className={`text-lg font-semibold flex items-center gap-2 ${color === 'red' ? 'text-red-600' : ''}`}>
+              {title}
+              <Badge variant="secondary">{articles.length}</Badge>
+              {maxItems && (
+                <Badge variant={articles.length >= maxItems ? "destructive" : "outline"}>
+                  {articles.length}/{maxItems}
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 min-h-[100px]">
+            {/* Área vacía para arrastrar */}
+            <div
+              id={`${sectionId}-section`}
+              className={`border-2 border-dashed border-muted-foreground/30 rounded-lg p-4 text-center text-muted-foreground/50 transition-colors hover:border-muted-foreground/50 ${articles.length === 0 ? 'min-h-[80px]' : 'min-h-[40px]'}`}
+            >
+              {articles.length === 0 ? (
+                <p className="text-sm">Arrastra una noticia aquí</p>
+              ) : (
+                <p className="text-xs">O arrastra aquí para mover a esta sección</p>
+              )}
+            </div>
+            
             {articles.map((article) => (
               <DraggableArticleRow
                 key={article.id}
@@ -118,9 +130,9 @@ export function DndSection({
                 onDelete={onDelete}
               />
             ))}
-          </SortableContext>
-        )}
-      </CardContent>
-    </Card>
+          </CardContent>
+        </Card>
+      </SortableContext>
+    </DndContext>
   )
 }

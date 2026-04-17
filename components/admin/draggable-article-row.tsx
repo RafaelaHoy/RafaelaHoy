@@ -34,6 +34,9 @@ export function DraggableArticleRow({
     isDragging,
   } = useSortable({ id: article.id })
 
+  // Remover aria-describedby para evitar hidratación
+  const { 'aria-describedby': _, ...cleanAttributes } = attributes
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -50,7 +53,7 @@ export function DraggableArticleRow({
     >
       {/* Drag Handle */}
       <div
-        {...attributes}
+        {...cleanAttributes}
         {...listeners}
         className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded"
         title="Arrastra para reordenar"
