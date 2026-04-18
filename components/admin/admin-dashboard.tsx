@@ -168,7 +168,7 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
     router.refresh()
   }
 
-  // Funciones de Drag & Drop
+  // Funciones de Drag & Drop con EFECTO CASCADA ESTRUCTURAL
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
     
@@ -198,63 +198,13 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
         targetSortOrder = 0
       } else if (overId.includes('destacada')) {
         targetSection = 'destacada'
-        // Encontrar el primer sort_order disponible en destacadas (1, 2, 3)
-        const existingFeatured = articles
-          .filter(a => a.is_featured && a.sort_order >= 1 && a.sort_order <= 3 && a.id !== activeId)
-          .sort((a, b) => a.sort_order - b.sort_order)
-        
-        // Si ya hay 3 noticias destacadas, mover la más antigua a últimas noticias
-        if (existingFeatured.length >= 3) {
-          const oldestFeatured = existingFeatured[0]
-          
-          // Encontrar el siguiente orden disponible en últimas noticias (4-13)
-          const existingLatest = articles
-            .filter(a => !a.is_featured && a.sort_order >= 4 && a.sort_order <= 13)
-            .sort((a, b) => a.sort_order - b.sort_order)
-          
-          let nextLatestOrder = 4
-          for (let i = 4; i <= 13; i++) {
-            if (!existingLatest.find(a => a.sort_order === i)) {
-              nextLatestOrder = i
-              break
-            }
-          }
-          
-          // Mover la noticia destacada más antigua a últimas noticias
-          await createClient()
-            .from("articles")
-            .update({ 
-              sort_order: nextLatestOrder,
-              home_location: 'ultimas',
-              is_featured: false
-            })
-            .eq("id", oldestFeatured.id)
-        }
-        
-        for (let i = 1; i <= 3; i++) {
-          if (!existingFeatured.find(a => a.sort_order === i)) {
-            targetSortOrder = i
-            break
-          }
-        }
-        if (targetSortOrder === 0) targetSortOrder = 1 // Por defecto
+        targetSortOrder = 1
       } else if (overId.includes('ultimas')) {
         targetSection = 'ultimas'
-        // Encontrar el primer sort_order disponible en últimas (4-13)
-        const existingLatest = articles
-          .filter(a => !a.is_featured && a.sort_order >= 4 && a.sort_order <= 13 && a.id !== activeId)
-          .sort((a, b) => a.sort_order - b.sort_order)
-        
-        for (let i = 4; i <= 13; i++) {
-          if (!existingLatest.find(a => a.sort_order === i)) {
-            targetSortOrder = i
-            break
-          }
-        }
-        if (targetSortOrder === 0) targetSortOrder = 4 // Por defecto
+        targetSortOrder = 4
       } else if (overId.includes('repositorio')) {
         targetSection = 'repositorio'
-        // Asignar el siguiente sort_order disponible en repositorio (14+)
+        // Encontrar el siguiente sort_order disponible en repositorio (14+)
         const existingRepositorio = articles
           .filter(a => a.sort_order >= 14)
           .sort((a, b) => a.sort_order - b.sort_order)
@@ -266,12 +216,23 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
     }
 
     try {
-      // Si estamos moviendo a un artículo existente, desplazar las noticias
-      if (overArticle) {
-        // 1. Mover la noticia activa a su nueva posición
+      console.log(`=== DRAG & DROP CON EFECTO CASCADA ESTRUCTURAL ===`)
+      console.log(`Moviendo "${activeArticle.title}" de orden ${activeArticle.sort_order} a orden ${targetSortOrder} (${targetSection})`)
+      
+      // Solo mover si la posición es diferente
+      if (activeArticle.sort_order !== targetSortOrder) {
+        const supabase = createClient()
+        
+        // 1. APLICAR EFECTO CASCADA ESTRUCTURAL
+        await applyCascadeEffectDashboard(supabase, targetSortOrder, activeArticle.id)
+        
+        // 2. LIMPIEZA DE HUÉRFANOS
+        await cleanupOrphanedArticlesDashboard(supabase)
+        
+        // 3. MOVER NOTICIA ACTIVA
         const newIsFeatured = targetSection === 'principal' || targetSection === 'destacada'
         
-        await createClient()
+        await supabase
           .from("articles")
           .update({ 
             sort_order: targetSortOrder,
@@ -279,91 +240,193 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
             is_featured: newIsFeatured
           })
           .eq("id", activeArticle.id)
-
-        // 2. Desplazar las noticias que estaban entre la posición original y la nueva
-        const oldSortOrder = activeArticle.sort_order
-        const newSortOrder = targetSortOrder
         
-        // Determinar qué noticias necesitan ser desplazadas
-        const articlesToShift = articles.filter(article => {
-          if (article.id === activeId) return false
-          
-          if (oldSortOrder < newSortOrder) {
-            // Moviendo hacia abajo: desplazar las que están entre old+1 y new
-            return article.sort_order > oldSortOrder && article.sort_order <= newSortOrder
-          } else {
-            // Moviendo hacia arriba: desplazar las que están entre new y old-1
-            return article.sort_order >= newSortOrder && article.sort_order < oldSortOrder
-          }
-        })
-
-        // Desplazar cada noticia afectada
-        for (const article of articlesToShift) {
-          const newShiftedOrder = oldSortOrder < newSortOrder 
-            ? article.sort_order - 1  // Mover hacia arriba
-            : article.sort_order + 1  // Mover hacia abajo
-          
-          const shiftedHomeLocation = getHomeLocationFromOrder(newShiftedOrder)
-          const shiftedIsFeatured = shiftedHomeLocation === 'principal' || shiftedHomeLocation === 'destacada'
-          
-          await createClient()
-            .from("articles")
-            .update({ 
-              sort_order: newShiftedOrder,
-              home_location: shiftedHomeLocation,
-              is_featured: shiftedIsFeatured
-            })
-            .eq("id", article.id)
-        }
-
-        // Actualizar estado local
-        const newArticles = articles.map(a => {
-          if (a.id === activeId) {
-            return { ...a, sort_order: targetSortOrder, home_location: targetSection, is_featured: newIsFeatured }
-          }
-          
-          // Actualizar las noticias desplazadas
-          const oldSortOrder = activeArticle.sort_order
-          const newSortOrder = targetSortOrder
-          
-          if (oldSortOrder < newSortOrder && a.sort_order > oldSortOrder && a.sort_order <= newSortOrder) {
-            return { ...a, sort_order: a.sort_order - 1, home_location: getHomeLocationFromOrder(a.sort_order - 1), is_featured: getHomeLocationFromOrder(a.sort_order - 1) === 'principal' || getHomeLocationFromOrder(a.sort_order - 1) === 'destacada' }
-          } else if (oldSortOrder > newSortOrder && a.sort_order >= newSortOrder && a.sort_order < oldSortOrder) {
-            return { ...a, sort_order: a.sort_order + 1, home_location: getHomeLocationFromOrder(a.sort_order + 1), is_featured: getHomeLocationFromOrder(a.sort_order + 1) === 'principal' || getHomeLocationFromOrder(a.sort_order + 1) === 'destacada' }
-          }
-          
-          return a
-        })
-        newArticles.sort((a, b) => a.sort_order - b.sort_order)
-        setArticles(newArticles)
-      } else {
-        // Mover a una sección vacía o a una nueva posición
-        const newIsFeatured = targetSection === 'principal' || targetSection === 'destacada'
+        console.log(`Movido "${activeArticle.title}" a orden ${targetSortOrder}`)
         
-        await createClient()
-          .from("articles")
-          .update({ 
-            sort_order: targetSortOrder,
-            home_location: targetSection,
-            is_featured: newIsFeatured
-          })
-          .eq("id", activeArticle.id)
-
-        // Actualizar estado local
-        const newArticles = articles.map(a => 
-          a.id === activeArticle.id 
-            ? { ...a, sort_order: targetSortOrder, home_location: targetSection, is_featured: newIsFeatured }
-            : a
-        )
-        newArticles.sort((a, b) => a.sort_order - b.sort_order)
-        setArticles(newArticles)
+        // 4. RECALCULAR CATEGORÍAS
+        await recalculateAllCategoriesDashboard(supabase)
         
-        // Auto-rellenar secciones para mantener cantidades correctas
-        await autoFillSections()
+        // 5. VERIFICACIÓN DE CONSISTENCIA
+        await verifyConsistencyDashboard(supabase)
       }
+      
+      // Recargar para reflejar cambios
+      window.location.reload()
+      
     } catch (error) {
       console.error("Error moviendo artículo:", error)
       alert("Error al mover la noticia")
+    }
+  }
+
+  // Función de EFECTO CASCADA ESTRUCTURAL para Dashboard
+  const applyCascadeEffectDashboard = async (supabase: any, newOrder: number, excludeId: string) => {
+    try {
+      console.log(`=== EFECTO CASCADA DASHBOARD desde orden ${newOrder} ===`)
+      
+      // 1. Obtener TODAS las noticias publicadas ordenadas
+      const { data: allArticles } = await supabase
+        .from('articles')
+        .select('*')
+        .eq('is_published', true)
+        .order('sort_order', { ascending: true })
+      
+      if (!allArticles || allArticles.length === 0) return
+      
+      // 2. FILTRAR solo las noticias con sort_order >= newOrder (excluyendo la activa)
+      const articlesToShift = allArticles.filter(article => 
+        article.sort_order >= newOrder && article.id !== excludeId
+      )
+      
+      console.log(`Noticias a desplazar: ${articlesToShift.length}`)
+      
+      // 3. APLICAR CASCADA con Promise.all (transacción)
+      const shiftPromises = articlesToShift.map(async (article) => {
+        const oldOrder = article.sort_order
+        const newOrderForArticle = oldOrder + 1
+        
+        console.log(`Desplazando: "${article.title}" ${oldOrder} -> ${newOrderForArticle}`)
+        
+        return supabase
+          .from('articles')
+          .update({ sort_order: newOrderForArticle })
+          .eq('id', article.id)
+      })
+      
+      // Ejecutar todos los desplazamientos en paralelo (transacción)
+      await Promise.all(shiftPromises)
+      console.log("Desplazamiento completado")
+      
+    } catch (error) {
+      console.error('Error en efecto cascada dashboard:', error)
+      throw error
+    }
+  }
+
+  // Función para RECALCULAR CATEGORÍAS en Dashboard
+  const recalculateAllCategoriesDashboard = async (supabase: any) => {
+    try {
+      console.log("=== RECALCULANDO CATEGORÍAS DASHBOARD ===")
+      
+      // Obtener todas las noticias publicadas
+      const { data: allArticles } = await supabase
+        .from('articles')
+        .select('*')
+        .eq('is_published', true)
+        .order('sort_order', { ascending: true })
+      
+      if (!allArticles || allArticles.length === 0) return
+      
+      // Crear promesas para actualizar categorías de todas las noticias
+      const categoryPromises = allArticles.map(async (article) => {
+        const currentOrder = article.sort_order
+        
+        // Asignar home_location estrictamente por número
+        let newHomeLocation = 'repositorio'
+        let newIsFeatured = false
+        
+        if (currentOrder === 0) {
+          newHomeLocation = 'principal'
+          newIsFeatured = true
+        } else if (currentOrder >= 1 && currentOrder <= 3) {
+          newHomeLocation = 'destacada'
+          newIsFeatured = true
+        } else if (currentOrder >= 4 && currentOrder <= 13) {
+          newHomeLocation = 'ultimas'
+          newIsFeatured = false
+        } else {
+          newHomeLocation = 'repositorio'
+          newIsFeatured = false
+        }
+        
+        return supabase
+          .from('articles')
+          .update({ 
+            home_location: newHomeLocation,
+            is_featured: newIsFeatured
+          })
+          .eq('id', article.id)
+      })
+      
+      // Ejecutar todas las actualizaciones de categorías en paralelo
+      await Promise.all(categoryPromises)
+      console.log("Recalculo de categorías completado")
+      
+    } catch (error) {
+      console.error('Error recalculando categorías dashboard:', error)
+      throw error
+    }
+  }
+
+  // Función de LIMPIEZA DE HUÉRFANOS en Dashboard
+  const cleanupOrphanedArticlesDashboard = async (supabase: any) => {
+    try {
+      console.log("=== LIMPIEZA DE HUÉRFANOS DASHBOARD ===")
+      
+      // Buscar noticias con home_location nulo o inválido
+      const { data: orphanedArticles } = await supabase
+        .from('articles')
+        .select('*')
+        .eq('is_published', true)
+        .or('home_location.is.null,home_location.eq.')
+      
+      if (orphanedArticles && orphanedArticles.length > 0) {
+        console.log(`Encontrados ${orphanedArticles.length} artículos huérfanos`)
+        
+        const cleanupPromises = orphanedArticles.map(async (article) => {
+          const currentOrder = article.sort_order
+          const newHomeLocation = currentOrder <= 13 ? 
+            (currentOrder === 0 ? 'principal' : currentOrder <= 3 ? 'destacada' : 'ultimas') 
+            : 'repositorio'
+          const newIsFeatured = currentOrder <= 3
+          
+          return supabase
+            .from('articles')
+            .update({ 
+              home_location: newHomeLocation,
+              is_featured: newIsFeatured
+            })
+            .eq('id', article.id)
+        })
+        
+        await Promise.all(cleanupPromises)
+        console.log("Limpieza de huérfanos completada")
+      }
+      
+    } catch (error) {
+      console.error('Error en limpieza de huérfanos dashboard:', error)
+    }
+  }
+
+  // Función de VERIFICACIÓN DE CONSISTENCIA en Dashboard
+  const verifyConsistencyDashboard = async (supabase: any) => {
+    try {
+      console.log("=== VERIFICACIÓN DE CONSISTENCIA DASHBOARD ===")
+      
+      // Obtener todas las noticias publicadas
+      const { data: allArticles } = await supabase
+        .from('articles')
+        .select('*')
+        .eq('is_published', true)
+        .order('sort_order', { ascending: true })
+      
+      if (!allArticles) return
+      
+      // Contar por sección
+      const principal = allArticles.filter(a => a.sort_order === 0).length
+      const destacadas = allArticles.filter(a => a.sort_order >= 1 && a.sort_order <= 3).length
+      const ultimas = allArticles.filter(a => a.sort_order >= 4 && a.sort_order <= 13).length
+      const repositorio = allArticles.filter(a => a.sort_order >= 14).length
+      
+      console.log(`Consistencia verificada:`)
+      console.log(`- Principal: ${principal} (esperado: 1)`)
+      console.log(`- Destacadas: ${destacadas} (esperado: 3)`)
+      console.log(`- Últimas: ${ultimas} (esperado: 10)`)
+      console.log(`- Repositorio: ${repositorio}`)
+      console.log(`- Total visible: ${principal + destacadas + ultimas} (esperado: 14)`)
+      
+    } catch (error) {
+      console.error('Error en verificación de consistencia dashboard:', error)
     }
   }
 
