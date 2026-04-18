@@ -1,19 +1,39 @@
 "use client"
 
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core'
+import { DndContext, DragEndEvent, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { arrayMove } from '@dnd-kit/sortable'
+import { useDroppable } from '@dnd-kit/core'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Input } from '@/components/ui/input'
 import { Logo } from '@/components/logo'
-import { LogOut, Plus, Edit, Trash2, Eye, EyeOff, ChevronUp, ChevronDown, Cross, MapPin, FileText } from "lucide-react"
+import { LogOut, Plus, Edit, Trash2, Eye, EyeOff, ChevronUp, ChevronDown, Cross, MapPin, FileText, Search } from "lucide-react"
 import Link from "next/link"
 import { createClient } from '@/lib/supabase/client'
 import { DraggableArticleRow } from './draggable-article-row'
 import { ObituariesManager } from "./obituaries-manager"
 import { PharmaciesManager } from "./pharmacies-manager"
+import { toast } from 'sonner'
+
+// Componente DroppableArea para reutilizar
+function DroppableArea({ id, children, className }: { id: string, children: React.ReactNode, className?: string }) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: id,
+  })
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`${className} ${isOver ? 'border-primary bg-primary/5' : ''}`}
+    >
+      {children}
+    </div>
+  )
+}
 
 interface Article {
   id: string
@@ -159,7 +179,66 @@ function ArticleRow({
 
 export function AdminDashboard({ articles: initialArticles, categories }: AdminDashboardProps) {
   const [articles, setArticles] = useState(initialArticles)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
   const router = useRouter()
+
+  // Debounce de 300ms para la búsqueda
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery)
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  // Función para normalizar texto (quitar acentos y convertir a minúsculas)
+  const normalizeText = (text: string) => {
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Eliminar acentos
+  }
+
+  // Filtrado de noticias para el Repositorio General
+  const filteredRepositoryArticles = useMemo(() => {
+    if (!debouncedSearchQuery.trim()) {
+      // Si no hay búsqueda, mostrar todas las noticias del repositorio
+      return articles.filter(article => article.sort_order >= 14)
+    }
+
+    const normalizedQuery = normalizeText(debouncedSearchQuery)
+    
+    return articles.filter(article => {
+      // Solo filtrar noticias del repositorio (orden >= 14)
+      if (article.sort_order < 14) return false
+      
+      // Buscar en título
+      const titleMatch = normalizeText(article.title).includes(normalizedQuery)
+      
+      // Buscar en excerpt
+      const excerptMatch = article.excerpt && normalizeText(article.excerpt).includes(normalizedQuery)
+      
+      // Buscar en categoría
+      const categoryMatch = article.categories && normalizeText(article.categories.name).includes(normalizedQuery)
+      
+      return titleMatch || excerptMatch || categoryMatch
+    })
+  }, [articles, debouncedSearchQuery])
+
+  // Configuración de sensores UNIFICADA para PC y Mobile
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      // Restricciones que funcionan tanto para mouse como para touch
+      activationConstraint: {
+        // Para mouse: requiere 5px de movimiento
+        // Para touch: requiere 250ms de presión con 5px de tolerancia
+        delay: 250,        // 250ms para touch (ignorado por mouse)
+        tolerance: 5,      // 5px de tolerancia para touch
+        distance: 5,       // 5px para mouse (ignorado por touch)
+      },
+    })
+  )
 
   const handleLogout = async () => {
     const supabase = createClient()
@@ -170,8 +249,12 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
 
   // FUNCIÓN DE RE-INDEXACIÓN GLOBAL (El Corazón del Sistema)
   const reorderAllArticlesDashboard = async (supabase: any) => {
+    // Detectar tipo de dispositivo para logging
+    const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+    const deviceType = isTouch ? 'MOBILE' : 'PC'
+    
     try {
-      console.log("=== RE-INDEXACIÓN GLOBAL DASHBOARD INICIADA ===")
+      console.log(`=== RE-INDEXACIÓN GLOBAL INICIADA (${deviceType}) ===`)
       
       // 1. Traer TODAS las noticias publicadas ordenadas por sort_order actual
       const { data: allArticles, error } = await supabase
@@ -182,11 +265,11 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
       
       if (error) throw error
       if (!allArticles || allArticles.length === 0) {
-        console.log("No hay noticias para re-indexar")
+        console.log(`No hay noticias para re-indexar (${deviceType})`)
         return
       }
       
-      console.log(`Re-indexando ${allArticles.length} noticias`)
+      console.log(`Re-indexando ${allArticles.length} noticias (${deviceType})`)
       
       // 2. Recorrer y asignar nuevo sort_order secuencial estricto
       const reorderPromises = allArticles.map(async (article, index) => {
@@ -210,7 +293,7 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
           newIsFeatured = false
         }
         
-        console.log(`Re-indexando: "${article.title}" ${article.sort_order} -> ${newSortOrder} (${newHomeLocation})`)
+        console.log(`[${deviceType}] Re-indexando: "${article.title}" ${article.sort_order} -> ${newSortOrder} (${newHomeLocation})`)
         
         return supabase
           .from('articles')
@@ -225,15 +308,15 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
       // 3. Ejecutar todas las actualizaciones en paralelo
       await Promise.all(reorderPromises)
       
-      console.log("=== RE-INDEXACIÓN GLOBAL DASHBOARD COMPLETADA ===")
+      console.log(`=== RE-INDEXACIÓN GLOBAL COMPLETADA (${deviceType}) ===`)
       
     } catch (error) {
-      console.error('Error en re-indexación global dashboard:', error)
+      console.error(`Error en re-indexación global (${deviceType}):`, error)
       throw error
     }
   }
 
-  // Funciones de Drag & Drop con RE-INDEXACIÓN GLOBAL
+  // Función optimista de Drag & Drop sin bloqueos ni recargas
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
     
@@ -246,6 +329,14 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
 
     const activeArticle = articles.find(a => a.id === activeId)
     if (!activeArticle) return
+
+    // Detectar tipo de dispositivo para logging
+    const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+    const deviceType = isTouch ? 'MOBILE' : 'PC'
+    
+    console.log(`=== DRAG & DROP DETECTADO (${deviceType}) ===`)
+    console.log(`Artículo activo: "${activeArticle.title}"`)
+    console.log(`Orden actual: ${activeArticle.sort_order}`)
 
     // Determinar la sección de destino basado en el overId
     let targetSection = ''
@@ -280,15 +371,33 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
       }
     }
 
-    try {
-      console.log(`=== DRAG & DROP CON RE-INDEXACIÓN GLOBAL ===`)
-      console.log(`Moviendo "${activeArticle.title}" de orden ${activeArticle.sort_order} a orden ${targetSortOrder} (${targetSection})`)
-      
-      // Solo mover si la posición es diferente
-      if (activeArticle.sort_order !== targetSortOrder) {
+    console.log(`Destino: orden ${targetSortOrder} (${targetSection})`)
+
+    // Solo mover si la posición es diferente
+    if (activeArticle.sort_order !== targetSortOrder) {
+      try {
+        // ACTUALIZACIÓN OPTIMISTA: Actualizar estado local inmediatamente
+        const updatedArticles = [...articles]
+        const activeIndex = updatedArticles.findIndex(a => a.id === activeId)
+        
+        if (activeIndex !== -1) {
+          // Actualizar el artículo movido
+          updatedArticles[activeIndex] = {
+            ...updatedArticles[activeIndex],
+            sort_order: targetSortOrder,
+            home_location: targetSection,
+            is_featured: targetSection === 'principal' || targetSection === 'destacada'
+          }
+          
+          // Reordenar el array localmente
+          const sortedArticles = updatedArticles.sort((a, b) => a.sort_order - b.sort_order)
+          setArticles(sortedArticles)
+        }
+
+        // GUARDADO EN SEGUNDO PLANO: Guardar en Supabase sin bloquear
         const supabase = createClient()
         
-        // 1. MOVER NOTICIA ACTIVA a su nueva posición
+        // 1. Mover noticia activa
         const newIsFeatured = targetSection === 'principal' || targetSection === 'destacada'
         
         await supabase
@@ -300,21 +409,20 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
           })
           .eq("id", activeArticle.id)
         
-        console.log(`Movida "${activeArticle.title}" a orden ${targetSortOrder}`)
-        
-        // 2. DISPARAR RE-INDEXACIÓN GLOBAL para cerrar huecos y empujar al resto
-        console.log("Disparando re-indexación global después de drag & drop...")
+        // 2. Re-indexación global en segundo plano
         await reorderAllArticlesDashboard(supabase)
         
-        console.log("=== DRAG & DROP CON RE-INDEXACIÓN COMPLETADO ===")
+        console.log(`=== DRAG & DROP COMPLETADO (${deviceType}) ===`)
+        
+      } catch (error) {
+        console.error(`Error moviendo artículo (${deviceType}):`, error)
+        
+        // REVERSIÓN EN CASO DE ERROR: Revertir al estado original
+        toast.error('Error al mover la noticia. Se ha revertido el cambio.')
+        
+        // Recargar para obtener el estado correcto
+        window.location.reload()
       }
-      
-      // Recargar para reflejar cambios
-      window.location.reload()
-      
-    } catch (error) {
-      console.error("Error moviendo artículo:", error)
-      alert("Error al mover la noticia")
     }
   }
 
@@ -969,17 +1077,10 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
     await handleDeleteArticle(articleId, article.sort_order)
   }
 
-  // Organizar artículos según la estructura de la Home por BLOQUES
+  // Noticias de los bloques superiores (no afectados por la búsqueda)
   const mainFeaturedArticle = articles.find(a => a.sort_order === 0)
-  const secondaryFeaturedArticles = articles
-    .filter(a => a.sort_order >= 1 && a.sort_order <= 3)
-    .sort((a, b) => a.sort_order - b.sort_order)
-  const latestArticles = articles
-    .filter(a => a.sort_order >= 4 && a.sort_order <= 13)
-    .sort((a, b) => a.sort_order - b.sort_order)
-  const repositoryArticles = articles
-    .filter(a => a.sort_order >= 14)
-    .sort((a, b) => a.sort_order - b.sort_order)
+  const secondaryFeaturedArticles = articles.filter(a => a.sort_order >= 1 && a.sort_order <= 3)
+  const latestArticles = articles.filter(a => a.sort_order >= 4 && a.sort_order <= 13)
 
   return (
     <div className="min-h-screen bg-background">
@@ -1038,8 +1139,8 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
               </Button>
             </div>
 
-            {/* Sistema Drag & Drop para Noticias */}
             <DndContext
+              sensors={sensors}
               collisionDetection={closestCenter}
               onDragEnd={handleDragEnd}
             >
@@ -1053,14 +1154,14 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                       <Badge variant="outline">1/1</Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="space-y-3 transition-all duration-200 ease-in-out">
                     {/* Área de destino para arrastrar */}
-                    <div
+                    <DroppableArea
                       id="principal-section"
                       className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-4 text-center text-muted-foreground/50 transition-colors hover:border-muted-foreground/50 min-h-[60px]"
                     >
                       <p className="text-xs">Arrastra una noticia aquí para hacerla principal</p>
-                    </div>
+                    </DroppableArea>
                     
                     {mainFeaturedArticle ? (
                       <DraggableArticleRow
@@ -1087,14 +1188,14 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                       </Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="space-y-3 transition-all duration-200 ease-in-out">
                     {/* Área de destino para arrastrar */}
-                    <div
+                    <DroppableArea
                       id="destacada-section"
                       className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-4 text-center text-muted-foreground/50 transition-colors hover:border-muted-foreground/50 min-h-[60px]"
                     >
                       <p className="text-xs">Arrastra una noticia aquí para hacerla destacada</p>
-                    </div>
+                    </DroppableArea>
                     
                     {secondaryFeaturedArticles.length === 0 ? (
                       <p className="text-muted-foreground text-center py-4">
@@ -1123,14 +1224,14 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                       </Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="space-y-3 transition-all duration-200 ease-in-out">
                     {/* Área de destino para arrastrar */}
-                    <div
+                    <DroppableArea
                       id="ultimas-section"
                       className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-4 text-center text-muted-foreground/50 transition-colors hover:border-muted-foreground/50 min-h-[60px]"
                     >
                       <p className="text-xs">Arrastra una noticia aquí para agregarla a últimas noticias</p>
-                    </div>
+                    </DroppableArea>
                     
                     {latestArticles.length === 0 ? (
                       <p className="text-muted-foreground text-center py-4">
@@ -1154,24 +1255,49 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                   <CardHeader>
                     <CardTitle className="text-lg font-semibold flex items-center gap-2">
                       Repositorio General
-                      <Badge variant="secondary">{articles.filter(a => a.sort_order >= 16).length}</Badge>
+                      <Badge variant="secondary">{filteredRepositoryArticles.length}</Badge>
                     </CardTitle>
+                    
+                    {/* Barra de Búsqueda */}
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                      <Input
+                        type="text"
+                        placeholder="Buscar por título, contenido o categoría..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10 w-full"
+                      />
+                    </div>
                   </CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardContent className="space-y-3 transition-all duration-200 ease-in-out">
                     {/* Área de destino para arrastrar */}
-                    <div
+                    <DroppableArea
                       id="repositorio-section"
                       className="border-2 border-dashed border-muted-foreground/30 rounded-lg p-4 text-center text-muted-foreground/50 transition-colors hover:border-muted-foreground/50 min-h-[60px]"
                     >
                       <p className="text-xs">Arrastra una noticia aquí para moverla al repositorio</p>
-                    </div>
+                    </DroppableArea>
                     
-                    {repositoryArticles.length === 0 ? (
-                      <p className="text-muted-foreground text-center py-4">
-                        No hay noticias en el repositorio
-                      </p>
+                    {filteredRepositoryArticles.length === 0 ? (
+                      <div className="text-center py-4">
+                        {debouncedSearchQuery.trim() ? (
+                          <div>
+                            <p className="text-muted-foreground">
+                              No se encontraron noticias que coincidan con tu búsqueda
+                            </p>
+                            <p className="text-sm text-muted-foreground/60 mt-1">
+                              "{debouncedSearchQuery}"
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-muted-foreground">
+                            No hay noticias en el repositorio
+                          </p>
+                        )}
+                      </div>
                     ) : (
-                      repositoryArticles.map((article) => (
+                      filteredRepositoryArticles.map((article) => (
                       <DraggableArticleRow
                         key={`repo-${article.id}-${article.sort_order}`}
                         article={article}
