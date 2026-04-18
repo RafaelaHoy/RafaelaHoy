@@ -4,7 +4,21 @@ import Image from "next/image"
 import Link from "next/link"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { Facebook, MessageCircle, X, Share2, ArrowLeft } from "lucide-react"
+// Componente para logo de WhatsApp
+const WhatsAppIcon = () => (
+  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.149-.67.149-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.065 2.876c1.396 2.396 3.603 3.383 4.488 3.68.297.099.644.076.792-.023.148-.099.596-.242.868-.462.272-.219.347-.347.446-.545.099-.198.05-.372-.025-.521-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.501-.67-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.065 2.876c1.396 2.396 3.603 3.383 4.488 3.68.297.099.644.076.792-.023.148-.099.596-.242.868-.462.272-.219.347-.347.446-.545.099-.198.05-.372-.025-.521z"/>
+    <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm0 22c-5.514 0-10-4.486-10-10S6.486 2 12 2s10 4.486 10 10-4.486 10-10 10z"/>
+  </svg>
+)
+
+// Componente para logo de X (Twitter)
+const XIcon = () => (
+  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+  </svg>
+)
+import { Facebook, Share2, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import useSWR from "swr"
 import { createClient } from "@/lib/supabase/client"
@@ -130,7 +144,7 @@ export function ArticleDetail({ article }: { article: Article }) {
     }
   )
 
-  const formattedDate = format(new Date(article.published_at), "d 'de' MMMM 'de' yyyy, HH:mm", {
+  const formattedDate = format(new Date(article.published_at), "d 'de' MMMM 'de' yyyy", {
     locale: es,
   })
 
@@ -194,7 +208,7 @@ export function ArticleDetail({ article }: { article: Article }) {
             className="h-8 w-8"
             onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`${article.title}\n\n${shareUrl}`)}`, "_blank")}
           >
-            <MessageCircle className="h-4 w-4" />
+            <WhatsAppIcon />
             <span className="sr-only">Compartir en WhatsApp</span>
           </Button>
           <Button
@@ -212,7 +226,7 @@ export function ArticleDetail({ article }: { article: Article }) {
             className="h-8 w-8"
             onClick={() => window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(article.title)}`, "_blank")}
           >
-            <X className="h-4 w-4" />
+            <XIcon />
             <span className="sr-only">Compartir en X</span>
           </Button>
           <Button
