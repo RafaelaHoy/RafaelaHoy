@@ -391,83 +391,41 @@ export default function CreateNewsPage() {
     }
   }, [mediaItems])
 
-  // Función de EFECTO CASCADA ESTRUCTURAL - Sistema único y garantizado
-  const applyCascadeEffect = async (supabase: any, newOrder: number) => {
+  // FUNCIÓN DE RE-INDEXACIÓN GLOBAL (El Corazón del Sistema)
+  const reorderAllArticles = async (supabase: any) => {
     try {
-      console.log(`=== EFECTO CASCADA ESTRUCTURAL desde orden ${newOrder} ===`)
+      console.log("=== RE-INDEXACIÓN GLOBAL INICIADA ===")
       
-      // 1. Obtener TODAS las noticias publicadas ordenadas
-      const { data: allArticles } = await supabase
+      // 1. Traer TODAS las noticias publicadas ordenadas por sort_order actual
+      const { data: allArticles, error } = await supabase
         .from('articles')
         .select('*')
         .eq('is_published', true)
         .order('sort_order', { ascending: true })
       
-      if (!allArticles || allArticles.length === 0) return
+      if (error) throw error
+      if (!allArticles || allArticles.length === 0) {
+        console.log("No hay noticias para re-indexar")
+        return
+      }
       
-      console.log(`Noticias totales: ${allArticles.length}`)
+      console.log(`Re-indexando ${allArticles.length} noticias`)
       
-      // 2. FILTRAR solo las noticias con sort_order >= newOrder
-      const articlesToShift = allArticles.filter(article => article.sort_order >= newOrder)
-      console.log(`Noticias a desplazar: ${articlesToShift.length}`)
-      
-      // 3. APLICAR CASCADA con Promise.all (transacción)
-      const shiftPromises = articlesToShift.map(async (article) => {
-        const oldOrder = article.sort_order
-        const newOrderForArticle = oldOrder + 1
+      // 2. Recorrer y asignar nuevo sort_order secuencial estricto
+      const reorderPromises = allArticles.map(async (article, index) => {
+        const newSortOrder = index // 0, 1, 2, 3, 4...
         
-        console.log(`Desplazando: "${article.title}" ${oldOrder} -> ${newOrderForArticle}`)
-        
-        return supabase
-          .from('articles')
-          .update({ sort_order: newOrderForArticle })
-          .eq('id', article.id)
-      })
-      
-      // Ejecutar todos los desplazamientos en paralelo (transacción)
-      await Promise.all(shiftPromises)
-      console.log("Desplazamiento completado")
-      
-      // 4. RECALCULAR CATEGORÍAS para TODAS las noticias
-      await recalculateAllCategories(supabase)
-      
-    } catch (error) {
-      console.error('Error en efecto cascada estructural:', error)
-      throw error
-    }
-  }
-
-  // Función para RECALCULAR CATEGORÍAS de todas las noticias
-  const recalculateAllCategories = async (supabase: any) => {
-    try {
-      console.log("=== RECALCULANDO CATEGORÍAS DE TODAS LAS NOTICIAS ===")
-      
-      // Obtener todas las noticias publicadas
-      const { data: allArticles } = await supabase
-        .from('articles')
-        .select('*')
-        .eq('is_published', true)
-        .order('sort_order', { ascending: true })
-      
-      if (!allArticles || allArticles.length === 0) return
-      
-      console.log(`Recalculando categorías para ${allArticles.length} noticias`)
-      
-      // Crear promesas para actualizar categorías de todas las noticias
-      const categoryPromises = allArticles.map(async (article, index) => {
-        const currentOrder = article.sort_order
-        
-        // Asignar home_location estrictamente por número
+        // Asignar home_location basándose únicamente en la nueva posición
         let newHomeLocation = 'repositorio'
         let newIsFeatured = false
         
-        if (currentOrder === 0) {
+        if (newSortOrder === 0) {
           newHomeLocation = 'principal'
           newIsFeatured = true
-        } else if (currentOrder >= 1 && currentOrder <= 3) {
+        } else if (newSortOrder >= 1 && newSortOrder <= 3) {
           newHomeLocation = 'destacada'
           newIsFeatured = true
-        } else if (currentOrder >= 4 && currentOrder <= 13) {
+        } else if (newSortOrder >= 4 && newSortOrder <= 13) {
           newHomeLocation = 'ultimas'
           newIsFeatured = false
         } else {
@@ -475,64 +433,86 @@ export default function CreateNewsPage() {
           newIsFeatured = false
         }
         
-        console.log(`Categoría: "${article.title}" (orden ${currentOrder}) -> ${newHomeLocation} (featured: ${newIsFeatured})`)
+        console.log(`Re-indexando: "${article.title}" ${article.sort_order} -> ${newSortOrder} (${newHomeLocation})`)
         
         return supabase
           .from('articles')
           .update({ 
+            sort_order: newSortOrder,
             home_location: newHomeLocation,
             is_featured: newIsFeatured
           })
           .eq('id', article.id)
       })
       
-      // Ejecutar todas las actualizaciones de categorías en paralelo
-      await Promise.all(categoryPromises)
-      console.log("Recalculo de categorías completado")
+      // 3. Ejecutar todas las actualizaciones en paralelo
+      await Promise.all(reorderPromises)
+      
+      console.log("=== RE-INDEXACIÓN GLOBAL COMPLETADA ===")
+      
+      // 4. Verificar consistencia final
+      await verifyGlobalConsistency(supabase)
       
     } catch (error) {
-      console.error('Error recalculando categorías:', error)
+      console.error('Error en re-indexación global:', error)
       throw error
     }
   }
 
-  // Función de LIMPIEZA DE HUÉRFANOS
-  const cleanupOrphanedArticles = async (supabase: any) => {
+  // Función de VERIFICACIÓN DE CONSISTENCIA GLOBAL
+  const verifyGlobalConsistency = async (supabase: any) => {
     try {
-      console.log("=== LIMPIEZA DE HUÉRFANOS ===")
+      console.log("=== VERIFICACIÓN DE CONSISTENCIA GLOBAL ===")
       
-      // Buscar noticias con home_location nulo o inválido
-      const { data: orphanedArticles } = await supabase
+      const { data: allArticles } = await supabase
         .from('articles')
         .select('*')
         .eq('is_published', true)
-        .or('home_location.is.null,home_location.eq.')
+        .order('sort_order', { ascending: true })
       
-      if (orphanedArticles && orphanedArticles.length > 0) {
-        console.log(`Encontrados ${orphanedArticles.length} artículos huérfanos`)
-        
-        const cleanupPromises = orphanedArticles.map(async (article) => {
-          const currentOrder = article.sort_order
-          const newHomeLocation = currentOrder <= 13 ? 
-            (currentOrder === 0 ? 'principal' : currentOrder <= 3 ? 'destacada' : 'ultimas') 
-            : 'repositorio'
-          const newIsFeatured = currentOrder <= 3
-          
-          return supabase
-            .from('articles')
-            .update({ 
-              home_location: newHomeLocation,
-              is_featured: newIsFeatured
-            })
-            .eq('id', article.id)
-        })
-        
-        await Promise.all(cleanupPromises)
-        console.log("Limpieza de huérfanos completada")
+      if (!allArticles) return
+      
+      // Contar por sección según nueva lógica
+      const principal = allArticles.filter(a => a.sort_order === 0).length
+      const destacadas = allArticles.filter(a => a.sort_order >= 1 && a.sort_order <= 3).length
+      const ultimas = allArticles.filter(a => a.sort_order >= 4 && a.sort_order <= 13).length
+      const repositorio = allArticles.filter(a => a.sort_order >= 14).length
+      
+      console.log(`=== ESTADO FINAL ===`)
+      console.log(`- Principal: ${principal} (esperado: 1)`)
+      console.log(`- Destacadas: ${destacadas} (esperado: 3)`)
+      console.log(`- Últimas: ${ultimas} (esperado: 10)`)
+      console.log(`- Repositorio: ${repositorio}`)
+      console.log(`- Total: ${allArticles.length}`)
+      
+      // Verificar duplicados de sort_order (fila india perfecta)
+      const sortOrders = allArticles.map(a => a.sort_order)
+      const duplicates = sortOrders.filter((order, index) => sortOrders.indexOf(order) !== index)
+      
+      if (duplicates.length > 0) {
+        console.error(`ERROR: Hay ${duplicates.length} sort_order duplicados:`, duplicates)
+        throw new Error(`Base de datos inconsistente: ${duplicates.length} sort_order duplicados`)
+      } else {
+        console.log("✅ No hay duplicados de sort_order - Fila india perfecta")
+      }
+      
+      // Verificar secuencialidad
+      const expectedOrders = Array.from({ length: allArticles.length }, (_, i) => i)
+      const actualOrders = sortOrders
+      const isSequential = JSON.stringify(expectedOrders) === JSON.stringify(actualOrders)
+      
+      if (!isSequential) {
+        console.error("ERROR: Los sort_order no son secuenciales")
+        console.error("Esperado:", expectedOrders)
+        console.error("Actual:", actualOrders)
+        throw new Error("Base de datos inconsistente: sort_order no secuenciales")
+      } else {
+        console.log("✅ Sort_order son secuenciales - Sistema consistente")
       }
       
     } catch (error) {
-      console.error('Error en limpieza de huérfanos:', error)
+      console.error('Error en verificación global:', error)
+      throw error
     }
   }
 
@@ -563,36 +543,27 @@ export default function CreateNewsPage() {
       // Procesar Markdown a HTML
       const processedContent = processMarkdownToHTML(content.trim())
       
-      // Debug: Verificar qué se está guardando
-      console.log('=== DEBUG GUARDAR CON SISTEMA ESTRUCTURAL ===')
-      console.log('Markdown original:', content.trim())
-      console.log('HTML procesado:', processedContent)
-      console.log('Ubicación en incio:', homeLocation)
-      console.log('====================')
+      console.log('=== CREACIÓN CON RE-INDEXACIÓN GLOBAL ===')
+      console.log('Título:', title.trim())
+      console.log('Ubicación elegida:', homeLocation)
       
-      // Determinar sort_order según la ubicación
-      let sortOrder = 0
+      // 1. Determinar sort_order temporal según la ubicación elegida
+      let tempSortOrder = 999 // Posición temporal alta
       
       if (homeLocation === "principal") {
-        sortOrder = 0
+        tempSortOrder = 0
       } else if (homeLocation === "destacada") {
-        sortOrder = 1
+        tempSortOrder = 1 // Primera destacada
       } else if (homeLocation === "ultimas") {
-        sortOrder = 4
+        tempSortOrder = 4 // Primera última
       } else {
-        sortOrder = 14
+        tempSortOrder = 14 // Primera del repositorio
       }
       
-      console.log(`Nueva noticia tendrá orden: ${sortOrder} (${getHomeLocationByOrder(sortOrder)})`)
+      console.log(`Insertando noticia temporalmente en orden: ${tempSortOrder}`)
       
-      // 1. APLICAR EFECTO CASCADA ESTRUCTURAL
-      await applyCascadeEffect(supabase, sortOrder)
-      
-      // 2. LIMPIEZA DE HUÉRFANOS
-      await cleanupOrphanedArticles(supabase)
-      
-      // 3. Crear artículo con valores dinámicos
-      const { data: article, error } = await supabase
+      // 2. Crear noticia con sort_order temporal
+      const { data: newArticle, error: insertError } = await supabase
         .from('articles')
         .insert({
           title: title.trim(),
@@ -603,20 +574,23 @@ export default function CreateNewsPage() {
           image_url: featuredImage,
           slug: slug.trim() || generateSlug(title.trim()),
           published_at: isPublished ? new Date().toISOString() : null,
-          sort_order: sortOrder,
-          is_featured: getIsFeaturedByOrder(sortOrder),
-          home_location: getHomeLocationByOrder(sortOrder),
+          sort_order: tempSortOrder,
+          is_featured: tempSortOrder <= 3,
+          home_location: getHomeLocationByOrder(tempSortOrder),
           author: 'Rafaela hoy'
         })
         .select()
         .single()
 
-      if (error) throw error
+      if (insertError) throw insertError
 
-      console.log(`Noticia "${article.title}" creada exitosamente con orden ${sortOrder}`)
+      console.log(`Noticia "${newArticle.title}" insertada temporalmente en orden ${tempSortOrder}`)
       
-      // 4. VERIFICACIÓN DE CONSISTENCIA
-      await verifyConsistency(supabase)
+      // 3. DISPARAR RE-INDEXACIÓN GLOBAL para empujar a todas las demás
+      console.log("Disparando re-indexación global...")
+      await reorderAllArticles(supabase)
+      
+      console.log("=== PROCESO DE CREACIÓN COMPLETADO ===")
       
       // Redirigir a la lista
       router.push('/admin')
