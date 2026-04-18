@@ -1,7 +1,5 @@
 import Image from "next/image"
 import Link from "next/link"
-import { formatDistanceToNow } from "date-fns"
-import { es } from "date-fns/locale"
 
 interface ArticleCardProps {
   article: {
@@ -19,11 +17,17 @@ interface ArticleCardProps {
   variant?: "default" | "featured" | "compact" | "horizontal"
 }
 
-export function ArticleCard({ article, variant = "default" }: ArticleCardProps) {
-  const timeAgo = formatDistanceToNow(new Date(article.published_at), {
-    addSuffix: true,
-    locale: es,
+// Función para formatear fecha a solo día y mes
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString)
+  return date.toLocaleDateString('es-AR', {
+    day: 'numeric',
+    month: 'short'
   })
+}
+
+export function ArticleCard({ article, variant = "default" }: ArticleCardProps) {
+  const formattedDate = formatDate(article.published_at)
 
   if (variant === "featured") {
     return (
@@ -58,7 +62,7 @@ export function ArticleCard({ article, variant = "default" }: ArticleCardProps) 
                   {article.categories.name}
                 </span>
               )}
-              <span className="text-sm text-muted-foreground">{timeAgo}</span>
+              <span className="text-sm text-muted-foreground">{formattedDate}</span>
             </div>
           </div>
         </article>
@@ -85,7 +89,7 @@ export function ArticleCard({ article, variant = "default" }: ArticleCardProps) 
             <h3 className="font-medium text-sm leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-3">
               {article.title}
             </h3>
-            <p className="mt-1 text-xs text-muted-foreground">{timeAgo}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{formattedDate}</p>
           </div>
         </article>
       </Link>
@@ -116,7 +120,7 @@ export function ArticleCard({ article, variant = "default" }: ArticleCardProps) 
             <h3 className="font-semibold leading-snug text-foreground group-hover:text-primary transition-colors line-clamp-2 mt-1">
               {article.title}
             </h3>
-            <p className="mt-2 text-xs text-muted-foreground">{timeAgo}</p>
+            <p className="mt-2 text-xs text-muted-foreground">{formattedDate}</p>
           </div>
         </article>
       </Link>
@@ -152,7 +156,7 @@ export function ArticleCard({ article, variant = "default" }: ArticleCardProps) 
               {article.excerpt}
             </p>
           )}
-          <p className="mt-2 text-xs text-muted-foreground">{timeAgo}</p>
+          <p className="mt-2 text-xs text-muted-foreground">{formattedDate}</p>
         </div>
       </article>
     </Link>

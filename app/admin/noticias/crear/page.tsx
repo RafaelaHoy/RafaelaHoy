@@ -391,13 +391,13 @@ export default function CreateNewsPage() {
     }
   }, [mediaItems])
 
-  // Función para manejar el desplazamiento automático
+  // Función para manejar el desplazamiento automático - SIMPLE: bajan todas las noticias un lugar
   const handleAutoReposition = async (supabase: any, newLocation: string) => {
-    const movedArticles: string[] = []
-    
     try {
+      console.log("=== DESPLAZANDO TODAS LAS NOTICIAS UN LUGAR ===")
+      
+      // Si es principal, mover la existente a destacadas (orden 1)
       if (newLocation === "principal") {
-        // Buscar si ya existe una noticia principal (que no sea la actual)
         const { data: existingMain } = await supabase
           .from('articles')
           .select('*')
@@ -406,59 +406,94 @@ export default function CreateNewsPage() {
           .single()
         
         if (existingMain) {
-          // La noticia principal existente se queda publicada, solo se actualiza la nueva
-          // No hacemos nada con la existente, simplemente dejamos que la nueva tome su lugar
-          movedArticles.push(existingMain.title)
+          await supabase
+            .from('articles')
+            .update({ 
+              sort_order: 1,
+              home_location: 'destacada',
+              is_featured: true
+            })
+            .eq('id', existingMain.id)
+          
+          console.log(`Moviendo "${existingMain.title}" de principal a destacadas (orden 1)`)
         }
-      } else if (newLocation === "destacada") {
-        // Buscar las 3 destacadas actuales
+      }
+      
+      // Si es destacada, mover la última destacada a últimas noticias (orden 4)
+      if (newLocation === "destacada") {
         const { data: existingFeatured } = await supabase
           .from('articles')
           .select('*')
           .eq('is_featured', true)
           .in('sort_order', [1, 2, 3])
-          .order('sort_order', { ascending: true })
+          .order('sort_order', { ascending: false }) // Orden descendente para obtener la última (orden 3)
+          .limit(1)
         
-        if (existingFeatured && existingFeatured.length >= 3) {
-          // Mover la más antigua (sort_order 1) al repositorio
-          const oldest = existingFeatured[0]
+        if (existingFeatured && existingFeatured.length > 0) {
+          const lastFeatured = existingFeatured[0]
           await supabase
             .from('articles')
             .update({ 
-              is_featured: false, 
-              sort_order: 999,
-              home_location: 'repositorio'
+              sort_order: 4,
+              home_location: 'ultimas',
+              is_featured: false
             })
-            .eq('id', oldest.id)
-          movedArticles.push(oldest.title)
+            .eq('id', lastFeatured.id)
+          
+          console.log(`Moviendo "${lastFeatured.title}" de destacadas (orden ${lastFeatured.sort_order}) a últimas noticias (orden 4)`)
         }
-      } else if (newLocation === "ultimas") {
-        // Buscar las 10 últimas noticias actuales
+      }
+      
+      // Si es últimas noticias, mover la última de últimas a repositorio (orden 14)
+      if (newLocation === "ultimas") {
         const { data: existingLatest } = await supabase
           .from('articles')
           .select('*')
           .eq('is_featured', false)
-          .lt('sort_order', 100) // Últimas noticias tienen sort_order < 100
-          .order('sort_order', { ascending: true })
+          .in('sort_order', [4, 5, 6, 7, 8, 9, 10, 11, 12, 13]) // Últimas noticias
+          .order('sort_order', { ascending: false }) // Orden descendente para obtener la última (orden 13)
+          .limit(1)
         
-        if (existingLatest && existingLatest.length >= 10) {
-          // Mover la más antigua al repositorio
-          const oldest = existingLatest[0]
+        if (existingLatest && existingLatest.length > 0) {
+          const lastLatest = existingLatest[0]
           await supabase
             .from('articles')
             .update({ 
-              sort_order: 999,
-              home_location: 'repositorio'
+              sort_order: 14,
+              home_location: 'repositorio',
+              is_featured: false
             })
-            .eq('id', oldest.id)
-          movedArticles.push(oldest.title)
+            .eq('id', lastLatest.id)
+          
+          console.log(`Moviendo "${lastLatest.title}" de últimas noticias (orden ${lastLatest.sort_order}) a repositorio (orden 14)`)
         }
       }
       
-      return movedArticles
+      // Obtener TODAS las noticias publicadas ordenadas por sort_order
+      const { data: allArticles } = await supabase
+        .from('articles')
+        .select('*')
+        .eq('is_published', true)
+        .order('sort_order', { ascending: true })
+      
+      if (!allArticles || allArticles.length === 0) return
+      
+      console.log("Noticias encontradas:", allArticles.length)
+      
+      // Bajar todas las noticias un lugar (sumar 1 a su sort_order)
+      for (const article of allArticles) {
+        const newOrder = article.sort_order + 1
+        await supabase
+          .from('articles')
+          .update({ sort_order: newOrder })
+          .eq('id', article.id)
+        
+        console.log(`Moviendo "${article.title}" de orden ${article.sort_order} a orden ${newOrder}`)
+      }
+      
+      console.log("Desplazamiento completado")
     } catch (error) {
-      console.error('Error en reubicación automática:', error)
-      return []
+      console.error('Error en desplazamiento:', error)
     }
   }
 
@@ -483,60 +518,25 @@ export default function CreateNewsPage() {
       console.log('Ubicación en incio:', homeLocation)
       console.log('====================')
       
-      // Manejar reubicación automática
-      const movedArticles = await handleAutoReposition(supabase, homeLocation)
+      // Manejar reubicación automática - SIMPLE: bajar todas las noticias un lugar
+      await handleAutoReposition(supabase, homeLocation)
       
-      // Determinar sort_order y is_featured según la ubicación
-      let sortOrder = 999 // Por defecto en repositorio
+      // Determinar sort_order según la ubicación
+      let sortOrder = 0 // Por defecto orden 0 (la primera)
       let isFeatured = false
       
       if (homeLocation === "principal") {
         sortOrder = 0
         isFeatured = true
       } else if (homeLocation === "destacada") {
-        // Encontrar el siguiente sort_order disponible (1, 2, 3)
-        const { data: existingFeatured } = await supabase
-          .from('articles')
-          .select('sort_order')
-          .eq('is_featured', true)
-          .in('sort_order', [1, 2, 3])
-          .order('sort_order', { ascending: true })
-        
-        if (existingFeatured && existingFeatured.length > 0) {
-          // Tomar el siguiente disponible
-          const usedOrders = existingFeatured.map(a => a.sort_order)
-          for (let i = 1; i <= 3; i++) {
-            if (!usedOrders.includes(i)) {
-              sortOrder = i
-              break
-            }
-          }
-          if (sortOrder === 999) sortOrder = 1 // Si todos están ocupados, usar 1
-        } else {
-          sortOrder = 1
-        }
+        sortOrder = 1 // Siempre orden 1 para destacadas
         isFeatured = true
       } else if (homeLocation === "ultimas") {
-        // Encontrar el siguiente sort_order disponible para últimas noticias
-        const { data: existingLatest } = await supabase
-          .from('articles')
-          .select('sort_order')
-          .eq('is_featured', false)
-          .lt('sort_order', 100)
-          .order('sort_order', { ascending: true })
-        
-        if (existingLatest && existingLatest.length > 0) {
-          const usedOrders = existingLatest.map(a => a.sort_order)
-          for (let i = 6; i <= 15; i++) {
-            if (!usedOrders.includes(i)) {
-              sortOrder = i
-              break
-            }
-          }
-          if (sortOrder === 999) sortOrder = 6 // Si todos están ocupados, usar 6
-        } else {
-          sortOrder = 6
-        }
+        sortOrder = 4 // Siempre orden 4 para últimas
+        isFeatured = false
+      } else {
+        sortOrder = 14 // Siempre orden 14 para repositorio
+        isFeatured = false
       }
       
       // Crear artículo
@@ -560,14 +560,6 @@ export default function CreateNewsPage() {
         .single()
 
       if (error) throw error
-
-      // Mostrar notificaciones de artículos movidos
-      if (movedArticles.length > 0) {
-        const message = movedArticles.map(title => 
-          `La noticia "${title}" ha sido reemplazada por la nueva noticia principal.`
-        ).join('\n')
-        alert(message)
-      }
 
       // Redirigir a la lista
       router.push('/admin')

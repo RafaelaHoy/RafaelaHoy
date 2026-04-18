@@ -4,7 +4,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { Facebook, Twitter, Linkedin, Share2, ArrowLeft } from "lucide-react"
+import { Facebook, MessageCircle, X, Share2, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import useSWR from "swr"
 import { createClient } from "@/lib/supabase/client"
@@ -192,6 +192,15 @@ export function ArticleDetail({ article }: { article: Article }) {
             variant="outline"
             size="icon"
             className="h-8 w-8"
+            onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`${article.title}\n\n${shareUrl}`)}`, "_blank")}
+          >
+            <MessageCircle className="h-4 w-4" />
+            <span className="sr-only">Compartir en WhatsApp</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8"
             onClick={() => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, "_blank")}
           >
             <Facebook className="h-4 w-4" />
@@ -203,17 +212,8 @@ export function ArticleDetail({ article }: { article: Article }) {
             className="h-8 w-8"
             onClick={() => window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(article.title)}`, "_blank")}
           >
-            <Twitter className="h-4 w-4" />
-            <span className="sr-only">Compartir en Twitter</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => window.open(`https://www.linkedin.com/shareArticle?mini=true&url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(article.title)}`, "_blank")}
-          >
-            <Linkedin className="h-4 w-4" />
-            <span className="sr-only">Compartir en LinkedIn</span>
+            <X className="h-4 w-4" />
+            <span className="sr-only">Compartir en X</span>
           </Button>
           <Button
             variant="outline"
