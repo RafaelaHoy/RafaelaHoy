@@ -56,6 +56,7 @@ interface Article {
   excerpt: string | null
   content: string
   image_url: string | null
+  image_caption: string | null
   published_at: string
   categories: {
     name: string
@@ -78,6 +79,7 @@ type RelatedArticle = {
   slug: string
   excerpt: string | null
   image_url: string | null
+  image_caption: string | null
   published_at: string
   categories: {
     name: string
@@ -147,6 +149,12 @@ export function ArticleDetail({ article }: { article: Article }) {
   const formattedDate = format(new Date(article.published_at), "d 'de' MMMM 'de' yyyy", {
     locale: es,
   })
+  
+  // Validación de seguridad: si el año es menor a 2000, usar fecha actual
+  const articleDate = new Date(article.published_at)
+  const safeFormattedDate = articleDate.getFullYear() < 2000 
+    ? format(new Date(), "d 'de' MMMM 'de' yyyy", { locale: es })
+    : formattedDate
 
   const shareUrl = typeof window !== "undefined" ? window.location.href : ""
 
@@ -198,7 +206,7 @@ export function ArticleDetail({ article }: { article: Article }) {
       {/* Meta and share */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-8 pb-6 border-b">
         <time className="text-sm text-muted-foreground" dateTime={article.published_at}>
-          {formattedDate}
+          {safeFormattedDate}
         </time>
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground mr-2">Compartir:</span>
@@ -243,7 +251,7 @@ export function ArticleDetail({ article }: { article: Article }) {
 
       {/* Featured image */}
       {article.image_url && (
-        <div className="relative aspect-video rounded-lg overflow-hidden mb-8">
+        <figure className="relative aspect-video rounded-lg overflow-hidden mb-8">
           <Image
             src={article.image_url}
             alt={article.title}
@@ -252,11 +260,17 @@ export function ArticleDetail({ article }: { article: Article }) {
             sizes="(max-width: 896px) 100vw, 896px"
             priority
           />
-        </div>
+          {/* Pie de imagen */}
+          {article.image_caption && (
+            <figcaption className="text-sm text-gray-500 italic mt-2 text-center">
+              {article.image_caption}
+            </figcaption>
+          )}
+        </figure>
       )}
 
       {/* Content */}
-      <div className="prose prose-lg max-w-none">
+      <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none">
         <ArticleContent content={article.content} />
       </div>
 

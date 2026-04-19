@@ -340,9 +340,11 @@ export default function EditNewsPage() {
   const [content, setContent] = useState("")
   const [categoryId, setCategoryId] = useState("")
   const [homeLocation, setHomeLocation] = useState("repositorio")
+  const [originalHomeLocation, setOriginalHomeLocation] = useState("")
   const [isPublished, setIsPublished] = useState(false)
   const [originalSlug, setOriginalSlug] = useState("")
   const [featuredImage, setFeaturedImage] = useState("")
+  const [imageCaption, setImageCaption] = useState("")
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
   const [slug, setSlug] = useState("")
   
@@ -409,8 +411,10 @@ export default function EditNewsPage() {
       setContent(data.content || "")
       setCategoryId(data.category_id || "")
       setHomeLocation(data.home_location || "repositorio")
+      setOriginalHomeLocation(data.home_location || "repositorio")
       setIsPublished(data.is_published || false)
       setFeaturedImage(data.image_url || "")
+      setImageCaption(data.image_caption || "")
       setOriginalSlug(data.slug || "")
       setSlug(data.slug || "")
       setLoading(false)
@@ -548,109 +552,216 @@ export default function EditNewsPage() {
       console.log('=== DEBUG GUARDAR EDICIÓN ===')
       console.log('Markdown original:', content.trim())
       console.log('HTML procesado:', processedContent)
-      console.log('Ubicación en incio:', homeLocation)
+      console.log('Ubicación actual:', originalHomeLocation)
+      console.log('Nueva ubicación:', homeLocation)
       console.log('============================')
       
-      // Manejar reubicación automática
-      const movedArticles = await handleAutoReposition(supabase, homeLocation, articleId)
-      
-      // Determinar sort_order y is_featured según la ubicación
-      let sortOrder = 999 // Por defecto en repositorio
-      let isFeatured = false
-      
-      if (homeLocation === "principal") {
-        sortOrder = 0
-        isFeatured = true
-      } else if (homeLocation === "destacada") {
-        // Encontrar el siguiente sort_order disponible (1, 2, 3)
-        const { data: existingFeatured } = await supabase
-          .from('articles')
-          .select('sort_order')
-          .eq('is_featured', true)
-          .in('sort_order', [1, 2, 3])
-          .neq('id', articleId)
-          .order('sort_order', { ascending: true })
-        
-        if (existingFeatured && existingFeatured.length > 0) {
-          // Tomar el siguiente disponible
-          const usedOrders = existingFeatured.map(a => a.sort_order)
-          for (let i = 1; i <= 3; i++) {
-            if (!usedOrders.includes(i)) {
-              sortOrder = i
-              break
-            }
-          }
-          if (sortOrder === 999) sortOrder = 1 // Si todos están ocupados, usar 1
-        } else {
-          sortOrder = 1
-        }
-        isFeatured = true
-      } else if (homeLocation === "ultimas") {
-        // Encontrar el siguiente sort_order disponible para últimas noticias
-        const { data: existingLatest } = await supabase
-          .from('articles')
-          .select('sort_order')
-          .eq('is_featured', false)
-          .lt('sort_order', 100)
-          .neq('id', articleId)
-          .order('sort_order', { ascending: true })
-        
-        if (existingLatest && existingLatest.length > 0) {
-          const usedOrders = existingLatest.map(a => a.sort_order)
-          for (let i = 6; i <= 15; i++) {
-            if (!usedOrders.includes(i)) {
-              sortOrder = i
-              break
-            }
-          }
-          if (sortOrder === 999) sortOrder = 6 // Si todos están ocupados, usar 6
-        } else {
-          sortOrder = 6
-        }
-      }
-      
-      // Generar slug si cambió el título
-      // El slug ya se maneja con el estado, no necesita lógica adicional
-      
-      // Actualizar artículo
-      const { error } = await supabase
+      // 1. OBTENER DATOS ORIGINALES DE LA NOTICIA
+      const { data: originalArticle, error: originalError } = await supabase
         .from('articles')
-        .update({
-          title: title.trim(),
-          excerpt: excerpt.trim(),
-          content: processedContent, // Guardar como HTML procesado
-          category_id: categoryId,
-          is_published: isPublished,
-          image_url: featuredImage,
-          slug: slug.trim() || generateSlug(title.trim()), // Usar slug del estado
-          published_at: isPublished ? new Date().toISOString() : null,
-          updated_at: new Date().toISOString(),
-          sort_order: sortOrder,
-          is_featured: isFeatured,
-          home_location: homeLocation,
-          author: 'Rafaela hoy'  // Siempre autor Rafaela hoy
-        })
+        .select('*')
         .eq('id', articleId)
-
-      if (error) {
-        console.error('Error de Supabase:', error)
-        throw new Error(`Error al actualizar: ${error.message}`)
+        .single()
+      
+      if (originalError || !originalArticle) {
+        throw new Error('No se pudo obtener la noticia original')
       }
-
-      // Mostrar notificaciones de artículos movidos
-      if (movedArticles.length > 0) {
-        const message = movedArticles.map(title => 
-          `La noticia "${title}" ha sido reemplazada por la nueva noticia principal.`
-        ).join('\n')
-        alert(message)
+      
+      // 2. DETECTAR CAMBIO DE SECCIÓN
+      const locationChanged = originalArticle.home_location !== homeLocation
+      console.log('¿Cambiaron de sección?', locationChanged)
+      
+      if (locationChanged) {
+        console.log('Cambio detectado:', originalArticle.home_location, '->', homeLocation)
+        
+        // 3. VALIDACIÓN DE CUPOS PARA SECCIONES DE HOME
+        if (homeLocation === 'principal' || homeLocation === 'destacada' || homeLocation === 'ultimas') {
+          console.log('Validando cupos para sección de home:', homeLocation)
+          
+          // Obtener noticias publicadas actuales
+          const { data: currentArticles } = await supabase
+            .from('articles')
+            .select('*')
+            .eq('is_published', true)
+            .order('sort_order', { ascending: true })
+          
+          if (!currentArticles) {
+            throw new Error('No se pudieron obtener las noticias actuales')
+          }
+          
+          // Contar cupos por sección
+          const principal = currentArticles.filter(a => a.sort_order === 0 && a.id !== articleId).length
+          const destacadas = currentArticles.filter(a => a.sort_order >= 1 && a.sort_order <= 3 && a.id !== articleId).length
+          const ultimas = currentArticles.filter(a => a.sort_order >= 4 && a.sort_order <= 13 && a.id !== articleId).length
+          
+          console.log('Cupos actuales (excluyendo esta noticia):', { principal, destacadas, ultimas })
+          
+          // Validar cupos disponibles
+          if (homeLocation === 'principal' && principal >= 1) {
+            throw new Error('El cupo de Noticia Principal está lleno. Debes mover la noticia actual al Repositorio antes de cambiarla a Principal.')
+          }
+          
+          if (homeLocation === 'destacada' && destacadas >= 3) {
+            throw new Error('El cupo de Noticias Destacadas está lleno. Debes mover una noticia destacada al Repositorio antes de cambiar esta a Destacada.')
+          }
+          
+          if (homeLocation === 'ultimas' && ultimas >= 10) {
+            throw new Error('El cupo de Últimas Noticias está lleno. Debes mover una noticia de Últimas al Repositorio antes de cambiar esta a Últimas.')
+          }
+          
+          console.log('✅ Cupos validados - Hay espacio disponible')
+          
+          // 4. ASIGNAR SORT_ORDER CORRECTO PARA SECCIONES DE HOME
+          let targetSortOrder = 0
+          
+          if (homeLocation === 'principal') {
+            targetSortOrder = 0
+          } else if (homeLocation === 'destacada') {
+            // Encontrar el primer hueco disponible (1, 2, 3)
+            const usedOrders = currentArticles
+              .filter(a => a.sort_order >= 1 && a.sort_order <= 3 && a.id !== articleId)
+              .map(a => a.sort_order)
+            
+            for (let i = 1; i <= 3; i++) {
+              if (!usedOrders.includes(i)) {
+                targetSortOrder = i
+                break
+              }
+            }
+            if (targetSortOrder === 0) targetSortOrder = 1 // Si todos están ocupados, usar 1
+          } else if (homeLocation === 'ultimas') {
+            // Encontrar el primer hueco disponible (4-13)
+            const usedOrders = currentArticles
+              .filter(a => a.sort_order >= 4 && a.sort_order <= 13 && a.id !== articleId)
+              .map(a => a.sort_order)
+            
+            for (let i = 4; i <= 13; i++) {
+              if (!usedOrders.includes(i)) {
+                targetSortOrder = i
+                break
+              }
+            }
+            if (targetSortOrder === 0) targetSortOrder = 4 // Si todos están ocupados, usar 4
+          }
+          
+          console.log('Sort_order asignado para sección home:', targetSortOrder)
+          
+          // 5. ACTUALIZAR LA NOTICIA CON NUEVA UBICACIÓN
+          const { error: updateError } = await supabase
+            .from('articles')
+            .update({
+              title: title.trim(),
+              excerpt: excerpt.trim(),
+              content: processedContent,
+              category_id: categoryId,
+              is_published: isPublished,
+              image_url: featuredImage,
+              image_caption: imageCaption.trim() || null,
+              slug: slug.trim() || generateSlug(title.trim()),
+              published_at: isPublished && !originalArticle.is_published ? new Date().toISOString() : originalArticle.published_at,
+              sort_order: targetSortOrder,
+              home_location: homeLocation,
+              is_featured: targetSortOrder <= 3,
+              author: 'Rafaela hoy'
+            })
+            .eq('id', articleId)
+          
+          if (updateError) throw updateError
+          
+          console.log('✅ Noticia actualizada exitosamente en sección de home')
+          
+        } else if (homeLocation === 'repositorio') {
+          // 6. LÓGICA PARA REPOSITORIO CON DESPLAZAMIENTO
+          console.log('Moviendo noticia al repositorio con desplazamiento...')
+          
+          // 6.1. EFECTO DESPLAZAMIENTO: Sumar +1 a todos los sort_order >= 14
+          console.log('Ejecutando efecto desplazamiento en repositorio...')
+          const { error: shiftError } = await supabase
+            .from('articles')
+            .update({ sort_order: supabase.rpc('increment', { x: 1 }) })
+            .gte('sort_order', 14)
+            .neq('id', articleId) // No afectar a la noticia que estamos moviendo
+          
+          if (shiftError) {
+            console.log('Error con RPC, usando método alternativo...')
+            // Método alternativo si RPC no funciona
+            const { data: repoArticles } = await supabase
+              .from('articles')
+              .select('id, sort_order')
+              .gte('sort_order', 14)
+              .neq('id', articleId)
+              .order('sort_order', { ascending: false }) // Empezar por el más grande
+            
+            if (repoArticles) {
+              for (const article of repoArticles) {
+                await supabase
+                  .from('articles')
+                  .update({ sort_order: article.sort_order + 1 })
+                  .eq('id', article.id)
+              }
+            }
+          }
+          
+          console.log('✅ Desplazamiento completado - Todas las noticias >=14 movidas +1')
+          
+          // 6.2. ASIGNAR POSICIÓN 14 A LA NOTICIA QUE ENTRA AL REPOSITORIO
+          const { error: repoUpdateError } = await supabase
+            .from('articles')
+            .update({
+              title: title.trim(),
+              excerpt: excerpt.trim(),
+              content: processedContent,
+              category_id: categoryId,
+              is_published: isPublished,
+              image_url: featuredImage,
+              image_caption: imageCaption.trim() || null,
+              slug: slug.trim() || generateSlug(title.trim()),
+              published_at: isPublished && !originalArticle.is_published ? new Date().toISOString() : originalArticle.published_at,
+              sort_order: 14, // SIEMPRE posición 14 al entrar al repositorio
+              home_location: 'repositorio',
+              is_featured: false,
+              author: 'Rafaela hoy'
+            })
+            .eq('id', articleId)
+          
+          if (repoUpdateError) throw repoUpdateError
+          
+          console.log('✅ Noticia actualizada exitosamente en repositorio (posición 14)')
+        }
+        
+      } else {
+        // 7. NO HUBO CAMBIO DE SECCIÓN - Solo actualizar contenido
+        console.log('Sin cambio de sección - Actualizando solo contenido...')
+        
+        const { error: contentUpdateError } = await supabase
+          .from('articles')
+          .update({
+            title: title.trim(),
+            excerpt: excerpt.trim(),
+            content: processedContent,
+            category_id: categoryId,
+            is_published: isPublished,
+            image_url: featuredImage,
+            image_caption: imageCaption.trim() || null,
+            slug: slug.trim() || generateSlug(title.trim()),
+            published_at: isPublished && !originalArticle.is_published ? new Date().toISOString() : originalArticle.published_at,
+            author: 'Rafaela hoy'
+          })
+          .eq('id', articleId)
+        
+        if (contentUpdateError) throw contentUpdateError
+        
+        console.log('✅ Contenido actualizado exitosamente (sin cambio de sección)')
       }
-
-      // Redirigir a la lista
+      
+      console.log('=== EDICIÓN COMPLETADA EXITOSAMENTE ===')
+      
+      // 8. REDIRECCIÓN AL PANEL PRINCIPAL
       router.push('/admin')
       
     } catch (error) {
-      console.error('Error al guardar:', error)
-      alert(`Error al guardar el artículo: ${error instanceof Error ? error.message : 'Error desconocido'}`)
+      console.error('Error al guardar la edición:', error)
+      alert('Error al guardar los cambios: ' + error.message)
     } finally {
       setSaving(false)
     }
@@ -894,6 +1005,21 @@ export default function EditNewsPage() {
                   }
                 }}
               />
+              
+              {/* Pie de Imagen */}
+              <div className="mt-4">
+                <Label htmlFor="imageCaption" className="text-sm font-medium">
+                  Pie de Imagen (Opcional)
+                </Label>
+                <Input
+                  id="imageCaption"
+                  value={imageCaption}
+                  onChange={(e) => setImageCaption(e.target.value)}
+                  placeholder="Descripción breve que aparecerá debajo de la imagen principal"
+                  className="mt-2"
+                  disabled={saving}
+                />
+              </div>
             </div>
           </div>
         </div>

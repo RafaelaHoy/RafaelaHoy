@@ -269,73 +269,11 @@ export async function fetchObituaries(): Promise<Obituary[]> {
       return []
     }
     
-    // If no data, insert sample data
-    if (!data || data.length === 0) {
-      await createSampleObituaries()
-      return fetchObituaries() // Fetch again after inserting
-    }
-    
-    return data
+    // Return data even if empty - no auto-insertion
+    return data || []
   } catch (error) {
     console.error('Error fetching obituaries:', error)
     return []
-  }
-}
-
-// Create sample obituaries data
-async function createSampleObituaries() {
-  const supabase = createClient()
-  const sampleData = [
-    {
-      full_name: 'María Elena Rodríguez',
-      age: 78,
-      service_info: 'Servicio religioso en Iglesia San José, Av. San Martín 1234',
-      date: new Date().toISOString()
-    },
-    {
-      full_name: 'Juan Carlos Pérez',
-      age: 65,
-      service_info: 'Crematorio Municipal, Calle 25 de Mayo 567',
-      date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      full_name: 'Ana María González',
-      age: 82,
-      service_info: 'Parroquia Nuestra Señora del Carmen, Calle Belgrano 890',
-      date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      full_name: 'Roberto Carlos Martínez',
-      age: 71,
-      service_info: 'Capilla del Cementerio Local, Ruta 34 Km 12',
-      date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      full_name: 'Carmen Luisa Fernández',
-      age: 89,
-      service_info: 'Iglesia Catedral, Plaza 25 de Mayo',
-      date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString()
-    },
-    {
-      full_name: 'Alberto José Sánchez',
-      age: 74,
-      service_info: 'Salón Velatorio Municipal, Calle Rivadavia 456',
-      date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
-    }
-  ]
-  
-  try {
-    const { error } = await supabase
-      .from('obituaries')
-      .insert(sampleData)
-    
-    if (error) {
-      console.error('Error inserting sample obituaries:', error)
-    } else {
-      console.log('Sample obituaries created successfully')
-    }
-  } catch (error) {
-    console.error('Error creating sample obituaries:', error)
   }
 }
 

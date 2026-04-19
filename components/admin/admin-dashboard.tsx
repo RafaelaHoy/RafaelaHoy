@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import { DndContext, DragEndEvent, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { DndContext, DragEndEvent, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core'
 import { Button } from '@/components/ui/button'
@@ -226,16 +226,21 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
     })
   }, [articles, debouncedSearchQuery])
 
-  // Configuración de sensores UNIFICADA para PC y Mobile
+  // Configuración de sensores OPTIMIZADA para PC y Mobile
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      // Restricciones que funcionan tanto para mouse como para touch
+    // Sensor para dispositivos táctiles (móviles/tablets)
+    useSensor(TouchSensor, {
+      // Configuración específica para touch
       activationConstraint: {
-        // Para mouse: requiere 5px de movimiento
-        // Para touch: requiere 250ms de presión con 5px de tolerancia
-        delay: 250,        // 250ms para touch (ignorado por mouse)
-        tolerance: 5,      // 5px de tolerancia para touch
-        distance: 5,       // 5px para mouse (ignorado por touch)
+        delay: 250,        // 250ms de presión antes de activar
+        tolerance: 5,       // 5px de tolerancia de movimiento
+      },
+    }),
+    // Sensor para dispositivos con puntero (PC)
+    useSensor(PointerSensor, {
+      // Configuración específica para mouse/puntero
+      activationConstraint: {
+        distance: 5,         // 5px de movimiento mínimo
       },
     })
   )
@@ -361,9 +366,8 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
         targetSortOrder = 4
       } else if (overId.includes('repositorio')) {
         targetSection = 'repositorio'
-        // Para repositorio, asignar un sort_order alto (99+) para asegurar que esté al final
-        const maxOrder = Math.max(...articles.map(a => a.sort_order))
-        targetSortOrder = Math.max(maxOrder + 1, 99)
+        // Para repositorio, siempre asignar posición 14 con desplazamiento
+        targetSortOrder = 14
       }
     }
 
@@ -404,6 +408,40 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
         // 2. GUARDADO ESTRICTO EN BASE DE DATOS
         console.log(`Guardando en Supabase...`)
         const supabase = createClient()
+        
+        // 2.1. SI EL DESTINO ES REPOSITORIO, APLICAR DESPLAZAMIENTO PRIMERO
+        if (targetSection === 'repositorio') {
+          console.log('Aplicando desplazamiento en repositorio...')
+          
+          // EFECTO DESPLAZAMIENTO: Sumar +1 a todos los sort_order >= 14
+          const { error: shiftError } = await supabase
+            .from('articles')
+            .update({ sort_order: supabase.rpc('increment', { x: 1 }) })
+            .gte('sort_order', 14)
+            .neq('id', activeArticle.id) // No afectar a la noticia que estamos moviendo
+          
+          if (shiftError) {
+            console.log('Error con RPC, usando método alternativo...')
+            // Método alternativo si RPC no funciona
+            const { data: repoArticles } = await supabase
+              .from('articles')
+              .select('id, sort_order')
+              .gte('sort_order', 14)
+              .neq('id', activeArticle.id)
+              .order('sort_order', { ascending: false }) // Empezar por el más grande
+            
+            if (repoArticles) {
+              for (const article of repoArticles) {
+                await supabase
+                  .from('articles')
+                  .update({ sort_order: article.sort_order + 1 })
+                  .eq('id', article.id)
+              }
+            }
+          }
+          
+          console.log('✅ Desplazamiento completado - Todas las noticias >=14 movidas +1')
+        }
         
         const newIsFeatured = targetSection === 'principal' || targetSection === 'destacada'
         

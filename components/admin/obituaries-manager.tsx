@@ -77,10 +77,20 @@ export function ObituariesManager() {
   const handleDelete = async (id: number) => {
     if (confirm('¿Estás seguro de que quieres eliminar esta necrológica?')) {
       try {
+        // Actualizar estado inmediatamente (optimistic update)
+        setObituaries(prev => prev.filter(obituary => obituary.id !== id))
+        
+        // Luego eliminar de la base de datos
         await deleteObituary(id)
-        loadObituaries()
+        
+        // Recargar para asegurar sincronización
+        setTimeout(() => {
+          loadObituaries()
+        }, 100)
       } catch (error) {
         console.error('Error deleting obituary:', error)
+        // Si hay error, recargar los datos originales
+        loadObituaries()
       }
     }
   }

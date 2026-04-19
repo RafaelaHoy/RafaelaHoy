@@ -325,6 +325,7 @@ export default function CreateNewsPage() {
   const [isPublished, setIsPublished] = useState(false)
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
   const [featuredImage, setFeaturedImage] = useState<string>("")
+  const [imageCaption, setImageCaption] = useState<string>("")
   const [slug, setSlug] = useState("")
   
   // Categories
@@ -673,6 +674,7 @@ export default function CreateNewsPage() {
           category_id: categoryId,
           is_published: isPublished,
           image_url: featuredImage,
+          image_caption: imageCaption.trim() || null,
           slug: slug.trim() || generateSlug(title.trim()),
           published_at: isPublished ? new Date().toISOString() : null,
           sort_order: newSortOrder, // Hueco disponible sin empujar
@@ -927,13 +929,29 @@ export default function CreateNewsPage() {
                 mediaItems={mediaItems}
                 onMediaChange={(newMedia) => {
                   setMediaItems(newMedia)
-                  // Actualizar la imagen destacada (primera imagen)
-                  const firstImage = newMedia.find(item => item.type === 'image')
-                  if (firstImage) {
-                    setFeaturedImage(firstImage.url)
+                  // Si hay imágenes, usar la primera como imagen destacada
+                  if (newMedia.length > 0 && !featuredImage) {
+                    setFeaturedImage(newMedia[0].url)
                   }
                 }}
+                featuredImage={featuredImage}
+                onFeaturedImageChange={setFeaturedImage}
               />
+              
+              {/* Pie de Imagen */}
+              <div className="mt-4">
+                <Label htmlFor="imageCaption" className="text-sm font-medium">
+                  Pie de Imagen (Opcional)
+                </Label>
+                <Input
+                  id="imageCaption"
+                  value={imageCaption}
+                  onChange={(e) => setImageCaption(e.target.value)}
+                  placeholder="Descripción breve que aparecerá debajo de la imagen principal"
+                  className="mt-2"
+                  disabled={saving}
+                />
+              </div>
             </div>
           </div>
         </div>
