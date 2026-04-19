@@ -316,7 +316,7 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
     }
   }
 
-  // Función optimista de Drag & Drop sin bloqueos ni recargas
+  // Función optimista de Drag & Drop con guardado estricto en base de datos
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
     
@@ -337,6 +337,7 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
     console.log(`=== DRAG & DROP DETECTADO (${deviceType}) ===`)
     console.log(`Artículo activo: "${activeArticle.title}"`)
     console.log(`Orden actual: ${activeArticle.sort_order}`)
+    console.log(`Ubicación actual: ${activeArticle.home_location}`)
 
     // Determinar la sección de destino basado en el overId
     let targetSection = ''
@@ -360,69 +361,137 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
         targetSortOrder = 4
       } else if (overId.includes('repositorio')) {
         targetSection = 'repositorio'
-        // Encontrar el siguiente sort_order disponible en repositorio (14+)
-        const existingRepositorio = articles
-          .filter(a => a.sort_order >= 14)
-          .sort((a, b) => a.sort_order - b.sort_order)
-        
-        targetSortOrder = existingRepositorio.length > 0 
-          ? existingRepositorio[existingRepositorio.length - 1].sort_order + 1 
-          : 14
+        // Para repositorio, asignar un sort_order alto (99+) para asegurar que esté al final
+        const maxOrder = Math.max(...articles.map(a => a.sort_order))
+        targetSortOrder = Math.max(maxOrder + 1, 99)
       }
     }
 
     console.log(`Destino: orden ${targetSortOrder} (${targetSection})`)
 
     // Solo mover si la posición es diferente
-    if (activeArticle.sort_order !== targetSortOrder) {
+    if (activeArticle.sort_order !== targetSortOrder || activeArticle.home_location !== targetSection) {
       try {
-        // ACTUALIZACIÓN OPTIMISTA: Actualizar estado local inmediatamente
+        // 1. ACTUALIZACIÓN OPTIMISTA: Actualizar estado local inmediatamente
+        const originalArticles = [...articles] // Guardar estado original para reversión
         const updatedArticles = [...articles]
         const activeIndex = updatedArticles.findIndex(a => a.id === activeId)
         
         if (activeIndex !== -1) {
-          // Actualizar el artículo movido
-          updatedArticles[activeIndex] = {
+          // Crear objeto actualizado idéntico al que se enviará a Supabase
+          const updatedArticle = {
             ...updatedArticles[activeIndex],
             sort_order: targetSortOrder,
             home_location: targetSection,
             is_featured: targetSection === 'principal' || targetSection === 'destacada'
           }
           
+          // Actualizar estado local con el mismo objeto que se enviará a DB
+          updatedArticles[activeIndex] = updatedArticle
+          
           // Reordenar el array localmente
           const sortedArticles = updatedArticles.sort((a, b) => a.sort_order - b.sort_order)
           setArticles(sortedArticles)
+          
+          console.log(`Estado local actualizado optimistamente:`, {
+            title: updatedArticle.title,
+            new_order: updatedArticle.sort_order,
+            new_location: updatedArticle.home_location,
+            new_featured: updatedArticle.is_featured
+          })
         }
 
-        // GUARDADO EN SEGUNDO PLANO: Guardar en Supabase sin bloquear
+        // 2. GUARDADO ESTRICTO EN BASE DE DATOS
+        console.log(`Guardando en Supabase...`)
         const supabase = createClient()
         
-        // 1. Mover noticia activa
         const newIsFeatured = targetSection === 'principal' || targetSection === 'destacada'
         
-        await supabase
+        // Objeto exacto que se enviará a Supabase
+        const dbUpdateData = {
+          sort_order: targetSortOrder,
+          home_location: targetSection,
+          is_featured: newIsFeatured
+        }
+        
+        console.log(`Enviando a Supabase:`, dbUpdateData)
+        
+        const { error: updateError } = await supabase
           .from("articles")
-          .update({ 
-            sort_order: targetSortOrder,
-            home_location: targetSection,
-            is_featured: newIsFeatured
-          })
+          .update(dbUpdateData)
           .eq("id", activeArticle.id)
+          .select() // Pedir que devuelva el registro actualizado
+          .single()
+
+        if (updateError) {
+          console.error('Error en update de Supabase:', updateError)
+          throw new Error(`Error al guardar en Supabase: ${updateError.message}`)
+        }
+
+        console.log(`Guardado exitoso en Supabase`)
         
-        // 2. Re-indexación global en segundo plano
-        await reorderAllArticlesDashboard(supabase)
+        // 3. INVALIDACIÓN DE CACHÉ (Next.js App Router)
+        console.log(`Invalidando caché de Next.js...`)
+        router.refresh()
         
-        console.log(`=== DRAG & DROP COMPLETADO (${deviceType}) ===`)
+        // 4. VERIFICACIÓN DE CONSISTENCIA (opcional, para debugging)
+        setTimeout(async () => {
+          try {
+            const { data: verifyArticle } = await supabase
+              .from("articles")
+              .select("*")
+              .eq("id", activeArticle.id)
+              .single()
+            
+            if (verifyArticle) {
+              console.log(`Verificación post-guardado:`, {
+                title: verifyArticle.title,
+                db_order: verifyArticle.sort_order,
+                db_location: verifyArticle.home_location,
+                db_featured: verifyArticle.is_featured
+              })
+              
+              // Verificar que coincida con lo que enviamos
+              const isConsistent = 
+                verifyArticle.sort_order === targetSortOrder &&
+                verifyArticle.home_location === targetSection &&
+                verifyArticle.is_featured === newIsFeatured
+              
+              if (!isConsistent) {
+                console.error('INCONSISTENCIA DETECTADA: Los datos en DB no coinciden con los enviados')
+                console.error('Esperado:', dbUpdateData)
+                console.error('Recibido:', {
+                  sort_order: verifyArticle.sort_order,
+                  home_location: verifyArticle.home_location,
+                  is_featured: verifyArticle.is_featured
+                })
+              } else {
+                console.log('Consistencia verificada: DB coincide con datos enviados')
+              }
+            }
+          } catch (verifyError) {
+            console.error('Error en verificación post-guardado:', verifyError)
+          }
+        }, 1000)
+        
+        console.log(`=== DRAG & DROP COMPLETADO EXITOSAMENTE (${deviceType}) ===`)
         
       } catch (error) {
         console.error(`Error moviendo artículo (${deviceType}):`, error)
         
         // REVERSIÓN EN CASO DE ERROR: Revertir al estado original
-        toast.error('Error al mover la noticia. Se ha revertido el cambio.')
+        console.log('Revirtiendo estado local al estado original...')
+        setArticles(originalArticles)
         
-        // Recargar para obtener el estado correcto
-        window.location.reload()
+        // Mostrar error específico
+        const errorMessage = error.message || 'Error desconocido al mover la noticia'
+        toast.error(`Error al guardar en la base de datos: ${errorMessage}`)
+        
+        // NO recargar la página, solo mostrar el error y revertir
+        console.log('Estado revertido. Usuario puede intentar nuevamente.')
       }
+    } else {
+      console.log(`El artículo ya está en la posición correcta. No se requiere movimiento.`)
     }
   }
 

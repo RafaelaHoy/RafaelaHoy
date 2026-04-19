@@ -543,26 +543,127 @@ export default function CreateNewsPage() {
       // Procesar Markdown a HTML
       const processedContent = processMarkdownToHTML(content.trim())
       
-      console.log('=== CREACIÓN CON RE-INDEXACIÓN GLOBAL ===')
+      console.log('=== CREACIÓN CON GESTIÓN MANUAL Y VALIDACIÓN DE CUPOS ===')
       console.log('Título:', title.trim())
       console.log('Ubicación elegida:', homeLocation)
       
-      // 1. Determinar sort_order temporal según la ubicación elegida
-      let tempSortOrder = 999 // Posición temporal alta
+      // 1. VERIFICACIÓN DE CUPOS (Antes de Guardar) - CON FORZADO DE ACTUALIZACIÓN
+      console.log('Verificando cupos disponibles...')
       
+      // Forzar actualización de datos para evitar cache
+      const { data: existingArticles, error: countError } = await supabase
+        .from('articles')
+        .select('*')
+        .eq('is_published', true)
+        .order('sort_order', { ascending: true })
+        // Forzar no usar cache
+        .then(result => {
+          console.log('Datos frescos obtenidos de la base de datos:', result.data?.length || 0, 'noticias')
+          return result
+        })
+      
+      if (countError) throw countError
+      
+      // Contar noticias por sección
+      const principal = existingArticles?.filter(a => a.sort_order === 0).length || 0
+      const destacadas = existingArticles?.filter(a => a.sort_order >= 1 && a.sort_order <= 3).length || 0
+      const ultimas = existingArticles?.filter(a => a.sort_order >= 4 && a.sort_order <= 13).length || 0
+      
+      console.log(`Cupos actuales (datos frescos):`)
+      console.log(`- Principal: ${principal}/1`)
+      console.log(`- Destacadas: ${destacadas}/3`)
+      console.log(`- Últimas: ${ultimas}/10`)
+      
+      // Mostrar detalles para debugging
       if (homeLocation === "principal") {
-        tempSortOrder = 0
-      } else if (homeLocation === "destacada") {
-        tempSortOrder = 1 // Primera destacada
-      } else if (homeLocation === "ultimas") {
-        tempSortOrder = 4 // Primera última
-      } else {
-        tempSortOrder = 14 // Primera del repositorio
+        const principalArticles = existingArticles?.filter(a => a.sort_order === 0) || []
+        console.log('Noticias en Principal:', principalArticles.map(a => ({ id: a.id, title: a.title, order: a.sort_order })))
       }
       
-      console.log(`Insertando noticia temporalmente en orden: ${tempSortOrder}`)
+      // 2. VALIDACIÓN ESTRICTA DE CUPOS
+      if (homeLocation === "principal" && principal >= 1) {
+        // Verificación adicional: si el usuario viene del dashboard, podría ser un estado desactualizado
+        console.log('Cupo de Principal lleno. Verificando si los datos están actualizados...')
+        
+        // Intentar una segunda consulta para asegurar datos frescos
+        const { data: freshCheck } = await supabase
+          .from('articles')
+          .select('*')
+          .eq('is_published', true)
+          .eq('sort_order', 0)
+          .single()
+        
+        if (freshCheck) {
+          console.log('Confirmado: Hay una noticia principal:', freshCheck.title)
+          throw new Error('El cupo de Noticia Principal está lleno. La noticia "' + freshCheck.title + '" está ocupando el lugar. Por favor, esperá unos segundos y volvé a intentar, o movela manualmente al Repositorio.')
+        } else {
+          console.log('Segunda consulta no encontró noticia principal. Hubo un error en la primera consulta.')
+          // Si la segunda consulta no encuentra nada, permitimos continuar
+        }
+      }
       
-      // 2. Crear noticia con sort_order temporal
+      if (homeLocation === "destacada" && destacadas >= 3) {
+        const destacadasArticles = existingArticles?.filter(a => a.sort_order >= 1 && a.sort_order <= 3) || []
+        console.log('Noticias en Destacadas:', destacadasArticles.map(a => ({ id: a.id, title: a.title, order: a.sort_order })))
+        throw new Error('El cupo de Noticias Destacadas está lleno (3/3). Hay ' + destacadasArticles.length + ' noticias ocupando los lugares. Mové alguna de las actuales a Últimas Noticias o al Repositorio para liberar espacio.')
+      }
+      
+      if (homeLocation === "ultimas" && ultimas >= 10) {
+        const ultimasArticles = existingArticles?.filter(a => a.sort_order >= 4 && a.sort_order <= 13) || []
+        console.log('Noticias en Últimas:', ultimasArticles.length, 'de 10 cupos')
+        throw new Error('El cupo de Últimas Noticias está lleno (10/10). Hay ' + ultimasArticles.length + ' noticias ocupando los lugares. Mové alguna de las actuales al Repositorio para liberar espacio.')
+      }
+      
+      console.log('¡Cupo disponible! Procediendo con la inserción...')
+      
+      // 3. ASIGNACIÓN DE SORT_ORDER (Sin afectar al resto)
+      let newSortOrder = 0
+      
+      if (homeLocation === "principal") {
+        // Principal: siempre 0
+        newSortOrder = 0
+      } else if (homeLocation === "destacada") {
+        // Destacadas: encontrar el siguiente número libre en 1-3
+        const usedOrders = existingArticles?.filter(a => a.sort_order >= 1 && a.sort_order <= 3).map(a => a.sort_order) || []
+        for (let i = 1; i <= 3; i++) {
+          if (!usedOrders.includes(i)) {
+            newSortOrder = i
+            break
+          }
+        }
+      } else if (homeLocation === "ultimas") {
+        // Últimas: encontrar el siguiente número libre en 4-13
+        const usedOrders = existingArticles?.filter(a => a.sort_order >= 4 && a.sort_order <= 13).map(a => a.sort_order) || []
+        for (let i = 4; i <= 13; i++) {
+          if (!usedOrders.includes(i)) {
+            newSortOrder = i
+            break
+          }
+        }
+      } else {
+        // Repositorio: asignar al final de la lista
+        const maxOrder = Math.max(...(existingArticles?.map(a => a.sort_order) || [0]))
+        newSortOrder = maxOrder + 1
+      }
+      
+      console.log(`Asignando sort_order = ${newSortOrder} para la nueva noticia`)
+      
+      // 4. VERIFICACIÓN FINAL ANTES DE INSERTAR
+      console.log('Verificación final antes de insertar...')
+      const { data: finalCheck } = await supabase
+        .from('articles')
+        .select('*')
+        .eq('is_published', true)
+        .eq('sort_order', newSortOrder)
+        .single()
+      
+      if (finalCheck) {
+        throw new Error('Conflicto detectado: El sort_order ' + newSortOrder + ' está siendo usado por "' + finalCheck.title + '". Por favor, recargá la página y volvé a intentar.')
+      }
+      
+      // 5. INSERCIÓN DIRECTA (Sin empuje, sin cascada)
+      console.log('Insertando noticia directamente (sin afectar vecinos)...')
+      
       const { data: newArticle, error: insertError } = await supabase
         .from('articles')
         .insert({
@@ -574,9 +675,9 @@ export default function CreateNewsPage() {
           image_url: featuredImage,
           slug: slug.trim() || generateSlug(title.trim()),
           published_at: isPublished ? new Date().toISOString() : null,
-          sort_order: tempSortOrder,
-          is_featured: tempSortOrder <= 3,
-          home_location: getHomeLocationByOrder(tempSortOrder),
+          sort_order: newSortOrder, // Hueco disponible sin empujar
+          is_featured: newSortOrder <= 3,
+          home_location: getHomeLocationByOrder(newSortOrder),
           author: 'Rafaela hoy'
         })
         .select()
@@ -584,20 +685,38 @@ export default function CreateNewsPage() {
 
       if (insertError) throw insertError
 
-      console.log(`Noticia "${newArticle.title}" insertada temporalmente en orden ${tempSortOrder}`)
+      console.log(`Noticia "${newArticle.title}" insertada exitosamente en orden ${newSortOrder}`)
+      console.log('=== PROCESO DE CREACIÓN MANUAL COMPLETADO ===')
       
-      // 3. DISPARAR RE-INDEXACIÓN GLOBAL para empujar a todas las demás
-      console.log("Disparando re-indexación global...")
-      await reorderAllArticles(supabase)
+      // 6. VERIFICACIÓN FINAL (opcional, para debugging)
+      const { data: finalArticles } = await supabase
+        .from('articles')
+        .select('*')
+        .eq('is_published', true)
+        .order('sort_order', { ascending: true })
       
-      console.log("=== PROCESO DE CREACIÓN COMPLETADO ===")
+      const finalPrincipal = finalArticles?.filter(a => a.sort_order === 0).length || 0
+      const finalDestacadas = finalArticles?.filter(a => a.sort_order >= 1 && a.sort_order <= 3).length || 0
+      const finalUltimas = finalArticles?.filter(a => a.sort_order >= 4 && a.sort_order <= 13).length || 0
       
-      // Redirigir a la lista
+      console.log(`Estado final de cupos:`)
+      console.log(`- Principal: ${finalPrincipal}/1`)
+      console.log(`- Destacadas: ${finalDestacadas}/3`)
+      console.log(`- Últimas: ${finalUltimas}/10`)
+      
+      // Redirigir a la lista con estado actualizado
       router.push('/admin')
+      router.refresh() // Forzar actualización del estado
       
     } catch (error) {
       console.error('Error al guardar:', error)
-      alert('Error al guardar el artículo: ' + error.message)
+      
+      // Mostrar error específico de cupos o error genérico
+      if (error.message.includes('cupo') || error.message.includes('lleno') || error.message.includes('Conflicto detectado')) {
+        alert(error.message) // Error de validación de cupos
+      } else {
+        alert('Error al guardar el artículo: ' + error.message) // Error genérico
+      }
     } finally {
       setSaving(false)
     }
