@@ -8,6 +8,7 @@ import { useDroppable } from '@dnd-kit/core'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { fixSortOrders } from '@/lib/sort-order-utils'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Logo } from '@/components/logo'
@@ -182,6 +183,30 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
   const router = useRouter()
+
+  // Consolidar sort_orders al montar el dashboard
+  useEffect(() => {
+    const consolidateSortOrders = async () => {
+      try {
+        console.log('=== CONSOLIDANDO SORT_ORDERS AL INICIAR DASHBOARD ===')
+        // Temporalmente desactivado para evitar error de memoria
+        // const result = await fixSortOrders()
+        // if (result.success) {
+        //   console.log(`Sort orders consolidados: ${result.fixed} noticias actualizadas`)
+        //   if (result.fixed > 0) {
+        //     console.log('Se recomienda recargar la página para ver los cambios actualizados')
+        //   }
+        // } else {
+        //   console.error('Error consolidando sort orders:', result.message)
+        // }
+        console.log('Auto-consolidación temporalmente desactivada')
+      } catch (error) {
+        console.error('Error en consolidación inicial:', error)
+      }
+    }
+
+    consolidateSortOrders()
+  }, []) // Solo se ejecuta al montar
 
   // Debounce de 300ms para la búsqueda
   useEffect(() => {

@@ -128,6 +128,14 @@ async function fetchArticleMedia(articleId: string): Promise<MediaItem[]> {
 }
 
 export function ArticleDetail({ article }: { article: Article }) {
+  // Debug para verificar si image_caption llega correctamente
+  console.log('=== DEBUG ARTICLE DETAIL ===')
+  console.log('Article title:', article.title)
+  console.log('Has image_url:', !!article.image_url)
+  console.log('Has image_caption:', !!article.image_caption)
+  console.log('Image caption value:', article.image_caption)
+  console.log('============================')
+
   const { data: relatedArticles } = useSWR(
     article.categories ? `related-${article.categories.slug}-${article.id}` : null,
     () => fetchRelatedArticles(article.categories?.slug, article.id),
@@ -251,22 +259,24 @@ export function ArticleDetail({ article }: { article: Article }) {
 
       {/* Featured image */}
       {article.image_url && (
-        <figure className="relative aspect-video rounded-lg overflow-hidden mb-8">
-          <Image
-            src={article.image_url}
-            alt={article.title}
-            fill
-            className="object-cover"
-            sizes="(max-width: 896px) 100vw, 896px"
-            priority
-          />
-          {/* Pie de imagen */}
+        <>
+          <figure className="relative w-full aspect-video mb-6">
+            <Image
+              src={article.image_url}
+              alt={article.title}
+              fill
+              className="object-cover"
+              sizes="(max-width: 896px) 100vw, 896px"
+              priority
+            />
+          </figure>
+          {/* Pie de imagen - FUERA del figure pero inmediatamente después */}
           {article.image_caption && (
-            <figcaption className="text-sm text-gray-500 italic mt-2 text-center">
+            <figcaption className="text-sm text-gray-500 italic text-left mt-2 px-4 mb-8">
               {article.image_caption}
             </figcaption>
           )}
-        </figure>
+        </>
       )}
 
       {/* Content */}

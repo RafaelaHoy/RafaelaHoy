@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
+import { findFreeSortOrder, shiftArticlesUp } from "@/lib/sort-order-utils"
 import {
   Select,
   SelectContent,
@@ -34,34 +35,110 @@ interface MediaItem {
 
 // Función para procesar Markdown a HTML
 const processMarkdownToHTML = (markdown: string): string => {
-  return markdown
-    // Headers
+  // Limpiar el texto primero
+  let html = markdown.trim()
+  
+  // Procesar en el orden correcto para evitar conflictos
+  
+  // 1. Headers (antes que párrafos)
+  html = html
     .replace(/^### (.*$)/gim, '<h3>$1</h3>')
     .replace(/^#### (.*$)/gim, '<h4>$1</h4>')
-    // Bold
+  
+  // 2. Bold e Italic (antes que párrafos para evitar conflictos)
+  html = html
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    // Italic
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    // Underline
-    .replace(/<u>(.+?)<\/u>/g, '<u>$1</u>')
-    // Links
-    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>')
-    // Images
+  
+  // 3. Underline
+  html = html.replace(/<u>(.+?)<\/u>/g, '<u>$1</u>')
+  
+  // 4. Links e Images
+  html = html
+    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
     .replace(/!\[(.+?)\]\((.+?)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; height: auto;" />')
-    // Blockquotes
-    .replace(/^> (.+$)/gim, '<blockquote>$1</blockquote>')
-    // Unordered lists
-    .replace(/^- (.+$)/gim, '<ul><li>$1</li></ul>')
-    // Ordered lists
-    .replace(/^1\. (.+$)/gim, '<ol><li>$1</li></ol>')
-    // Paragraphs (multiple lines)
-    .replace(/\n\n/g, '</p><p>')
-    // Wrap in paragraphs
-    .replace(/^(.+)$/gm, '<p>$1</p>')
-    // Clean up empty paragraphs
-    .replace(/<p><\/p>/g, '')
-    .replace(/<p>(<h|<ul|<ol|<blockquote)/g, '$1')
-    .replace(/(<\/h3>|<\/h4>|<\/ul>|<\/ol>|<\/blockquote>)<\/p>/g, '$1')
+  
+  // 5. Blockquotes
+  html = html.replace(/^> (.+$)/gim, '<blockquote>$1</blockquote>')
+  
+  // 6. Lists (procesar líneas múltiples juntas)
+  html = html
+    // Unordered lists - juntar items consecutivos
+    .replace(/^- (.+)(?:\n- (.+))*/g, (match) => {
+      const items = match.split('\n- ').map(item => item.replace(/^- /, '').trim())
+      return '<ul>' + items.map(item => `<li>${item}</li>`).join('') + '</ul>'
+    })
+    // Ordered lists - juntar items consecutivos
+    .replace(/^1\. (.+)(?:\n1\. (.+))*/g, (match) => {
+      const items = match.split('\n1. ').map(item => item.replace(/^1\. /, '').trim())
+      return '<ol>' + items.map(item => `<li>${item}</li>`).join('') + '</ol>'
+    })
+  
+  // 7. Procesar párrafos (al final)
+  html = html
+    // Dividir en líneas
+    .split('\n')
+    // Procesar cada línea
+    .map(line => {
+      const trimmed = line.trim()
+      // Si la línea ya es HTML o está vacía, dejarla como está
+      if (!trimmed || trimmed.startsWith('<') || trimmed.startsWith('</')) {
+        return line
+      }
+      // Envolver en párrafo
+      return `<p>${trimmed}</p>`
+    })
+    // Unir todo
+    .join('\n')
+  
+  // 8. Limpiar párrafos vacíos
+  html = html.replace(/<p><\/p>/g, '')
+  
+  return html
+}
+
+// Función para convertir HTML a Markdown (para edición)
+const htmlToMarkdown = (html: string): string => {
+  let markdown = html
+  
+  // 1. Headers
+  markdown = markdown
+    .replace(/<h3>(.*?)<\/h3>/g, '### $1')
+    .replace(/<h4>(.*?)<\/h4>/g, '#### $1')
+  
+  // 2. Bold e Italic
+  markdown = markdown
+    .replace(/<strong>(.*?)<\/strong>/g, '**$1**')
+    .replace(/<em>(.*?)<\/em>/g, '*$1*')
+  
+  // 3. Underline
+  markdown = markdown.replace(/<u>(.*?)<\/u>/g, '<u>$1</u>')
+  
+  // 4. Links
+  markdown = markdown.replace(/<a href="(.*?)".*?>(.*?)<\/a>/g, '[$2]($1)')
+  
+  // 5. Images
+  markdown = markdown.replace(/<img src="(.*?)" alt="(.*?)".*?>/g, '![$2]($1)')
+  
+  // 6. Blockquotes
+  markdown = markdown.replace(/<blockquote>(.*?)<\/blockquote>/g, '> $1')
+  
+  // 7. Lists
+  markdown = markdown
+    .replace(/<ul>(.*?)<\/ul>/gs, (match, content) => {
+      return content.replace(/<li>(.*?)<\/li>/g, '- $1')
+    })
+    .replace(/<ol>(.*?)<\/ol>/gs, (match, content) => {
+      return content.replace(/<li>(.*?)<\/li>/g, '1. $1')
+    })
+  
+  // 8. Párrafos - convertir a líneas separadas
+  markdown = markdown
+    .replace(/<p>(.*?)<\/p>/g, '$1\n')
+    .replace(/\n\n+/g, '\n\n')
+    .trim()
+  
+  return markdown
 }
 
 // Componente de editor de texto enriquecido con textarea y Markdown
@@ -408,7 +485,9 @@ export default function EditNewsPage() {
 
       setTitle(data.title || "")
       setExcerpt(data.excerpt || "")
-      setContent(data.content || "")
+      // Convertir HTML a Markdown para la edición
+      const markdownContent = htmlToMarkdown(data.content || "")
+      setContent(markdownContent)
       setCategoryId(data.category_id || "")
       setHomeLocation(data.home_location || "repositorio")
       setOriginalHomeLocation(data.home_location || "repositorio")
@@ -617,31 +696,19 @@ export default function EditNewsPage() {
           if (homeLocation === 'principal') {
             targetSortOrder = 0
           } else if (homeLocation === 'destacada') {
-            // Encontrar el primer hueco disponible (1, 2, 3)
-            const usedOrders = currentArticles
-              .filter(a => a.sort_order >= 1 && a.sort_order <= 3 && a.id !== articleId)
-              .map(a => a.sort_order)
-            
-            for (let i = 1; i <= 3; i++) {
-              if (!usedOrders.includes(i)) {
-                targetSortOrder = i
-                break
-              }
+            // Destacadas: buscar hueco libre en 1-3
+            const freeOrder = findFreeSortOrder(currentArticles.filter(a => a.id !== articleId), 1, 3)
+            if (freeOrder === null) {
+              throw new Error('El cupo de Noticias Destacadas está lleno (3/3). No hay huecos disponibles. Mové alguna de las actuales a Últimas Noticias o al Repositorio para liberar espacio.')
             }
-            if (targetSortOrder === 0) targetSortOrder = 1 // Si todos están ocupados, usar 1
+            targetSortOrder = freeOrder
           } else if (homeLocation === 'ultimas') {
-            // Encontrar el primer hueco disponible (4-13)
-            const usedOrders = currentArticles
-              .filter(a => a.sort_order >= 4 && a.sort_order <= 13 && a.id !== articleId)
-              .map(a => a.sort_order)
-            
-            for (let i = 4; i <= 13; i++) {
-              if (!usedOrders.includes(i)) {
-                targetSortOrder = i
-                break
-              }
+            // Últimas: buscar hueco libre en 4-13
+            const freeOrder = findFreeSortOrder(currentArticles.filter(a => a.id !== articleId), 4, 13)
+            if (freeOrder === null) {
+              throw new Error('El cupo de Últimas Noticias está lleno (10/10). No hay huecos disponibles. Mové alguna de las actuales al Repositorio para liberar espacio.')
             }
-            if (targetSortOrder === 0) targetSortOrder = 4 // Si todos están ocupados, usar 4
+            targetSortOrder = freeOrder
           }
           
           console.log('Sort_order asignado para sección home:', targetSortOrder)
@@ -676,33 +743,12 @@ export default function EditNewsPage() {
           
           // 6.1. EFECTO DESPLAZAMIENTO: Sumar +1 a todos los sort_order >= 14
           console.log('Ejecutando efecto desplazamiento en repositorio...')
-          const { error: shiftError } = await supabase
-            .from('articles')
-            .update({ sort_order: supabase.rpc('increment', { x: 1 }) })
-            .gte('sort_order', 14)
-            .neq('id', articleId) // No afectar a la noticia que estamos moviendo
-          
-          if (shiftError) {
-            console.log('Error con RPC, usando método alternativo...')
-            // Método alternativo si RPC no funciona
-            const { data: repoArticles } = await supabase
-              .from('articles')
-              .select('id, sort_order')
-              .gte('sort_order', 14)
-              .neq('id', articleId)
-              .order('sort_order', { ascending: false }) // Empezar por el más grande
-            
-            if (repoArticles) {
-              for (const article of repoArticles) {
-                await supabase
-                  .from('articles')
-                  .update({ sort_order: article.sort_order + 1 })
-                  .eq('id', article.id)
-              }
-            }
+          const shiftSuccess = await shiftArticlesUp(14)
+          if (!shiftSuccess) {
+            console.error('Error en desplazamiento de Repositorio, pero continuando...')
           }
           
-          console.log('✅ Desplazamiento completado - Todas las noticias >=14 movidas +1')
+          console.log('Desplazamiento completado en Repositorio')
           
           // 6.2. ASIGNAR POSICIÓN 14 A LA NOTICIA QUE ENTRA AL REPOSITORIO
           const { error: repoUpdateError } = await supabase
@@ -726,7 +772,7 @@ export default function EditNewsPage() {
           
           if (repoUpdateError) throw repoUpdateError
           
-          console.log('✅ Noticia actualizada exitosamente en repositorio (posición 14)')
+          console.log('Noticia actualizada exitosamente en repositorio (posición 14)')
         }
         
       } else {

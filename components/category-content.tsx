@@ -46,7 +46,7 @@ async function fetchCategoryArticles(categoryId: string): Promise<Article[]> {
     .eq("is_published", true)
     .order("sort_order", { ascending: true })
     .order("published_at", { ascending: false })
-    .limit(20)
+    .limit(50)
 
   if (error) throw error
   return data as Article[]
@@ -93,9 +93,11 @@ export function CategoryContent({ category }: { category: Category }) {
       )}
 
       {/* Articles grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
         {isLoading ? (
           <>
+            <ArticleSkeleton />
+            <ArticleSkeleton />
             <ArticleSkeleton />
             <ArticleSkeleton />
             <ArticleSkeleton />

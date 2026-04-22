@@ -5,6 +5,10 @@ import { Footer } from "@/components/footer"
 import { ArticleDetail } from "@/components/article-detail"
 import type { Metadata } from "next"
 
+// Forzar renderizado dinámico para evitar caché
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 interface PageProps {
   params: Promise<{ slug: string }>
 }
@@ -47,6 +51,7 @@ export default async function ArticlePage({ params }: PageProps) {
       excerpt,
       content,
       image_url,
+      image_caption,
       published_at,
       categories (
         name,
@@ -56,6 +61,15 @@ export default async function ArticlePage({ params }: PageProps) {
     .eq("slug", slug)
     .eq("is_published", true)
     .single()
+
+  // Debug para verificar si image_caption viene de Supabase
+  console.log('=== DEBUG SUPABASE ARTICLE ===')
+  console.log('Slug:', slug)
+  console.log('Article found:', !!article)
+  console.log('Has image_url:', !!article?.image_url)
+  console.log('Has image_caption:', !!article?.image_caption)
+  console.log('Image caption from DB:', article?.image_caption)
+  console.log('============================')
 
   if (error || !article) {
     notFound()

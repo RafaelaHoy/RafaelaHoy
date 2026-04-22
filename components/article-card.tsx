@@ -8,6 +8,7 @@ interface ArticleCardProps {
     slug: string
     excerpt: string | null
     image_url: string | null
+    image_caption: string | null
     published_at: string
     categories?: {
       name: string
@@ -53,6 +54,14 @@ export function ArticleCard({ article, variant = "default" }: ArticleCardProps) 
                 sizes="(max-width: 768px) 100vw, 66vw"
                 priority
               />
+              {/* Pie de imagen */}
+              {article.image_caption && (
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                  <p className="text-white text-xs text-center line-clamp-2">
+                    {article.image_caption}
+                  </p>
+                </div>
+              )}
             </div>
           ) : (
             <div className="aspect-[16/10] bg-muted" />
@@ -93,6 +102,14 @@ export function ArticleCard({ article, variant = "default" }: ArticleCardProps) 
                 className="object-cover"
                 sizes="80px"
               />
+              {/* Pie de imagen */}
+              {article.image_caption && (
+                <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-1">
+                  <p className="text-white text-xs text-center line-clamp-1">
+                    {article.image_caption}
+                  </p>
+                </div>
+              )}
             </div>
           )}
           <div className="flex-1 min-w-0">
@@ -119,6 +136,14 @@ export function ArticleCard({ article, variant = "default" }: ArticleCardProps) 
                 className="object-cover transition-transform duration-300 group-hover:scale-105"
                 sizes="160px"
               />
+              {/* Pie de imagen */}
+              {article.image_caption && (
+                <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-1">
+                  <p className="text-white text-xs text-center line-clamp-1">
+                    {article.image_caption}
+                  </p>
+                </div>
+              )}
             </div>
           )}
           <div className="flex-1 min-w-0 py-1">
@@ -150,6 +175,14 @@ export function ArticleCard({ article, variant = "default" }: ArticleCardProps) 
               className="object-cover transition-transform duration-300 group-hover:scale-105"
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             />
+            {/* Pie de imagen */}
+            {article.image_caption && (
+              <div className="absolute bottom-0 left-0 right-0 bg-black/70 p-2">
+                <p className="text-white text-xs text-center line-clamp-2">
+                  {article.image_caption}
+                </p>
+              </div>
+            )}
           </div>
         )}
         <div>

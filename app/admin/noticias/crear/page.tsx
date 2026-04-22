@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Image as ImageIcon } from "lucide-react"
+import { findFreeSortOrder, shiftArticlesUp } from "@/lib/sort-order-utils"
 import {
   Select,
   SelectContent,
@@ -35,34 +36,66 @@ interface MediaItem {
 
 // Función para procesar Markdown a HTML
 const processMarkdownToHTML = (markdown: string): string => {
-  return markdown
-    // Headers
+  // Limpiar el texto primero
+  let html = markdown.trim()
+  
+  // Procesar en el orden correcto para evitar conflictos
+  
+  // 1. Headers (antes que párrafos)
+  html = html
     .replace(/^### (.*$)/gim, '<h3>$1</h3>')
     .replace(/^#### (.*$)/gim, '<h4>$1</h4>')
-    // Bold
+  
+  // 2. Bold e Italic (antes que párrafos para evitar conflictos)
+  html = html
     .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-    // Italic
     .replace(/\*(.+?)\*/g, '<em>$1</em>')
-    // Underline
-    .replace(/<u>(.+?)<\/u>/g, '<u>$1</u>')
-    // Links
-    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>')
-    // Images
+  
+  // 3. Underline
+  html = html.replace(/<u>(.+?)<\/u>/g, '<u>$1</u>')
+  
+  // 4. Links e Images
+  html = html
+    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
     .replace(/!\[(.+?)\]\((.+?)\)/g, '<img src="$2" alt="$1" style="max-width: 100%; height: auto;" />')
-    // Blockquotes
-    .replace(/^> (.+$)/gim, '<blockquote>$1</blockquote>')
-    // Unordered lists
-    .replace(/^- (.+$)/gim, '<ul><li>$1</li></ul>')
-    // Ordered lists
-    .replace(/^1\. (.+$)/gim, '<ol><li>$1</li></ol>')
-    // Paragraphs (multiple lines)
-    .replace(/\n\n/g, '</p><p>')
-    // Wrap in paragraphs
-    .replace(/^(.+)$/gm, '<p>$1</p>')
-    // Clean up empty paragraphs
-    .replace(/<p><\/p>/g, '')
-    .replace(/<p>(<h|<ul|<ol|<blockquote)/g, '$1')
-    .replace(/(<\/h3>|<\/h4>|<\/ul>|<\/ol>|<\/blockquote>)<\/p>/g, '$1')
+  
+  // 5. Blockquotes
+  html = html.replace(/^> (.+$)/gim, '<blockquote>$1</blockquote>')
+  
+  // 6. Lists (procesar líneas múltiples juntas)
+  html = html
+    // Unordered lists - juntar items consecutivos
+    .replace(/^- (.+)(?:\n- (.+))*/g, (match) => {
+      const items = match.split('\n- ').map(item => item.replace(/^- /, '').trim())
+      return '<ul>' + items.map(item => `<li>${item}</li>`).join('') + '</ul>'
+    })
+    // Ordered lists - juntar items consecutivos
+    .replace(/^1\. (.+)(?:\n1\. (.+))*/g, (match) => {
+      const items = match.split('\n1. ').map(item => item.replace(/^1\. /, '').trim())
+      return '<ol>' + items.map(item => `<li>${item}</li>`).join('') + '</ol>'
+    })
+  
+  // 7. Procesar párrafos (al final)
+  html = html
+    // Dividir en líneas
+    .split('\n')
+    // Procesar cada línea
+    .map(line => {
+      const trimmed = line.trim()
+      // Si la línea ya es HTML o está vacía, dejarla como está
+      if (!trimmed || trimmed.startsWith('<') || trimmed.startsWith('</')) {
+        return line
+      }
+      // Envolver en párrafo
+      return `<p>${trimmed}</p>`
+    })
+    // Unir todo
+    .join('\n')
+  
+  // 8. Limpiar párrafos vacíos
+  html = html.replace(/<p><\/p>/g, '')
+  
+  return html
 }
 
 // Componente de editor de texto enriquecido con textarea y Markdown
@@ -617,34 +650,36 @@ export default function CreateNewsPage() {
       
       console.log('¡Cupo disponible! Procediendo con la inserción...')
       
-      // 3. ASIGNACIÓN DE SORT_ORDER (Sin afectar al resto)
+      // 3. ASIGNACIÓN DE SORT_ORDER CON LÓGICA ESTRICTA
       let newSortOrder = 0
       
       if (homeLocation === "principal") {
         // Principal: siempre 0
         newSortOrder = 0
       } else if (homeLocation === "destacada") {
-        // Destacadas: encontrar el siguiente número libre en 1-3
-        const usedOrders = existingArticles?.filter(a => a.sort_order >= 1 && a.sort_order <= 3).map(a => a.sort_order) || []
-        for (let i = 1; i <= 3; i++) {
-          if (!usedOrders.includes(i)) {
-            newSortOrder = i
-            break
-          }
+        // Destacadas: buscar hueco libre en 1-3
+        const freeOrder = findFreeSortOrder(existingArticles || [], 1, 3)
+        if (freeOrder === null) {
+          throw new Error('El cupo de Noticias Destacadas está lleno (3/3). No hay huecos disponibles. Mové alguna de las actuales a Últimas Noticias o al Repositorio para liberar espacio.')
         }
+        newSortOrder = freeOrder
       } else if (homeLocation === "ultimas") {
-        // Últimas: encontrar el siguiente número libre en 4-13
-        const usedOrders = existingArticles?.filter(a => a.sort_order >= 4 && a.sort_order <= 13).map(a => a.sort_order) || []
-        for (let i = 4; i <= 13; i++) {
-          if (!usedOrders.includes(i)) {
-            newSortOrder = i
-            break
-          }
+        // Últimas: buscar hueco libre en 4-13
+        const freeOrder = findFreeSortOrder(existingArticles || [], 4, 13)
+        if (freeOrder === null) {
+          throw new Error('El cupo de Últimas Noticias está lleno (10/10). No hay huecos disponibles. Mové alguna de las actuales al Repositorio para liberar espacio.')
         }
-      } else {
-        // Repositorio: asignar al final de la lista
-        const maxOrder = Math.max(...(existingArticles?.map(a => a.sort_order) || [0]))
-        newSortOrder = maxOrder + 1
+        newSortOrder = freeOrder
+      } else if (homeLocation === "repositorio") {
+        // Repositorio: siempre 14 + desplazar existentes
+        newSortOrder = 14
+        
+        // Desplazar todas las noticias >= 14 hacia abajo
+        console.log('Aplicando desplazamiento en Repositorio...')
+        const shiftSuccess = await shiftArticlesUp(14)
+        if (!shiftSuccess) {
+          console.error('Error en desplazamiento de Repositorio, pero continuando...')
+        }
       }
       
       console.log(`Asignando sort_order = ${newSortOrder} para la nueva noticia`)
@@ -662,8 +697,8 @@ export default function CreateNewsPage() {
         throw new Error('Conflicto detectado: El sort_order ' + newSortOrder + ' está siendo usado por "' + finalCheck.title + '". Por favor, recargá la página y volvé a intentar.')
       }
       
-      // 5. INSERCIÓN DIRECTA (Sin empuje, sin cascada)
-      console.log('Insertando noticia directamente (sin afectar vecinos)...')
+      // 5. INSERCIÓN CON DESPLAZAMIENTO APLICADO
+      console.log('Insertando noticia con desplazamiento aplicado...')
       
       const { data: newArticle, error: insertError } = await supabase
         .from('articles')
@@ -677,7 +712,7 @@ export default function CreateNewsPage() {
           image_caption: imageCaption.trim() || null,
           slug: slug.trim() || generateSlug(title.trim()),
           published_at: isPublished ? new Date().toISOString() : null,
-          sort_order: newSortOrder, // Hueco disponible sin empujar
+          sort_order: newSortOrder, // Posición con desplazamiento aplicado
           is_featured: newSortOrder <= 3,
           home_location: getHomeLocationByOrder(newSortOrder),
           author: 'Rafaela hoy'
@@ -688,7 +723,7 @@ export default function CreateNewsPage() {
       if (insertError) throw insertError
 
       console.log(`Noticia "${newArticle.title}" insertada exitosamente en orden ${newSortOrder}`)
-      console.log('=== PROCESO DE CREACIÓN MANUAL COMPLETADO ===')
+      console.log('=== PROCESO DE CREACIÓN CON DESPLAZAMIENTO COMPLETADO ===')
       
       // 6. VERIFICACIÓN FINAL (opcional, para debugging)
       const { data: finalArticles } = await supabase

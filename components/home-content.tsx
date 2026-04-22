@@ -40,10 +40,10 @@ type Article = {
   id: string
   title: string
   slug: string
-  excerpt: string | null
+  excerpt: string
   image_url: string | null
+  image_caption: string | null
   published_at: string
-  is_featured: boolean
   sort_order: number
   categories: {
     name: string
@@ -61,8 +61,8 @@ async function fetchArticles(): Promise<Article[]> {
       slug,
       excerpt,
       image_url,
+      image_caption,
       published_at,
-      is_featured,
       sort_order,
       categories (
         name,
@@ -70,9 +70,35 @@ async function fetchArticles(): Promise<Article[]> {
       )
     `)
     .eq("is_published", true)
-    .order("sort_order", { ascending: true })
     .order("published_at", { ascending: false })
-    .limit(30)
+    .limit(50)
+
+  if (error) throw error
+  return data as Article[]
+}
+
+// Nueva función específica para noticias por categoría con orden cronológico
+async function fetchArticlesByCategory(categorySlug: string): Promise<Article[]> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from("articles")
+    .select(`
+      id,
+      title,
+      slug,
+      excerpt,
+      image_url,
+      image_caption,
+      created_at,
+      categories!inner(
+        name,
+        slug
+      )
+    `)
+    .eq("is_published", true)
+    .eq("categories.slug", categorySlug)
+    .order("created_at", { ascending: false })
+    .limit(4)
 
   if (error) throw error
   return data as Article[]
@@ -84,31 +110,26 @@ export function HomeContent() {
     dedupingInterval: 60000,
   })
 
+  // Fetch específico para cada categoría con orden cronológico
+  const { data: localesArticles } = useSWR("category-locales", () => fetchArticlesByCategory("locales"))
+  const { data: policialesArticles } = useSWR("category-policiales", () => fetchArticlesByCategory("policiales"))
+  const { data: deportesArticles } = useSWR("category-deportes", () => fetchArticlesByCategory("deportes"))
+  const { data: provincialesArticles } = useSWR("category-provinciales", () => fetchArticlesByCategory("provinciales"))
+  const { data: regionalesArticles } = useSWR("category-regionales", () => fetchArticlesByCategory("regionales"))
+  const { data: agroindustriaArticles } = useSWR("category-agroindustria", () => fetchArticlesByCategory("agroindustria"))
+
   if (error) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-12">
         <div className="text-center py-12">
-          <h2 className="text-2xl font-bold text-red-600 mb-4">Error al cargar las noticias</h2>
+          <h2 className="text-2xl font-bold mb-4">Error al cargar las noticias</h2>
           <p className="text-muted-foreground">Por favor, intenta recargar la página.</p>
         </div>
       </div>
     )
   }
 
-  // Desktop detection
-  const [isDesktop, setIsDesktop] = useState(false)
-  
-  useEffect(() => {
-    const checkDesktop = () => {
-      setIsDesktop(window.innerWidth >= 1024)
-    }
-    
-    checkDesktop()
-    window.addEventListener('resize', checkDesktop)
-    return () => window.removeEventListener('resize', checkDesktop)
-  }, [])
-
-  // Separate featured and other articles by sort_order (como en el admin)
+  // Separate featured and other articles by sort_order (solo para sección superior)
   const mainFeaturedArticle = articles?.find(a => a.sort_order === 0)
   const secondaryFeaturedArticles = articles?.filter(a => a.sort_order >= 1 && a.sort_order <= 3).sort((a, b) => a.sort_order - b.sort_order) || []
   const latestArticles = articles?.filter(a => a.sort_order >= 4 && a.sort_order <= 13).sort((a, b) => a.sort_order - b.sort_order) || []
@@ -118,30 +139,41 @@ export function HomeContent() {
   const sidebarFeaturedArticles = secondaryFeaturedArticles
   const gridArticles = latestArticles
 
-  // Filter articles by category for the new sections
-  const articlesByCategory = articles?.reduce((acc, article) => {
-    if (article.categories) {
-      const categorySlug = article.categories.slug
-      if (!acc[categorySlug]) {
-        acc[categorySlug] = {
-          name: article.categories.name,
-          articles: []
-        }
-      }
-      acc[categorySlug].articles.push(article)
-    }
-    return acc
-  }, {} as Record<string, { name: string; articles: Article[] }>) || {}
-
-  // Define the 6 categories to show in specific order
-  const categoriesToShow = [
-    { slug: 'locales', name: 'Locales' },
-    { slug: 'policiales', name: 'Policiales' },
-    { slug: 'deportes', name: 'Deportes' },
-    { slug: 'provinciales', name: 'Provinciales' },
-    { slug: 'regionales', name: 'Regionales' },
-    { slug: 'agroindustria', name: 'Agroindustria' }
+  // Definir las 6 categorías con sus datos específicos
+  const categoriesWithArticles = [
+    { slug: 'locales', name: 'Locales', articles: localesArticles || [] },
+    { slug: 'policiales', name: 'Policiales', articles: policialesArticles || [] },
+    { slug: 'deportes', name: 'Deportes', articles: deportesArticles || [] },
+    { slug: 'provinciales', name: 'Provinciales', articles: provincialesArticles || [] },
+    { slug: 'regionales', name: 'Regionales', articles: regionalesArticles || [] },
+    { slug: 'agroindustria', name: 'Agroindustria', articles: agroindustriaArticles || [] }
   ]
+
+  // Debug: Log para verificar cuántas noticias hay por categoría y si tienen image_caption
+  console.log('=== DEBUG NOTICIAS POR CATEGORÍA ===')
+  categoriesWithArticles.forEach(category => {
+    const count = category.articles.length
+    console.log(`${category.name}: ${count} noticias`)
+    if (count > 0) {
+      console.log(`  - Últimas: ${category.articles.slice(0, 3).map(a => a.title).join(', ')}`)
+      // Verificar si tienen image_caption
+      const withCaption = category.articles.filter(a => a.image_caption)
+      console.log(`  - Con pie de foto: ${withCaption.length}`)
+      if (withCaption.length > 0) {
+        console.log(`  - Ejemplos: ${withCaption.slice(0, 2).map(a => `"${a.image_caption}"`).join(', ')}`)
+      }
+    }
+  })
+  
+  // Debug para noticia principal
+  if (featuredArticle) {
+    console.log(`=== NOTICIA PRINCIPAL ===`)
+    console.log(`Título: ${featuredArticle.title}`)
+    console.log(`Tiene image_caption: ${featuredArticle.image_caption ? 'SÍ' : 'NO'}`)
+    console.log(`Image_caption: "${featuredArticle.image_caption}"`)
+    console.log(`========================`)
+  }
+  console.log('========================================')
 
   // Style patterns for 3-section cycle
   const getCategoryStyle = (index: number) => {
@@ -205,6 +237,15 @@ export function HomeContent() {
                       )}
                     </div>
                     
+                    {/* Pie de foto - Desktop only */}
+                    {featuredArticle.image_caption && (
+                      <div className="lg:absolute lg:bottom-6 lg:left-6 lg:right-6 hidden lg:block">
+                        <p className="text-white text-sm italic text-center bg-black/50 px-3 py-2 rounded-lg backdrop-blur-sm">
+                          {featuredArticle.image_caption}
+                        </p>
+                      </div>
+                    )}
+                    
                     {/* Overlay content - Desktop only */}
                     <div className="lg:absolute lg:bottom-0 lg:left-0 lg:right-0 lg:bg-gradient-to-t lg:from-black/80 lg:to-transparent lg:p-6 hidden lg:block">
                       <div className="max-w-4xl">
@@ -230,6 +271,14 @@ export function HomeContent() {
                           />
                         )}
                       </div>
+                      {/* Pie de foto - Mobile */}
+                      {featuredArticle.image_caption && (
+                        <div className="px-4 pt-2">
+                          <p className="text-gray-600 text-sm italic text-center">
+                            {featuredArticle.image_caption}
+                          </p>
+                        </div>
+                      )}
                       {/* Content */}
                       <div className="p-4 space-y-2">
                         {/* Category */}
@@ -383,8 +432,10 @@ export function HomeContent() {
         </div>
       </section>
       {/* Category Sections - New Design */}
-      {categoriesToShow.map((category, index) => {
-        const categoryArticles = articlesByCategory[category.slug]?.articles || []
+      {categoriesWithArticles.map((category, index) => {
+        // Las noticias ya vienen ordenadas cronológicamente desde fetchArticlesByCategory
+        // Mostrar hasta 4 noticias, CSS grid se encargará de la responsividad
+        const articlesToShow = category.articles.slice(0, 4)
         const style = getCategoryStyle(index)
         
         return (
@@ -401,8 +452,8 @@ export function HomeContent() {
               </Link>
             </div>
             <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {categoryArticles.slice(0, isDesktop ? 4 : 3).map((article) => (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+                {articlesToShow.map((article, articleIndex) => (
                   <Link key={article.id} href={`/noticia/${article.slug}`} className="group">
                     <div className="overflow-hidden">
                       {/* Image */}
@@ -416,7 +467,7 @@ export function HomeContent() {
                         )}
                       </div>
                       {/* Title */}
-                      <h3 className="font-semibold leading-tight">
+                      <h3 className="font-semibold leading-tight text-sm line-clamp-3 group-hover:text-primary transition-colors">
                         {article.title}
                       </h3>
                     </div>
