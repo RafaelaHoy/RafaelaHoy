@@ -14,13 +14,13 @@ export async function GET() {
       console.log('Tabla pharmacies_on_duty no existe o está vacía, usando fallback a pharmacies')
     }
     
-    // Fallback: usar la tabla pharmacies existente
+    // Fallback: usar la tabla pharmacies existente con filtro is_on_duty
     const supabase = createClient()
     const { data: pharmacies, error } = await supabase
       .from('pharmacies')
       .select('*')
+      .eq('is_on_duty', true) // Solo farmacias de turno
       .order('name')
-      .limit(5) // Limitar a 5 farmacias
 
     if (error) {
       console.error('Error fetching from pharmacies table:', error)
@@ -62,6 +62,7 @@ export async function GET() {
       name: pharmacy.name,
       address: pharmacy.address,
       phone: pharmacy.phone,
+      is_on_duty: pharmacy.is_on_duty,
       date: new Date().toISOString().split('T')[0], // Fecha de hoy
       created_at: pharmacy.created_at,
       updated_at: pharmacy.updated_at

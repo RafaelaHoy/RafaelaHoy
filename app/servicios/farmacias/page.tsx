@@ -11,6 +11,7 @@ export interface Pharmacy {
   name: string
   address: string
   phone?: string
+  is_on_duty?: boolean
   date: string
   created_at: string
   updated_at: string

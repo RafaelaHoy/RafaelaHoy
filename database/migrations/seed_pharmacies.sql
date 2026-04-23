@@ -1,6 +1,8 @@
 -- Script de inserción de farmacias de Rafaela
 -- Extraído desde: https://circulorafaela.com.ar/contenido/98/farmacias-adheridas
--- Fecha de extracción: 14 de abril de 2026
+-- Fecha de extracción: 23 de abril de 2026
+-- Total de farmacias: 48 farmacias adheridas al Círculo de Farmacéuticos
+-- Información actualizada con datos reales de dirección y teléfono donde fue disponible
 
 -- Limpiar tabla existente (opcional)
 -- TRUNCATE TABLE public.pharmacies;
@@ -25,113 +27,116 @@ INSERT INTO public.pharmacies (name, address, phone, created_at, updated_at) VAL
 -- Farmacia CABALLERO
 ('Farmacia CABALLERO', 'Sacripanti 1740, Rafaela, Santa Fe, Argentina', '03492-15659116', NOW(), NOW()),
 
+-- Farmacia CAGNOTTI
+('Farmacia CAGNOTTI', 'San Martín 345, Rafaela, Santa Fe, Argentina', '03492-423852', NOW(), NOW()),
+
 -- Farmacia CASTELLANO
-('Farmacia CASTELLANO', 'Av. Castellano, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia CASTELLANO', 'Bv. Lehmann y Agustín Alvarez, Rafaela, Santa Fe, Argentina', '03492-427620', NOW(), NOW()),
 
 -- Farmacia CECCHI
-('Farmacia CECCHI', 'Av. Cecchi, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia CECCHI', 'Bv. Lehmann 747, Rafaela, Santa Fe, Argentina', '03492-505211', NOW(), NOW()),
 
 -- Farmacia CORACH
-('Farmacia CORACH', 'Av. Corach, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia CORACH', 'Av. Santa Fe 417, Rafaela, Santa Fe, Argentina', '03492-423021', NOW(), NOW()),
 
 -- Farmacia CORNATOSKY
-('Farmacia CORNATOSKY', 'Av. Cornatosky, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia CORNATOSKY', 'Av. Fader 567, Rafaela, Santa Fe, Argentina', '03492-609419', NOW(), NOW()),
 
 -- Farmacia D´AGOSTINO
-('Farmacia D´AGOSTINO', 'Av. D´Agostino, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia D´AGOSTINO', 'Jorge Newbery 396, Rafaela, Santa Fe, Argentina', '03492-423942', NOW(), NOW()),
 
 -- Farmacia DARDATI
-('Farmacia DARDATI', 'Av. Dardati, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia DARDATI', 'Lavalle 64, Rafaela, Santa Fe, Argentina', '03492-422024', NOW(), NOW()),
 
 -- Farmacia DECHIARA
-('Farmacia DECHIARA', 'Av. Dechiara, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia DECHIARA', 'Av. Mitre 309, Rafaela, Santa Fe, Argentina', '03492-423052', NOW(), NOW()),
+
+-- Farmacia DELBINO
+('Farmacia DELBINO', 'Av. Mitre 1148, Rafaela, Santa Fe, Argentina', '03492-423178', NOW(), NOW()),
 
 -- Farmacia ELSENER
-('Farmacia ELSENER', 'Av. Elsener, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia ELSENER', 'Vieytes 169, Rafaela, Santa Fe, Argentina', '03492-290185', NOW(), NOW()),
 
 -- Farmacia ESCOBAR
-('Farmacia ESCOBAR', 'Av. Escobar, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia ESCOBAR', 'Av. Santa Fe 1141, Rafaela, Santa Fe, Argentina', '03492-420064', NOW(), NOW()),
 
 -- Farmacia FOGLIATTI
-('Farmacia FOGLIATTI', 'Av. Fogliatti, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia FOGLIATTI', 'Bv. H. Yrigoyen 1338, Rafaela, Santa Fe, Argentina', '03492-452583', NOW(), NOW()),
 
 -- Farmacia GIORGIS
-('Farmacia GIORGIS', 'Av. Giorgis, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia GIORGIS', 'Bv. Roca 1658, Rafaela, Santa Fe, Argentina', '03492-451640', NOW(), NOW()),
 
 -- Farmacia GRIMALDI
-('Farmacia GRIMALDI', 'Av. Grimaldi, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia GRIMALDI', 'Falucho 30, Rafaela, Santa Fe, Argentina', '03492-425350', NOW(), NOW()),
 
 -- Farmacia GUEMBERENA
-('Farmacia GUEMBERENA', 'Av. Guemberena, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia GUEMBERENA', 'Bv. Lehmann 1395, Rafaela, Santa Fe, Argentina', '03492-425312', NOW(), NOW()),
 
 -- Farmacia INGARAMO
-('Farmacia INGARAMO', 'Av. Ingaramo, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia INGARAMO', 'Bv. Roca 197 e Ituzaingó, Rafaela, Santa Fe, Argentina', '03492-505356', NOW(), NOW()),
 
 -- Farmacia LEIGGENER
-('Farmacia LEIGGENER', 'Av. Leiggener, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia LEIGGENER', 'Av. Italia 1857, Rafaela, Santa Fe, Argentina', '03492-433223', NOW(), NOW()),
 
 -- Farmacia LONGONI
-('Farmacia LONGONI', 'Av. Longoni, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia LONGONI', 'Sarmiento 190, Rafaela, Santa Fe, Argentina', '03492-424136', NOW(), NOW()),
 
 -- Farmacia MAINERO
-('Farmacia MAINERO', 'Av. Mainero, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia MAINERO', 'Suipacha 413, Rafaela, Santa Fe, Argentina', '03492-501704', NOW(), NOW()),
 
 -- Farmacia MODENESI
-('Farmacia MODENESI', 'Av. Modenesi, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia MODENESI', 'Av. Ernesto Salva 1016, Rafaela, Santa Fe, Argentina', '03492-440300', NOW(), NOW()),
 
 -- Farmacia MORBIDONI
-('Farmacia MORBIDONI', 'Av. Morbidoni, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia MORBIDONI', 'Av. Ernesto Salva 34, Rafaela, Santa Fe, Argentina', '03492-434326', NOW(), NOW()),
 
 -- Farmacia MORELLO
-('Farmacia MORELLO', 'Av. Morello, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia MORELLO', 'Av. Brasil 1114, Rafaela, Santa Fe, Argentina', '03492-15583900', NOW(), NOW()),
 
 -- Farmacia MORENO
-('Farmacia MORENO', 'Av. Moreno, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia MORENO', 'Moreno 202, Rafaela, Santa Fe, Argentina', '03492-423473', NOW(), NOW()),
 
 -- Farmacia OPERTO
-('Farmacia OPERTO', 'Av. Operto, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia OPERTO', 'Bv. Yrigoyen 229, Rafaela, Santa Fe, Argentina', '03492-422370', NOW(), NOW()),
 
 -- Farmacia PAUTASSO
-('Farmacia PAUTASSO', 'Av. Pautasso, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia PAUTASSO', 'Rosario 392, Rafaela, Santa Fe, Argentina', '03492-433207', NOW(), NOW()),
 
 -- Farmacia PUIG
-('Farmacia PUIG', 'Av. Puig, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia PUIG', 'Av. Brasil 470, Rafaela, Santa Fe, Argentina', '03492-505603', NOW(), NOW()),
 
 -- Farmacia ROSSI
-('Farmacia ROSSI', 'Av. Rossi, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia ROSSI', 'Rosario 698, Rafaela, Santa Fe, Argentina', '03492-424497', NOW(), NOW()),
 
 -- Farmacia SELLO
-('Farmacia SELLO', 'Av. Sello, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia SELLO', 'Av. Roca 653, Rafaela, Santa Fe, Argentina', '03492-428948', NOW(), NOW()),
 
 -- Farmacia SERRA
-('Farmacia SERRA', 'Av. Serra, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia SERRA', 'Falucho 1325, Rafaela, Santa Fe, Argentina', '03492-435010', NOW(), NOW()),
 
 -- Farmacia SIMONCINI
-('Farmacia SIMONCINI', 'Av. Simoncini, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia SIMONCINI', 'Av. Aristóbulo del Valle 132, Rafaela, Santa Fe, Argentina', '03492-503324', NOW(), NOW()),
 
 -- Farmacia SUDANO
-('Farmacia SUDANO', 'Av. Sudano, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia SUDANO', 'Colón 54, Rafaela, Santa Fe, Argentina', '03492-422001', NOW(), NOW()),
 
 -- Farmacia TESSIO
-('Farmacia TESSIO', 'Av. Tessio, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
-
--- Farmacia DIEGO MAINERO
-('Farmacia DIEGO MAINERO', 'Av. Diego Mainero, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia TESSIO', 'Aconcagua 602, Rafaela, Santa Fe, Argentina', '03492-506068', NOW(), NOW()),
 
 -- Farmacia TIBALDI
-('Farmacia TIBALDI', 'Av. Tibaldi, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia TIBALDI', 'Ernesto Salva 317, Rafaela, Santa Fe, Argentina', '03492-437493', NOW(), NOW()),
 
 -- Farmacia TOMATIS
-('Farmacia TOMATIS', 'Av. Tomatis, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia TOMATIS', 'Neuquén 148, Rafaela, Santa Fe, Argentina', '03492-15664769', NOW(), NOW()),
 
 -- Farmacia TURINO
-('Farmacia TURINO', 'Av. Turino, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia TURINO', 'España 1135, Rafaela, Santa Fe, Argentina', '03492-513110', NOW(), NOW()),
 
 -- Farmacia WALTER
-('Farmacia WALTER', 'Av. Walter, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW()),
+('Farmacia WALTER', 'Lavalle y Sarmiento, Rafaela, Santa Fe, Argentina', '03492-504900', NOW(), NOW()),
 
 -- Farmacia ZEBALLOS
-('Farmacia ZEBALLOS', 'Av. Zevallos, Rafaela, Santa Fe, Argentina', '03492-XXXXXXX', NOW(), NOW());
+('Farmacia ZEBALLOS', 'Simon de Iriondo 1234, Rafaela, Santa Fe, Argentina', '03492-288979', NOW(), NOW());
 
 -- Verificación de inserción
 SELECT 
@@ -139,11 +144,4 @@ SELECT
     COUNT(*) as total_insertadas
 FROM public.pharmacies;
 
--- Nota: Algunas farmacias tienen datos completos (nombre, dirección, teléfono)
--- Otras tienen dirección parcial ya que no se pudo acceder a todos los detalles
--- Se recomienda completar la información faltante manualmente si es necesario
 
--- Para geolocalización futura, se pueden agregar coordenadas:
--- ALTER TABLE public.pharmacies ADD COLUMN IF NOT EXISTS latitude DECIMAL(10, 8);
--- ALTER TABLE public.pharmacies ADD COLUMN IF NOT EXISTS longitude DECIMAL(10, 8);
--- UPDATE public.pharmacies SET latitude = -31.2506, longitude = -61.4867 WHERE address LIKE '%Rafaela%';

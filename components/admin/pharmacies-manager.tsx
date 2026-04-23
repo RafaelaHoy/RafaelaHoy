@@ -31,6 +31,7 @@ interface Pharmacy {
   name: string
   address: string
   phone?: string
+  is_on_duty?: boolean
   created_at: string
   updated_at: string
 }
@@ -104,6 +105,33 @@ export function PharmaciesManager() {
     } catch (error) {
       console.error('Error al eliminar farmacia:', error)
       alert('Error al eliminar la farmacia')
+    }
+  }
+
+  const handleToggleDuty = async (id: string, currentStatus: boolean) => {
+    try {
+      const supabase = createClient()
+      const { error } = await supabase
+        .from('pharmacies')
+        .update({ 
+          is_on_duty: !currentStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+
+      if (error) throw error
+      
+      // Actualizar estado local
+      setPharmacies(prev => 
+        prev.map(pharmacy => 
+          pharmacy.id === id 
+            ? { ...pharmacy, is_on_duty: !currentStatus }
+            : pharmacy
+        )
+      )
+    } catch (error) {
+      console.error('Error al actualizar estado de turno:', error)
+      alert('Error al actualizar estado de turno')
     }
   }
 
@@ -201,10 +229,11 @@ export function PharmaciesManager() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[35%]">Nombre</TableHead>
-                  <TableHead className="w-[40%]">Dirección</TableHead>
-                  <TableHead className="w-[20%]">Teléfono</TableHead>
-                  <TableHead className="text-right w-[5%]">Acciones</TableHead>
+                  <TableHead className="w-[30%]">Nombre</TableHead>
+                  <TableHead className="w-[35%]">Dirección</TableHead>
+                  <TableHead className="w-[15%]">Teléfono</TableHead>
+                  <TableHead className="w-[10%]">Turno</TableHead>
+                  <TableHead className="text-right w-[10%]">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -228,6 +257,20 @@ export function PharmaciesManager() {
                       ) : (
                         <span className="text-muted-foreground">Sin teléfono</span>
                       )}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleToggleDuty(pharmacy.id, pharmacy.is_on_duty || false)}
+                        className={`h-8 px-3 ${
+                          pharmacy.is_on_duty 
+                            ? "bg-green-100 text-green-700 hover:bg-green-200" 
+                            : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        }`}
+                      >
+                        {pharmacy.is_on_duty ? "De turno" : "No está"}
+                      </Button>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
