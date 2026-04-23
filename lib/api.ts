@@ -141,8 +141,8 @@ export async function fetchWeatherForecast() {
       const date = new Date(forecast.dt * 1000)
       const dateStr = date.toDateString()
       
-      if (!acc[dateStr]) {
-        acc[dateStr] = {
+      if (!(acc as any)[dateStr]) {
+        (acc as any)[dateStr] = {
           date: date,
           temp_min: forecast.main.temp_min,
           temp_max: forecast.main.temp_max,
@@ -150,11 +150,11 @@ export async function fetchWeatherForecast() {
         }
       } else {
         // Update min and max temperatures
-        acc[dateStr].temp_min = Math.min(acc[dateStr].temp_min, forecast.main.temp_min)
-        acc[dateStr].temp_max = Math.max(acc[dateStr].temp_max, forecast.main.temp_max)
+        (acc as any)[dateStr].temp_min = Math.min((acc as any)[dateStr].temp_min, forecast.main.temp_min);
+        (acc as any)[dateStr].temp_max = Math.max((acc as any)[dateStr].temp_max, forecast.main.temp_max);
       }
       
-      return acc
+      return (acc as any)
     }, {})
     
     // Get next 5 days

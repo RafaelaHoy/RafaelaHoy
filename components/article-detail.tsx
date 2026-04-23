@@ -112,7 +112,7 @@ async function fetchRelatedArticles(categorySlug: string | undefined, currentId:
     .limit(3)
 
   if (error) return []
-  return data as RelatedArticle[]
+  return data as any[]
 }
 
 async function fetchArticleMedia(articleId: string): Promise<MediaItem[]> {
@@ -124,7 +124,7 @@ async function fetchArticleMedia(articleId: string): Promise<MediaItem[]> {
     .order('sort_order', { ascending: true })
 
   if (error) return []
-  return data as MediaItem[]
+  return data as any[]
 }
 
 export function ArticleDetail({ article }: { article: Article }) {

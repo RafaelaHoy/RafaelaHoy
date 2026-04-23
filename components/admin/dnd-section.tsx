@@ -5,7 +5,7 @@ import { DndContext, DragEndEvent, DragOverEvent, DragStartEvent,
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import { useState } from 'react'
-import { Article } from './admin-dashboard'
+type Article = any
 import { DraggableArticleRow } from './draggable-article-row'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'

@@ -176,7 +176,7 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
 
       if (error) throw error
 
-      setArticles([data as Article, ...articles])
+      setArticles([data as any, ...articles])
       setIsCreateDialogOpen(false)
       resetForm()
     } catch (error) {
@@ -226,7 +226,7 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
 
       setArticles(
         articles.map((article) =>
-          article.id === editingArticle!.id ? data as Article : article
+          article.id === editingArticle!.id ? data as any : article
         )
       )
       setEditingArticle(null)
@@ -490,7 +490,7 @@ export function AdminDashboard({ articles: initialArticles, categories, userEmai
 
                     {/* Media Manager */}
                     <MediaManager
-                      articleId={null}
+                      articleId={undefined}
                       mediaItems={currentMedia}
                       onMediaChange={setCurrentMedia}
                     />

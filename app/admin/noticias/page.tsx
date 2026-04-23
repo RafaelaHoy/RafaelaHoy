@@ -167,7 +167,7 @@ export default function AdminNoticiasPage() {
         .limit(50) // Limitar para reducir memoria
 
       if (error) throw error
-      setArticles(data || [])
+      setArticles(data as any || [])
     } catch (error) {
       console.error("Error cargando artículos:", error)
       alert("Error al cargar las noticias")

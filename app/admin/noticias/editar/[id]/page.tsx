@@ -125,11 +125,11 @@ const htmlToMarkdown = (html: string): string => {
   
   // 7. Lists
   markdown = markdown
-    .replace(/<ul>(.*?)<\/ul>/gs, (match, content) => {
-      return content.replace(/<li>(.*?)<\/li>/g, '- $1')
+    .replace(/<ul>([\s\S]*?)<\/ul>/g, (match, content) => {
+      return content.replace(/<li>([\s\S]*?)<\/li>/g, '- $1')
     })
-    .replace(/<ol>(.*?)<\/ol>/gs, (match, content) => {
-      return content.replace(/<li>(.*?)<\/li>/g, '1. $1')
+    .replace(/<ol>([\s\S]*?)<\/ol>/g, (match, content) => {
+      return content.replace(/<li>([\s\S]*?)<\/li>/g, '1. $1')
     })
   
   // 8. Párrafos - convertir a líneas separadas
@@ -432,10 +432,13 @@ export default function EditNewsPage() {
   const generateSlug = (title: string) => {
     return title
       .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .trim('-')
+      .trim() // Primero limpiamos espacios reales a los costados
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // Quitamos acentos
+      .replace(/[^a-z0-9\s-]/g, "") // Quitamos caracteres especiales
+      .replace(/\s+/g, "-") // Reemplazamos espacios por guiones
+      .replace(/-+/g, "-") // Evitamos guiones duplicados
+      .replace(/^-+|-+$/g, ""); // Limpiamos guiones en los extremos
   }
 
   // Generar slug automáticamente cuando cambia el título (solo si no hay slug personalizado)
@@ -807,8 +810,7 @@ export default function EditNewsPage() {
       
     } catch (error) {
       console.error('Error al guardar la edición:', error)
-      alert('Error al guardar los cambios: ' + error.message)
-    } finally {
+      alert('Error al guardar los cambios: ' + (error instanceof Error ? error.message : String(error)))   } finally {
       setSaving(false)
     }
   }
@@ -1039,6 +1041,7 @@ export default function EditNewsPage() {
               <h3 className="font-semibold mb-4">Galería de Imágenes</h3>
               <MediaManager
                 articleId={articleId}
+                // @ts-ignore
                 mediaItems={mediaItems}
                 onMediaChange={(newMedia) => {
                   setMediaItems(newMedia)

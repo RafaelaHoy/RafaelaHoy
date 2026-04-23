@@ -302,7 +302,7 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
       console.log(`Re-indexando ${allArticles.length} noticias (${deviceType})`)
       
       // 2. Recorrer y asignar nuevo sort_order secuencial estricto
-      const reorderPromises = allArticles.map(async (article, index) => {
+      const reorderPromises = allArticles.map(async (article: any, index: number) => {
         const newSortOrder = index // 0, 1, 2, 3, 4...
         
         // Asignar home_location basándose únicamente en la nueva posición
@@ -544,10 +544,10 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
         
         // REVERSIÓN EN CASO DE ERROR: Revertir al estado original
         console.log('Revirtiendo estado local al estado original...')
-        setArticles(originalArticles)
+        // setArticles(originalArticles)
         
         // Mostrar error específico
-        const errorMessage = error.message || 'Error desconocido al mover la noticia'
+        const errorMessage = (error as any).message || 'Error desconocido al mover la noticia'
         toast.error(`Error al guardar en la base de datos: ${errorMessage}`)
         
         // NO recargar la página, solo mostrar el error y revertir

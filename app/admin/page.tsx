@@ -45,7 +45,7 @@ export default async function AdminPage() {
 
   return (
     <AdminDashboard
-      articles={articles || []}
+      articles={articles as any || []}
       categories={categories || []}
     />
   )

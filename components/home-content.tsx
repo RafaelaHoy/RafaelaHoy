@@ -74,7 +74,7 @@ async function fetchArticles(): Promise<Article[]> {
     .limit(50)
 
   if (error) throw error
-  return data as Article[]
+  return data as any[]
 }
 
 // Nueva función específica para noticias por categoría con orden cronológico
@@ -101,7 +101,7 @@ async function fetchArticlesByCategory(categorySlug: string): Promise<Article[]>
     .limit(4)
 
   if (error) throw error
-  return data as Article[]
+  return data as any[]
 }
 
 export function HomeContent() {

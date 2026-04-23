@@ -21,9 +21,11 @@ interface MediaManagerProps {
   articleId?: string
   mediaItems: MediaItem[]
   onMediaChange: (media: MediaItem[]) => void
+  featuredImage?: string
+  onFeaturedImageChange?: (url: string) => void
 }
 
-export function MediaManager({ articleId, mediaItems, onMediaChange }: MediaManagerProps) {
+export function MediaManager({ articleId, mediaItems, onMediaChange, featuredImage, onFeaturedImageChange }: MediaManagerProps) {
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const supabase = createClient()

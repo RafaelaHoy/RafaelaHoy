@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Article } from './admin-dashboard'
+type Article = any;
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Eye, EyeOff, Trash2, GripVertical, Edit } from 'lucide-react'
@@ -59,27 +59,16 @@ export function DraggableArticleRow({
         {/* Miniatura de imagen de portada - OCULTA en móviles */}
         <div className="hidden sm:block w-12 h-10 sm:w-16 sm:h-12 bg-muted rounded flex-shrink-0 overflow-hidden border">
           {article.image_url ? (
-            <>
-              {/* Debug: Mostrar URL en consola */}
-              {console.log(`Imagen para "${article.title}":`, article.image_url)}
               <img
                 src={article.image_url}
                 alt={article.title}
                 className="w-full h-full object-cover"
-                onLoad={(e) => {
-                  console.log(`Imagen cargada exitosamente: "${article.title}"`)
-                }}
-                onError={(e) => {
-                  console.error(`Error cargando imagen para "${article.title}":`, article.image_url)
-                  // Si la imagen falla al cargar, mostrar placeholder
-                  e.currentTarget.style.display = 'none'
-                  e.currentTarget.nextElementSibling.style.display = 'flex'
-                }}
               />
-            </>
-          ) : (
-            console.log(`Sin imagen para "${article.title}"`)
-          )}
+            ) : (
+              <div className="w-full h-full bg-muted flex items-center justify-center">
+                <span className="text-[10px] text-muted-foreground">Sin foto</span>
+              </div>
+            )}
           {/* Placeholder cuando no hay imagen o falla la carga */}
           <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 text-blue-500 p-1" style={{ display: article.image_url ? 'none' : 'flex' }}>
             <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -156,8 +145,8 @@ export function DraggableArticleRow({
       ref={setNodeRef}
       style={{
         ...style,
-        touchAction: isDragging ? 'none' : 'auto'
-      }}
+        touchAction: (isDragging ? 'none' : 'auto') as any
+      } as any}
       className={`flex items-center gap-2 sm:gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-all ${
         isDragging ? 'shadow-lg border-primary scale-105 bg-primary/5' : ''
       }`}
@@ -172,27 +161,16 @@ export function DraggableArticleRow({
       {/* Miniatura de imagen de portada - OCULTA en móviles */}
       <div className="hidden sm:block w-12 h-10 sm:w-16 sm:h-12 bg-muted rounded flex-shrink-0 overflow-hidden border">
         {article.image_url ? (
-          <>
-            {/* Debug: Mostrar URL en consola */}
-            {console.log(`Imagen para "${article.title}":`, article.image_url)}
             <img
               src={article.image_url}
               alt={article.title}
               className="w-full h-full object-cover"
-              onLoad={(e) => {
-                console.log(`Imagen cargada exitosamente: "${article.title}"`)
-              }}
-              onError={(e) => {
-                console.error(`Error cargando imagen para "${article.title}":`, article.image_url)
-                // Si la imagen falla al cargar, mostrar placeholder
-                e.currentTarget.style.display = 'none'
-                e.currentTarget.nextElementSibling.style.display = 'flex'
-              }}
             />
-          </>
-        ) : (
-          console.log(`Sin imagen para "${article.title}"`)
-        )}
+          ) : (
+            <div className="w-full h-full bg-muted flex items-center justify-center">
+              <span className="text-[10px]">Sin foto</span>
+            </div>
+          )}
         {/* Placeholder cuando no hay imagen o falla la carga */}
         <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 text-blue-500 p-1" style={{ display: article.image_url ? 'none' : 'flex' }}>
           <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

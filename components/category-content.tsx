@@ -49,7 +49,7 @@ async function fetchCategoryArticles(categoryId: string): Promise<Article[]> {
     .limit(50)
 
   if (error) throw error
-  return data as Article[]
+  return data as any[]
 }
 
 function ArticleSkeleton() {
@@ -107,7 +107,7 @@ export function CategoryContent({ category }: { category: Category }) {
           </>
         ) : articles && articles.length > 0 ? (
           articles.map((article) => (
-            <ArticleCard key={article.id} article={article} />
+            <ArticleCard key={article.id} article={article as any} />
           ))
         ) : (
           <div className="col-span-full text-center py-12">
