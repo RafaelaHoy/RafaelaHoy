@@ -101,7 +101,7 @@ const processMarkdownToHTML = (markdown: string): string => {
 const cleanEscapedHTML = (html: string): string => {
   let cleaned = html
   
-  // Detectar y reemplazar etiquetas HTML escapadas comunes
+  // Primero: Detectar y reemplazar etiquetas HTML escapadas comunes
   cleaned = cleaned.replace(/&lt;p&gt;/g, '<p>')
   cleaned = cleaned.replace(/&lt;\/p&gt;/g, '</p>')
   cleaned = cleaned.replace(/&lt;br&gt;/g, '<br>')
@@ -130,29 +130,21 @@ const cleanEscapedHTML = (html: string): string => {
   cleaned = cleaned.replace(/&gt;/g, '>')
   cleaned = cleaned.replace(/&lt;/g, '<')
   
-  // Detectar y reemplazar etiquetas HTML escritas literalmente como texto
-  cleaned = cleaned.replace(/<p>/g, '<p>')
-  cleaned = cleaned.replace(/<\/p>/g, '</p>')
-  cleaned = cleaned.replace(/<br>/g, '<br>')
-  cleaned = cleaned.replace(/<br\s*\/?>/g, '<br>')
-  cleaned = cleaned.replace(/<strong>/g, '<strong>')
-  cleaned = cleaned.replace(/<\/strong>/g, '</strong>')
-  cleaned = cleaned.replace(/<em>/g, '<em>')
-  cleaned = cleaned.replace(/<\/em>/g, '</em>')
-  cleaned = cleaned.replace(/<u>/g, '<u>')
-  cleaned = cleaned.replace(/<\/u>/g, '</u>')
-  cleaned = cleaned.replace(/<h3>/g, '<h3>')
-  cleaned = cleaned.replace(/<\/h3>/g, '</h3>')
-  cleaned = cleaned.replace(/<h4>/g, '<h4>')
-  cleaned = cleaned.replace(/<\/h4>/g, '</h4>')
-  cleaned = cleaned.replace(/<blockquote>/g, '<blockquote>')
-  cleaned = cleaned.replace(/<\/blockquote>/g, '</blockquote>')
-  cleaned = cleaned.replace(/<ul>/g, '<ul>')
-  cleaned = cleaned.replace(/<\/ul>/g, '</ul>')
-  cleaned = cleaned.replace(/<ol>/g, '<ol>')
-  cleaned = cleaned.replace(/<\/ol>/g, '</ol>')
-  cleaned = cleaned.replace(/<li>/g, '<li>')
-  cleaned = cleaned.replace(/<\/li>/g, '</li>')
+  // Segundo: Detectar etiquetas HTML escritas literalmente (no escapadas)
+  // Esto maneja casos como "<p><p>Texto" donde las etiquetas están escritas como texto
+  cleaned = cleaned.replace(/<p><p>/g, '<p>')
+  cleaned = cleaned.replace(/<\/p><\/p>/g, '</p>')
+  cleaned = cleaned.replace(/<p><\/p>/g, '')
+  cleaned = cleaned.replace(/<br><br>/g, '<br>')
+  cleaned = cleaned.replace(/<br\s*\/><br\s*\/>/g, '<br>')
+  
+  // Tercero: Corregir párrafos múltiples concatenados
+  cleaned = cleaned.replace(/(<p>)(<p>)+/g, '<p>')
+  cleaned = cleaned.replace(/(<\/p>)(<\/p>)+/g, '</p>')
+  
+  // Cuarto: Asegurar espaciado correcto entre párrafos
+  cleaned = cleaned.replace(/<\/p><p>/g, '</p>\n<p>')
+  cleaned = cleaned.replace(/<\/p>([^<\s])/g, '</p>\n$1')
   
   return cleaned
 }
@@ -193,10 +185,11 @@ const htmlToMarkdown = (html: string): string => {
       return content.replace(/<li>([\s\S]*?)<\/li>/g, '1. $1')
     })
   
-  // 8. Párrafos - convertir a líneas separadas
+  // 8. Párrafos - convertir a líneas separadas con espaciado visible
   markdown = markdown
-    .replace(/<p>(.*?)<\/p>/g, '$1\n')
-    .replace(/\n\n+/g, '\n\n')
+    .replace(/<p>(.*?)<\/p>/g, '$1\n\n')  // Doble salto de línea para párrafos
+    .replace(/\n\n\n+/g, '\n\n')        // Limpiar múltiples saltos
+    .replace(/\n\s*\n/g, '\n\n')        // Asegurar saltos consistentes
     .trim()
   
   return markdown
@@ -432,7 +425,7 @@ const RichTextEditor = ({ value, onChange, placeholder }: {
         value={content}
         onChange={handleChange}
         placeholder={placeholder || "Escribe el contenido aquí..."}
-        className="min-h-[400px] w-full p-4 focus:outline-none bg-white resize-none border-0 ltr text-left touch-manipulation-auto font-mono text-sm"
+        className="min-h-[400px] w-full p-4 focus:outline-none bg-white resize-none border-0 ltr text-left touch-manipulation-auto text-base md:text-sm prose prose-sm max-w-none [&>p]:mb-4 [&>p]:mt-4 [&>h3]:mt-6 [&>h3]:mb-4 [&>h4]:mt-4 [&>h4]:mb-2 [&>blockquote]:border-l-4 [&>blockquote]:border-gray-300 [&>blockquote]:pl-4 [&>blockquote]:my-4"
         style={{ 
           direction: 'ltr',
           textAlign: 'left',
@@ -441,7 +434,8 @@ const RichTextEditor = ({ value, onChange, placeholder }: {
           WebkitUserSelect: 'text',
           userSelect: 'text',
           touchAction: 'manipulation',
-          lineHeight: '1.5'
+          lineHeight: '1.6',
+          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
         }}
       />
     </div>
