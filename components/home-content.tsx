@@ -70,7 +70,7 @@ async function fetchArticles(): Promise<Article[]> {
       )
     `)
     .eq("is_published", true)
-    .order("published_at", { ascending: false })
+    .order("sort_order", { ascending: true })
     .limit(50)
 
   if (error) throw error
@@ -90,6 +90,7 @@ async function fetchArticlesByCategory(categorySlug: string): Promise<Article[]>
       image_url,
       image_caption,
       created_at,
+      sort_order,
       categories!inner(
         name,
         slug
@@ -97,7 +98,7 @@ async function fetchArticlesByCategory(categorySlug: string): Promise<Article[]>
     `)
     .eq("is_published", true)
     .eq("categories.slug", categorySlug)
-    .order("created_at", { ascending: false })
+    .order("sort_order", { ascending: true })
     .limit(4)
 
   if (error) throw error
@@ -131,8 +132,10 @@ export function HomeContent() {
 
   // Separate featured and other articles by sort_order (solo para sección superior)
   const mainFeaturedArticle = articles?.find(a => a.sort_order === 0)
-  const secondaryFeaturedArticles = articles?.filter(a => a.sort_order >= 1 && a.sort_order <= 3).sort((a, b) => a.sort_order - b.sort_order) || []
-  const latestArticles = articles?.filter(a => a.sort_order >= 4 && a.sort_order <= 13).sort((a, b) => a.sort_order - b.sort_order) || []
+  // Garantizar exactamente 3 noticias destacadas con sort_order 1, 2, 3
+  const secondaryFeaturedArticles = articles?.filter(a => a.sort_order >= 1 && a.sort_order <= 3).sort((a, b) => a.sort_order - b.sort_order).slice(0, 3) || []
+  // Obtener las siguientes 10 noticias después de las destacadas (sort_order 4 en adelante)
+  const latestArticles = articles?.filter(a => a.sort_order >= 4).sort((a, b) => a.sort_order - b.sort_order).slice(0, 10) || []
   
   // Para compatibilidad con el código existente
   const featuredArticle = mainFeaturedArticle

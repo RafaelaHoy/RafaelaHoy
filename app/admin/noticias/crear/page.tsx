@@ -579,19 +579,33 @@ export default function CreateNewsPage() {
         // Principal: siempre 0
         newSortOrder = 0
       } else if (homeLocation === "destacada") {
-        // Destacadas: buscar hueco libre en 1-3
-        const freeOrder = findFreeSortOrder(existingArticles || [], 1, 3)
-        if (freeOrder === null) {
-          throw new Error('El cupo de Noticias Destacadas está lleno (3/3). No hay huecos disponibles. Mové alguna de las actuales a Últimas Noticias o al Repositorio para liberar espacio.')
+        // Destacadas: First-In - desplazar existentes hacia abajo y asignar 1
+        newSortOrder = 1
+        
+        // Desplazar todas las noticias con sort_order >= 1 y <= 3 hacia abajo
+        const currentInDestacadas = existingArticles?.filter(a => a.sort_order >= 1 && a.sort_order <= 3) || []
+        for (const article of currentInDestacadas) {
+          if (article.sort_order < 3) {
+            await supabase
+              .from('articles')
+              .update({ sort_order: article.sort_order + 1 })
+              .eq('id', article.id)
+          }
         }
-        newSortOrder = freeOrder
       } else if (homeLocation === "ultimas") {
-        // Últimas: buscar hueco libre en 4-13
-        const freeOrder = findFreeSortOrder(existingArticles || [], 4, 13)
-        if (freeOrder === null) {
-          throw new Error('El cupo de Últimas Noticias está lleno (10/10). No hay huecos disponibles. Mové alguna de las actuales al Repositorio para liberar espacio.')
+        // Últimas: First-In - desplazar existentes hacia abajo y asignar 4
+        newSortOrder = 4
+        
+        // Desplazar todas las noticias con sort_order >= 4 y <= 13 hacia abajo
+        const currentInUltimas = existingArticles?.filter(a => a.sort_order >= 4 && a.sort_order <= 13) || []
+        for (const article of currentInUltimas) {
+          if (article.sort_order < 13) {
+            await supabase
+              .from('articles')
+              .update({ sort_order: article.sort_order + 1 })
+              .eq('id', article.id)
+          }
         }
-        newSortOrder = freeOrder
       } else if (homeLocation === "repositorio") {
         // Repositorio: siempre 14 + desplazar existentes
         newSortOrder = 14

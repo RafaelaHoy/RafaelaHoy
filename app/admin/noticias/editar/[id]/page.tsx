@@ -699,19 +699,33 @@ export default function EditNewsPage() {
           if (homeLocation === 'principal') {
             targetSortOrder = 0
           } else if (homeLocation === 'destacada') {
-            // Destacadas: buscar hueco libre en 1-3
-            const freeOrder = findFreeSortOrder(currentArticles.filter(a => a.id !== articleId), 1, 3)
-            if (freeOrder === null) {
-              throw new Error('El cupo de Noticias Destacadas está lleno (3/3). No hay huecos disponibles. Mové alguna de las actuales a Últimas Noticias o al Repositorio para liberar espacio.')
+            // Destacadas: First-In - desplazar existentes hacia abajo y asignar 1
+            targetSortOrder = 1
+            
+            // Desplazar todas las noticias con sort_order >= 1 y <= 3 hacia abajo (excepto la actual)
+            const currentInDestacadas = currentArticles.filter(a => a.id !== articleId && a.sort_order >= 1 && a.sort_order <= 3)
+            for (const article of currentInDestacadas) {
+              if (article.sort_order < 3) {
+                await supabase
+                  .from('articles')
+                  .update({ sort_order: article.sort_order + 1 })
+                  .eq('id', article.id)
+              }
             }
-            targetSortOrder = freeOrder
           } else if (homeLocation === 'ultimas') {
-            // Últimas: buscar hueco libre en 4-13
-            const freeOrder = findFreeSortOrder(currentArticles.filter(a => a.id !== articleId), 4, 13)
-            if (freeOrder === null) {
-              throw new Error('El cupo de Últimas Noticias está lleno (10/10). No hay huecos disponibles. Mové alguna de las actuales al Repositorio para liberar espacio.')
+            // Últimas: First-In - desplazar existentes hacia abajo y asignar 4
+            targetSortOrder = 4
+            
+            // Desplazar todas las noticias con sort_order >= 4 y <= 13 hacia abajo (excepto la actual)
+            const currentInUltimas = currentArticles.filter(a => a.id !== articleId && a.sort_order >= 4 && a.sort_order <= 13)
+            for (const article of currentInUltimas) {
+              if (article.sort_order < 13) {
+                await supabase
+                  .from('articles')
+                  .update({ sort_order: article.sort_order + 1 })
+                  .eq('id', article.id)
+              }
             }
-            targetSortOrder = freeOrder
           }
           
           console.log('Sort_order asignado para sección home:', targetSortOrder)
