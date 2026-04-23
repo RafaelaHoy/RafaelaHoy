@@ -97,9 +97,70 @@ const processMarkdownToHTML = (markdown: string): string => {
   return html
 }
 
+// Función para limpiar HTML escapado y convertirlo a HTML válido
+const cleanEscapedHTML = (html: string): string => {
+  let cleaned = html
+  
+  // Detectar y reemplazar etiquetas HTML escapadas comunes
+  cleaned = cleaned.replace(/&lt;p&gt;/g, '<p>')
+  cleaned = cleaned.replace(/&lt;\/p&gt;/g, '</p>')
+  cleaned = cleaned.replace(/&lt;br&gt;/g, '<br>')
+  cleaned = cleaned.replace(/&lt;br\s*\/?&gt;/g, '<br>')
+  cleaned = cleaned.replace(/&lt;strong&gt;/g, '<strong>')
+  cleaned = cleaned.replace(/&lt;\/strong&gt;/g, '</strong>')
+  cleaned = cleaned.replace(/&lt;em&gt;/g, '<em>')
+  cleaned = cleaned.replace(/&lt;\/em&gt;/g, '</em>')
+  cleaned = cleaned.replace(/&lt;u&gt;/g, '<u>')
+  cleaned = cleaned.replace(/&lt;\/u&gt;/g, '</u>')
+  cleaned = cleaned.replace(/&lt;h3&gt;/g, '<h3>')
+  cleaned = cleaned.replace(/&lt;\/h3&gt;/g, '</h3>')
+  cleaned = cleaned.replace(/&lt;h4&gt;/g, '<h4>')
+  cleaned = cleaned.replace(/&lt;\/h4&gt;/g, '</h4>')
+  cleaned = cleaned.replace(/&lt;blockquote&gt;/g, '<blockquote>')
+  cleaned = cleaned.replace(/&lt;\/blockquote&gt;/g, '</blockquote>')
+  cleaned = cleaned.replace(/&lt;ul&gt;/g, '<ul>')
+  cleaned = cleaned.replace(/&lt;\/ul&gt;/g, '</ul>')
+  cleaned = cleaned.replace(/&lt;ol&gt;/g, '<ol>')
+  cleaned = cleaned.replace(/&lt;\/ol&gt;/g, '</ol>')
+  cleaned = cleaned.replace(/&lt;li&gt;/g, '<li>')
+  cleaned = cleaned.replace(/&lt;\/li&gt;/g, '</li>')
+  cleaned = cleaned.replace(/&lt;a href=/g, '<a href=')
+  cleaned = cleaned.replace(/&lt;\/a&gt;/g, '</a>')
+  cleaned = cleaned.replace(/&lt;img src=/g, '<img src=')
+  cleaned = cleaned.replace(/&gt;/g, '>')
+  cleaned = cleaned.replace(/&lt;/g, '<')
+  
+  // Detectar y reemplazar etiquetas HTML escritas literalmente como texto
+  cleaned = cleaned.replace(/<p>/g, '<p>')
+  cleaned = cleaned.replace(/<\/p>/g, '</p>')
+  cleaned = cleaned.replace(/<br>/g, '<br>')
+  cleaned = cleaned.replace(/<br\s*\/?>/g, '<br>')
+  cleaned = cleaned.replace(/<strong>/g, '<strong>')
+  cleaned = cleaned.replace(/<\/strong>/g, '</strong>')
+  cleaned = cleaned.replace(/<em>/g, '<em>')
+  cleaned = cleaned.replace(/<\/em>/g, '</em>')
+  cleaned = cleaned.replace(/<u>/g, '<u>')
+  cleaned = cleaned.replace(/<\/u>/g, '</u>')
+  cleaned = cleaned.replace(/<h3>/g, '<h3>')
+  cleaned = cleaned.replace(/<\/h3>/g, '</h3>')
+  cleaned = cleaned.replace(/<h4>/g, '<h4>')
+  cleaned = cleaned.replace(/<\/h4>/g, '</h4>')
+  cleaned = cleaned.replace(/<blockquote>/g, '<blockquote>')
+  cleaned = cleaned.replace(/<\/blockquote>/g, '</blockquote>')
+  cleaned = cleaned.replace(/<ul>/g, '<ul>')
+  cleaned = cleaned.replace(/<\/ul>/g, '</ul>')
+  cleaned = cleaned.replace(/<ol>/g, '<ol>')
+  cleaned = cleaned.replace(/<\/ol>/g, '</ol>')
+  cleaned = cleaned.replace(/<li>/g, '<li>')
+  cleaned = cleaned.replace(/<\/li>/g, '</li>')
+  
+  return cleaned
+}
+
 // Función para convertir HTML a Markdown (para edición)
 const htmlToMarkdown = (html: string): string => {
-  let markdown = html
+  // Primero limpiar HTML escapado
+  let markdown = cleanEscapedHTML(html)
   
   // 1. Headers
   markdown = markdown
@@ -489,7 +550,13 @@ export default function EditNewsPage() {
       setTitle(data.title || "")
       setExcerpt(data.excerpt || "")
       // Convertir HTML a Markdown para la edición
+      console.log('=== DEBUG HTML LIMPIEZA ===')
+      console.log('HTML original:', data.content || "")
+      const cleanedHTML = cleanEscapedHTML(data.content || "")
+      console.log('HTML limpiado:', cleanedHTML)
       const markdownContent = htmlToMarkdown(data.content || "")
+      console.log('Markdown resultante:', markdownContent)
+      console.log('==========================')
       setContent(markdownContent)
       setCategoryId(data.category_id || "")
       setHomeLocation(data.home_location || "repositorio")

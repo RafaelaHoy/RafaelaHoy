@@ -1,7 +1,8 @@
 "use client"
 
 import { DndContext, DragEndEvent, DragOverEvent, DragStartEvent, 
-         closestCenter, CollisionDetection, pointerWithin, rectIntersection } from '@dnd-kit/core'
+         closestCenter, CollisionDetection, pointerWithin, rectIntersection,
+         useSensors, useSensor, PointerSensor, TouchSensor, KeyboardSensor } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable'
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import { useState } from 'react'
@@ -34,6 +35,23 @@ export function DndSection({
   color
 }: DndSectionProps) {
   const [draggedArticle, setDraggedArticle] = useState<Article | null>(null)
+
+  // Configuración de sensores para soporte táctil en móviles
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        delay: 250,    // Mantener presionado 250ms antes de arrastrar
+        tolerance: 5, // Tolerancia de 5px para evitar arrastres accidentales
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250,    // Mantener presionado 250ms antes de arrastrar
+        tolerance: 5, // Tolerancia de 5px para evitar arrastres accidentales
+      },
+    }),
+    useSensor(KeyboardSensor)
+  )
 
   // Custom collision detection para permitir mover entre secciones
   const customCollisionDetection: CollisionDetection = (args) => {
@@ -92,6 +110,7 @@ export function DndSection({
 
   return (
     <DndContext
+      sensors={sensors}
       collisionDetection={customCollisionDetection}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
