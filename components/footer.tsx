@@ -49,9 +49,9 @@ export function Footer() {
             <h3 className="font-semibold text-white mb-4 text-base">Contacto</h3>
             <ul className="space-y-3 text-sm text-white/70">
               <li>
-                <a href="mailto:contacto@rafaelahoy.com" className="flex items-center gap-2 hover:text-white transition-colors">
+                <a href="mailto:Hoyrafaela@gmail.com" className="flex items-center gap-2 hover:text-white transition-colors">
                   <Mail className="h-4 w-4" />
-                  contacto@rafaelahoy.com
+                  Hoyrafaela@gmail.com
                 </a>
               </li>
               <li className="pt-2">
