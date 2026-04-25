@@ -6,19 +6,27 @@ import { CSS } from '@dnd-kit/utilities'
 type Article = any;
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Eye, EyeOff, Trash2, GripVertical, Edit } from 'lucide-react'
+import { Eye, EyeOff, Trash2, GripVertical, Edit, ChevronUp, ChevronDown } from 'lucide-react'
 import Link from 'next/link'
 
 interface DraggableArticleRowProps {
   article: Article
   onTogglePublished: (id: string, published: boolean) => void
   onDelete: (id: string) => void
+  onMoveUp?: (id: string) => void
+  onMoveDown?: (id: string) => void
+  canMoveUp?: boolean
+  canMoveDown?: boolean
 }
 
 export function DraggableArticleRow({
   article,
   onTogglePublished,
   onDelete,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp = false,
+  canMoveDown = false,
 }: DraggableArticleRowProps) {
   const [isMounted, setIsMounted] = useState(false)
 
@@ -102,6 +110,30 @@ export function DraggableArticleRow({
 
         {/* Estado de publicación - mostrar editar en móviles */}
         <div className="flex items-center gap-1 sm:gap-2">
+          {/* Botones de flechas para subir/bajar */}
+          <div className="flex flex-col gap-0.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onMoveUp?.(article.id)}
+              disabled={!canMoveUp || !onMoveUp}
+              className="h-5 w-5 p-0 disabled:opacity-30"
+              title="Subir"
+            >
+              <ChevronUp className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onMoveDown?.(article.id)}
+              disabled={!canMoveDown || !onMoveDown}
+              className="h-5 w-5 p-0 disabled:opacity-30"
+              title="Bajar"
+            >
+              <ChevronDown className="h-3 w-3" />
+            </Button>
+          </div>
+
           <Button
             variant="ghost"
             size="sm"
@@ -204,6 +236,30 @@ export function DraggableArticleRow({
 
       {/* Estado de publicación - mostrar editar en móviles */}
       <div className="flex items-center gap-1 sm:gap-2">
+        {/* Botones de flechas para subir/bajar */}
+        <div className="flex flex-col gap-0.5">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onMoveUp?.(article.id)}
+            disabled={!canMoveUp || !onMoveUp}
+            className="h-5 w-5 p-0 disabled:opacity-30"
+            title="Subir"
+          >
+            <ChevronUp className="h-3 w-3" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => onMoveDown?.(article.id)}
+            disabled={!canMoveDown || !onMoveDown}
+            className="h-5 w-5 p-0 disabled:opacity-30"
+            title="Bajar"
+          >
+            <ChevronDown className="h-3 w-3" />
+          </Button>
+        </div>
+
         <Button
           variant="ghost"
           size="sm"

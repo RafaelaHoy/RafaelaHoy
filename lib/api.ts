@@ -249,8 +249,8 @@ export interface Obituary {
   id: number
   full_name: string
   age: number
+  death_date: string
   service_info: string
-  date: string
   created_at: string
   updated_at: string
 }
@@ -261,7 +261,7 @@ export async function fetchObituaries(): Promise<Obituary[]> {
     const { data, error } = await supabase
       .from('obituaries')
       .select('*')
-      .order('date', { ascending: false })
+      .order('death_date', { ascending: false })
       .limit(10)
     
     if (error) {

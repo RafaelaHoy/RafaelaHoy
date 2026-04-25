@@ -27,18 +27,27 @@ export function ObituariesWidget() {
   }
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
+    if (!dateString) return 'Sin fecha'
+    
+    // Asegurarse de que la fecha se interprete correctamente en zona horaria local
+    const date = new Date(dateString + 'T00:00:00')
     const today = new Date()
     const tomorrow = new Date(today)
     tomorrow.setDate(tomorrow.getDate() + 1)
     const yesterday = new Date(today)
     yesterday.setDate(yesterday.getDate() - 1)
 
-    if (date.toDateString() === today.toDateString()) {
+    // Resetear horas para comparar solo fechas
+    const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+    const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    const tomorrowOnly = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate())
+    const yesterdayOnly = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate())
+
+    if (dateOnly.getTime() === todayOnly.getTime()) {
       return 'Hoy'
-    } else if (date.toDateString() === tomorrow.toDateString()) {
+    } else if (dateOnly.getTime() === tomorrowOnly.getTime()) {
       return 'Mañana'
-    } else if (date.toDateString() === yesterday.toDateString()) {
+    } else if (dateOnly.getTime() === yesterdayOnly.getTime()) {
       return 'Ayer'
     } else {
       return date.toLocaleDateString('es-AR', {
@@ -101,7 +110,7 @@ export function ObituariesWidget() {
               </div>
               <div className="flex items-center gap-2 text-xs text-white/70">
                 <Calendar className="h-3 w-3" />
-                <span>{formatDate(obituary.date)}</span>
+                <span>{formatDate(obituary.death_date)}</span>
               </div>
               <p className="text-xs text-white/80 line-clamp-2">
                 {obituary.service_info}

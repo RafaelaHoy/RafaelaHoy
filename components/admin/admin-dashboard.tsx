@@ -190,15 +190,6 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
       try {
         console.log('=== CONSOLIDANDO SORT_ORDERS AL INICIAR DASHBOARD ===')
         // Temporalmente desactivado para evitar error de memoria
-        // const result = await fixSortOrders()
-        // if (result.success) {
-        //   console.log(`Sort orders consolidados: ${result.fixed} noticias actualizadas`)
-        //   if (result.fixed > 0) {
-        //     console.log('Se recomienda recargar la página para ver los cambios actualizados')
-        //   }
-        // } else {
-        //   console.error('Error consolidando sort orders:', result.message)
-        // }
         console.log('Auto-consolidación temporalmente desactivada')
       } catch (error) {
         console.error('Error en consolidación inicial:', error)
@@ -342,374 +333,9 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
       
     } catch (error) {
       console.error(`Error en re-indexación global (${deviceType}):`, error)
-      throw error
     }
   }
 
-  // Función optimista de Drag & Drop con guardado estricto en base de datos
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event
-    
-    if (!over) return
-
-    const activeId = active.id as string
-    const overId = over.id as string
-
-    if (activeId === overId) return
-
-    const activeArticle = articles.find(a => a.id === activeId)
-    if (!activeArticle) return
-
-    // Detectar tipo de dispositivo para logging
-    const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0
-    const deviceType = isTouch ? 'MOBILE' : 'PC'
-    
-    console.log(`=== DRAG & DROP DETECTADO (${deviceType}) ===`)
-    console.log(`Artículo activo: "${activeArticle.title}"`)
-    console.log(`Orden actual: ${activeArticle.sort_order}`)
-    console.log(`Ubicación actual: ${activeArticle.home_location}`)
-
-    // Determinar la sección de destino basado en el overId
-    let targetSection = ''
-    let targetSortOrder = 0
-
-    // Si overId es un artículo, obtener su sección y posición
-    const overArticle = articles.find(a => a.id === overId)
-    if (overArticle) {
-      targetSection = getHomeLocationFromOrder(overArticle.sort_order)
-      targetSortOrder = overArticle.sort_order
-    } else {
-      // Si overId es una sección, determinar la sección y el primer sort_order disponible
-      if (overId.includes('principal')) {
-        targetSection = 'principal'
-        targetSortOrder = 0
-      } else if (overId.includes('destacada')) {
-        targetSection = 'destacada'
-        targetSortOrder = 1
-      } else if (overId.includes('ultimas')) {
-        targetSection = 'ultimas'
-        targetSortOrder = 4
-      } else if (overId.includes('repositorio')) {
-        targetSection = 'repositorio'
-        // Para repositorio, siempre asignar posición 14 con desplazamiento
-        targetSortOrder = 14
-      }
-    }
-
-    console.log(`Destino: orden ${targetSortOrder} (${targetSection})`)
-
-    // Solo mover si la posición es diferente
-    if (activeArticle.sort_order !== targetSortOrder || activeArticle.home_location !== targetSection) {
-      try {
-        // 1. ACTUALIZACIÓN OPTIMISTA: Actualizar estado local inmediatamente
-        const originalArticles = [...articles] // Guardar estado original para reversión
-        const updatedArticles = [...articles]
-        const activeIndex = updatedArticles.findIndex(a => a.id === activeId)
-        
-        if (activeIndex !== -1) {
-          // Crear objeto actualizado idéntico al que se enviará a Supabase
-          const updatedArticle = {
-            ...updatedArticles[activeIndex],
-            sort_order: targetSortOrder,
-            home_location: targetSection,
-            is_featured: targetSection === 'principal' || targetSection === 'destacada'
-          }
-          
-          // Actualizar estado local con el mismo objeto que se enviará a DB
-          updatedArticles[activeIndex] = updatedArticle
-          
-          // Reordenar el array localmente
-          const sortedArticles = updatedArticles.sort((a, b) => a.sort_order - b.sort_order)
-          setArticles(sortedArticles)
-          
-          console.log(`Estado local actualizado optimistamente:`, {
-            title: updatedArticle.title,
-            new_order: updatedArticle.sort_order,
-            new_location: updatedArticle.home_location,
-            new_featured: updatedArticle.is_featured
-          })
-        }
-
-        // 2. GUARDADO ESTRICTO EN BASE DE DATOS
-        console.log(`Guardando en Supabase...`)
-        const supabase = createClient()
-        
-        // 2.1. SI EL DESTINO ES REPOSITORIO, APLICAR DESPLAZAMIENTO PRIMERO
-        if (targetSection === 'repositorio') {
-          console.log('Aplicando desplazamiento en repositorio...')
-          
-          // EFECTO DESPLAZAMIENTO: Sumar +1 a todos los sort_order >= 14
-          const { error: shiftError } = await supabase
-            .from('articles')
-            .update({ sort_order: supabase.rpc('increment', { x: 1 }) })
-            .gte('sort_order', 14)
-            .neq('id', activeArticle.id) // No afectar a la noticia que estamos moviendo
-          
-          if (shiftError) {
-            console.log('Error con RPC, usando método alternativo...')
-            // Método alternativo si RPC no funciona
-            const { data: repoArticles } = await supabase
-              .from('articles')
-              .select('id, sort_order')
-              .gte('sort_order', 14)
-              .neq('id', activeArticle.id)
-              .order('sort_order', { ascending: false }) // Empezar por el más grande
-            
-            if (repoArticles) {
-              for (const article of repoArticles) {
-                await supabase
-                  .from('articles')
-                  .update({ sort_order: article.sort_order + 1 })
-                  .eq('id', article.id)
-              }
-            }
-          }
-          
-          console.log('✅ Desplazamiento completado - Todas las noticias >=14 movidas +1')
-        }
-        
-        const newIsFeatured = targetSection === 'principal' || targetSection === 'destacada'
-        
-        // Objeto exacto que se enviará a Supabase
-        const dbUpdateData = {
-          sort_order: targetSortOrder,
-          home_location: targetSection,
-          is_featured: newIsFeatured
-        }
-        
-        console.log(`Enviando a Supabase:`, dbUpdateData)
-        
-        const { error: updateError } = await supabase
-          .from("articles")
-          .update(dbUpdateData)
-          .eq("id", activeArticle.id)
-          .select() // Pedir que devuelva el registro actualizado
-          .single()
-
-        if (updateError) {
-          console.error('Error en update de Supabase:', updateError)
-          throw new Error(`Error al guardar en Supabase: ${updateError.message}`)
-        }
-
-        console.log(`Guardado exitoso en Supabase`)
-        
-        // 3. INVALIDACIÓN DE CACHÉ (Next.js App Router)
-        console.log(`Invalidando caché de Next.js...`)
-        router.refresh()
-        
-        // 4. VERIFICACIÓN DE CONSISTENCIA (opcional, para debugging)
-        setTimeout(async () => {
-          try {
-            const { data: verifyArticle } = await supabase
-              .from("articles")
-              .select("*")
-              .eq("id", activeArticle.id)
-              .single()
-            
-            if (verifyArticle) {
-              console.log(`Verificación post-guardado:`, {
-                title: verifyArticle.title,
-                db_order: verifyArticle.sort_order,
-                db_location: verifyArticle.home_location,
-                db_featured: verifyArticle.is_featured
-              })
-              
-              // Verificar que coincida con lo que enviamos
-              const isConsistent = 
-                verifyArticle.sort_order === targetSortOrder &&
-                verifyArticle.home_location === targetSection &&
-                verifyArticle.is_featured === newIsFeatured
-              
-              if (!isConsistent) {
-                console.error('INCONSISTENCIA DETECTADA: Los datos en DB no coinciden con los enviados')
-                console.error('Esperado:', dbUpdateData)
-                console.error('Recibido:', {
-                  sort_order: verifyArticle.sort_order,
-                  home_location: verifyArticle.home_location,
-                  is_featured: verifyArticle.is_featured
-                })
-              } else {
-                console.log('Consistencia verificada: DB coincide con datos enviados')
-              }
-            }
-          } catch (verifyError) {
-            console.error('Error en verificación post-guardado:', verifyError)
-          }
-        }, 1000)
-        
-        console.log(`=== DRAG & DROP COMPLETADO EXITOSAMENTE (${deviceType}) ===`)
-        
-      } catch (error) {
-        console.error(`Error moviendo artículo (${deviceType}):`, error)
-        
-        // REVERSIÓN EN CASO DE ERROR: Revertir al estado original
-        console.log('Revirtiendo estado local al estado original...')
-        // setArticles(originalArticles)
-        
-        // Mostrar error específico
-        const errorMessage = (error as any).message || 'Error desconocido al mover la noticia'
-        toast.error(`Error al guardar en la base de datos: ${errorMessage}`)
-        
-        // NO recargar la página, solo mostrar el error y revertir
-        console.log('Estado revertido. Usuario puede intentar nuevamente.')
-      }
-    } else {
-      console.log(`El artículo ya está en la posición correcta. No se requiere movimiento.`)
-    }
-  }
-
-  // Función para auto-rellenar secciones cuando faltan noticias
-  const autoFillSections = async () => {
-    try {
-      console.log("=== AUTO-RELLENANDO SECCIONES ===")
-      
-      // 1. Verificar y rellenar sección principal
-      const mainArticle = articles.find(a => a.sort_order === 0)
-      if (!mainArticle) {
-        // Buscar primera destacada para subir a principal
-        const firstFeatured = articles
-          .filter(a => a.sort_order >= 1 && a.sort_order <= 3)
-          .sort((a, b) => a.sort_order - b.sort_order)[0]
-        
-        if (firstFeatured) {
-          await createClient()
-            .from("articles")
-            .update({ 
-              sort_order: 0,
-              home_location: 'principal',
-              is_featured: true
-            })
-            .eq("id", firstFeatured.id)
-          
-          console.log("Movido a principal:", firstFeatured.title)
-        }
-      }
-      
-      // 2. Verificar y rellenar sección destacadas (deben ser 3)
-      const featuredArticles = articles
-        .filter(a => a.sort_order >= 1 && a.sort_order <= 3)
-        .sort((a, b) => a.sort_order - b.sort_order)
-      
-      if (featuredArticles.length < 3) {
-        const neededCount = 3 - featuredArticles.length
-        const latestArticles = articles
-          .filter(a => a.sort_order >= 4 && a.sort_order <= 13)
-          .sort((a, b) => a.sort_order - b.sort_order)
-        
-        for (let i = 0; i < neededCount && i < latestArticles.length; i++) {
-          const articleToMove = latestArticles[i]
-          const newOrder = featuredArticles.length + i + 1
-          
-          await createClient()
-            .from("articles")
-            .update({ 
-              sort_order: newOrder,
-              home_location: 'destacada',
-              is_featured: true
-            })
-            .eq("id", articleToMove.id)
-          
-          console.log("Movido a destacadas:", articleToMove.title, "orden:", newOrder)
-        }
-      }
-      
-      // 3. Verificar y rellenar sección últimas noticias (deben ser 10)
-      const latestArticles = articles
-        .filter(a => a.sort_order >= 4 && a.sort_order <= 13)
-        .sort((a, b) => a.sort_order - b.sort_order)
-      
-      if (latestArticles.length < 10) {
-        const neededCount = 10 - latestArticles.length
-        const repoArticles = articles
-          .filter(a => a.sort_order >= 14)
-          .sort((a, b) => a.sort_order - b.sort_order)
-        
-        for (let i = 0; i < neededCount && i < repoArticles.length; i++) {
-          const articleToMove = repoArticles[i]
-          const newOrder = latestArticles.length + i + 4
-          
-          await createClient()
-            .from("articles")
-            .update({ 
-              sort_order: newOrder,
-              home_location: 'ultimas',
-              is_featured: false
-            })
-            .eq("id", articleToMove.id)
-          
-          console.log("Movido a últimas:", articleToMove.title, "orden:", newOrder)
-        }
-      }
-      
-      // 4. Reordenar todas las secciones para mantener consistencia
-      await reorganizeAllSections()
-      
-      console.log("Auto-rellenado completado")
-    } catch (error) {
-      console.error("Error en auto-rellenado:", error)
-    }
-  }
-
-  // Función para reorganizar todas las secciones completamente
-  const reorganizeAllSections = async () => {
-    try {
-      // Obtener todas las noticias publicadas
-      const { data: allArticles } = await createClient()
-        .from("articles")
-        .select("*")
-        .eq("is_published", true)
-        .order("sort_order", { ascending: true })
-      
-      if (!allArticles) return
-      
-      // Separar por secciones actuales
-      const main = allArticles.filter(a => a.sort_order === 0)
-      const featured = allArticles.filter(a => a.sort_order >= 1 && a.sort_order <= 3)
-      const latest = allArticles.filter(a => a.sort_order >= 4 && a.sort_order <= 13)
-      const repo = allArticles.filter(a => a.sort_order >= 14)
-      
-      // Asignar órdenes correctos a principales
-      if (main.length > 0) {
-        await createClient()
-          .from("articles")
-          .update({ sort_order: 0, home_location: 'principal', is_featured: true })
-          .eq("id", main[0].id)
-      }
-      
-      // Asignar órdenes correctos a destacadas (máximo 3)
-      const featuredToUpdate = featured.slice(0, 3)
-      for (let i = 0; i < featuredToUpdate.length; i++) {
-        await createClient()
-          .from("articles")
-          .update({ sort_order: i + 1, home_location: 'destacada', is_featured: true })
-          .eq("id", featuredToUpdate[i].id)
-      }
-      
-      // Asignar órdenes correctos a últimas (máximo 10)
-      const latestToUpdate = latest.slice(0, 10)
-      for (let i = 0; i < latestToUpdate.length; i++) {
-        await createClient()
-          .from("articles")
-          .update({ sort_order: i + 4, home_location: 'ultimas', is_featured: false })
-          .eq("id", latestToUpdate[i].id)
-      }
-      
-      // Asignar órdenes correctos a repositorio (desde 14 en adelante)
-      const repoToUpdate = repo
-      for (let i = 0; i < repoToUpdate.length; i++) {
-        await createClient()
-          .from("articles")
-          .update({ sort_order: i + 14, home_location: 'repositorio', is_featured: false })
-          .eq("id", repoToUpdate[i].id)
-      }
-      
-      console.log("Reorganización completada")
-    } catch (error) {
-      console.error("Error en reorganización:", error)
-    }
-  }
-
-  // Función para reordenar noticias al eliminar una
   const handleDeleteArticle = async (articleId: string, currentSortOrder: number) => {
     try {
       console.log("=== ELIMINANDO NOTICIA ===")
@@ -736,115 +362,11 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
             })
             .eq("id", firstFeatured.id)
           
-          // Mover las demás destacadas hacia arriba
-          const otherFeatured = articles
-            .filter(a => a.sort_order >= 1 && a.sort_order <= 3 && a.id !== firstFeatured.id)
-            .sort((a, b) => a.sort_order - b.sort_order)
-          
-          for (let i = 0; i < otherFeatured.length; i++) {
-            await createClient()
-              .from("articles")
-              .update({ sort_order: i + 1 })
-              .eq("id", otherFeatured[i].id)
-          }
-          
-          // Mover la primera de últimas a destacadas
-          const firstLatest = articles.find(a => a.sort_order >= 4 && a.sort_order <= 13)
-          if (firstLatest) {
-            await createClient()
-              .from("articles")
-              .update({ 
-                sort_order: 3,
-                home_location: 'destacada',
-                is_featured: true
-              })
-              .eq("id", firstLatest.id)
-            
-            // Mover las demás últimas hacia arriba
-            const otherLatest = articles
-              .filter(a => a.sort_order >= 4 && a.sort_order <= 13 && a.id !== firstLatest.id)
-              .sort((a, b) => a.sort_order - b.sort_order)
-            
-            for (let i = 0; i < otherLatest.length; i++) {
-              await createClient()
-                .from("articles")
-                .update({ sort_order: i + 4 })
-                .eq("id", otherLatest[i].id)
-            }
-          }
-        }
-      } else if (currentSortOrder >= 1 && currentSortOrder <= 3) {
-        // Si se eliminó una destacada, mover las demás destacadas hacia arriba
-        const featuredArticles = articles
-          .filter(a => a.sort_order >= 1 && a.sort_order <= 3 && a.id !== articleId)
-          .sort((a, b) => a.sort_order - b.sort_order)
-        
-        for (let i = 0; i < featuredArticles.length; i++) {
-          await createClient()
-            .from("articles")
-            .update({ sort_order: i + 1 })
-            .eq("id", featuredArticles[i].id)
-        }
-        
-        // Mover la primera de últimas a destacadas si hay espacio
-        if (featuredArticles.length < 3) {
-          const firstLatest = articles.find(a => a.sort_order >= 4 && a.sort_order <= 13)
-          if (firstLatest) {
-            await createClient()
-              .from("articles")
-              .update({ 
-                sort_order: featuredArticles.length + 1,
-                home_location: 'destacada',
-                is_featured: true
-              })
-              .eq("id", firstLatest.id)
-            
-            // Mover las demás últimas hacia arriba
-            const otherLatest = articles
-              .filter(a => a.sort_order >= 4 && a.sort_order <= 13 && a.id !== firstLatest.id)
-              .sort((a, b) => a.sort_order - b.sort_order)
-            
-            for (let i = 0; i < otherLatest.length; i++) {
-              await createClient()
-                .from("articles")
-                .update({ sort_order: i + 4 })
-                .eq("id", otherLatest[i].id)
-            }
-          }
-        }
-      } else if (currentSortOrder >= 4 && currentSortOrder <= 13) {
-        // Si se eliminó una de últimas, mover las demás últimas hacia arriba
-        const latestArticles = articles
-          .filter(a => a.sort_order >= 4 && a.sort_order <= 13 && a.id !== articleId)
-          .sort((a, b) => a.sort_order - b.sort_order)
-        
-        for (let i = 0; i < latestArticles.length; i++) {
-          await createClient()
-            .from("articles")
-            .update({ sort_order: i + 4 })
-            .eq("id", latestArticles[i].id)
-        }
-        
-        // Mover la primera del repositorio a últimas si hay espacio
-        if (latestArticles.length < 10) {
-          const firstRepo = articles.find(a => a.sort_order >= 14)
-          if (firstRepo) {
-            await createClient()
-              .from("articles")
-              .update({ 
-                sort_order: latestArticles.length + 4,
-                home_location: 'ultimas',
-                is_featured: false
-              })
-              .eq("id", firstRepo.id)
-          }
+          console.log("Movido a principal:", firstFeatured.title)
         }
       }
       
       console.log("Reordenamiento completado")
-      
-      // Auto-rellenar secciones para mantener cantidades correctas
-      await autoFillSections()
       
       alert("Noticia eliminada y secciones reajustadas correctamente")
       window.location.reload()
@@ -858,116 +380,40 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
     const article = articles.find(a => a.id === articleId)
     if (!article) return
 
-    let newSortOrder = 999 // Por defecto repositorio
-    let newIsFeatured = false
-
-    switch (targetSection) {
-      case "principal":
-        newSortOrder = 0
-        newIsFeatured = true
-        break
-      case "destacada":
-        // Encontrar el siguiente sort_order disponible (1-3)
-        const existingFeatured = articles
-          .filter(a => a.is_featured && a.sort_order >= 1 && a.sort_order <= 3 && a.id !== articleId)
-          .sort((a, b) => a.sort_order - b.sort_order)
-        
-        // Si ya hay 3 noticias destacadas, mover la más antigua a últimas noticias
-        if (existingFeatured.length >= 3) {
-          const oldestFeatured = existingFeatured[0]
-          
-          // Encontrar el siguiente orden disponible en últimas noticias (4-13)
-          const existingLatest = articles
-            .filter(a => !a.is_featured && a.sort_order >= 4 && a.sort_order <= 13)
-            .sort((a, b) => a.sort_order - b.sort_order)
-          
-          let nextLatestOrder = 4
-          for (let i = 4; i <= 13; i++) {
-            if (!existingLatest.find(a => a.sort_order === i)) {
-              nextLatestOrder = i
-              break
-            }
-          }
-          
-          // Mover la noticia destacada más antigua a últimas noticias
-          await createClient()
-            .from("articles")
-            .update({ 
-              sort_order: nextLatestOrder,
-              home_location: 'ultimas',
-              is_featured: false
-            })
-            .eq("id", oldestFeatured.id)
-        }
-        
-        // Encontrar el siguiente disponible
-        for (let i = 1; i <= 3; i++) {
-          if (!existingFeatured.find(a => a.sort_order === i)) {
-            newSortOrder = i
-            break
-          }
-        }
-        newIsFeatured = true
-        break
-      case "ultimas":
-        // Encontrar el siguiente sort_order disponible (4-13)
-        const existingLatest = articles
-          .filter(a => !a.is_featured && a.sort_order >= 4 && a.sort_order <= 13 && a.id !== articleId)
-          .sort((a, b) => a.sort_order - b.sort_order)
-        
-        if (existingLatest.length >= 10) {
-          // Mover el más antiguo al repositorio
-          const oldest = existingLatest[0]
-          await createClient()
-            .from("articles")
-            .update({ 
-              sort_order: 999,
-              home_location: 'repositorio'
-            })
-            .eq("id", oldest.id)
-        }
-        
-        // Encontrar el siguiente disponible
-        for (let i = 4; i <= 13; i++) {
-          if (!existingLatest.find(a => a.sort_order === i)) {
-            newSortOrder = i
-            break
-          }
-        }
-        break
-      case "repositorio":
-        // Para el repositorio, asignar un sort_order alto (>= 14)
-        const existingRepositorio = articles
-          .filter(a => a.sort_order >= 14)
-          .sort((a, b) => a.sort_order - b.sort_order)
-        
-        newSortOrder = existingRepositorio.length > 0 
-          ? existingRepositorio[existingRepositorio.length - 1].sort_order + 1 
-          : 14
-        break
-    }
-
     try {
-      await createClient()
-        .from("articles")
-        .update({ 
+      console.log(`Moviendo "${article.title}" a sección "${targetSection}"`)
+      
+      const supabase = createClient()
+      let newSortOrder = 0
+      
+      // Determinar el nuevo sort_order según la sección
+      if (targetSection === 'principal') {
+        newSortOrder = 0
+      } else if (targetSection === 'destacada') {
+        // Encontrar el primer lugar disponible en destacadas
+        const featuredArticles = articles.filter(a => a.sort_order >= 1 && a.sort_order <= 3).sort((a, b) => a.sort_order - b.sort_order)
+        newSortOrder = featuredArticles.length < 3 ? featuredArticles.length + 1 : 3
+      } else if (targetSection === 'ultimas') {
+        // Encontrar el primer lugar disponible en últimas
+        const latestArticles = articles.filter(a => a.sort_order >= 4 && a.sort_order <= 13).sort((a, b) => a.sort_order - b.sort_order)
+        newSortOrder = latestArticles.length < 10 ? latestArticles.length + 4 : 13
+      }
+      
+      const { error } = await supabase
+        .from('articles')
+        .update({
           sort_order: newSortOrder,
-          is_featured: newIsFeatured,
-          home_location: targetSection
+          home_location: targetSection,
+          is_featured: targetSection === 'principal' || targetSection === 'destacada'
         })
-        .eq("id", articleId)
-
-      // Actualizar estado local
-      const newArticles = articles.map(a => 
-        a.id === articleId 
-          ? { ...a, sort_order: newSortOrder, is_featured: newIsFeatured, home_location: targetSection }
-          : a
-      )
-      newArticles.sort((a, b) => a.sort_order - b.sort_order)
-      setArticles(newArticles)
+        .eq('id', articleId)
+      
+      if (error) throw error
+      
+      router.refresh()
     } catch (error) {
-      console.error("Error moviendo artículo a sección:", error)
-      alert("Error al mover la noticia a la sección")
+      console.error('Error moviendo artículo:', error)
+      alert('Error al mover artículo')
     }
   }
 
@@ -976,6 +422,337 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
     if (sortOrder >= 1 && sortOrder <= 3) return "destacada"
     if (sortOrder >= 4 && sortOrder <= 13) return "ultimas"
     return "repositorio"
+  }
+
+  // Funciones para mover artículos arriba y abajo
+  const handleMoveArticleUp = async (articleId: string) => {
+    try {
+      console.log('=== MOVIENDO ARTÍCULO HACIA ARRIBA ===')
+      
+      const currentArticle = articles.find(a => a.id === articleId)
+      if (!currentArticle) return
+      
+      // Determinar la sección actual
+      const currentSection = getHomeLocationFromOrder(currentArticle.sort_order)
+      
+      // Encontrar todos los artículos de la misma sección ordenados
+      const sectionArticles = articles
+        .filter(a => getHomeLocationFromOrder(a.sort_order) === currentSection)
+        .sort((a, b) => a.sort_order - b.sort_order)
+      
+      // Encontrar el artículo actual y el anterior
+      const currentIndex = sectionArticles.findIndex(a => a.id === articleId)
+      const previousArticle = sectionArticles[currentIndex - 1]
+      
+      if (!previousArticle) {
+        console.log('El artículo ya está en la primera posición de su sección')
+        return
+      }
+      
+      console.log(`Intercambiando "${currentArticle.title}" (orden ${currentArticle.sort_order}) con "${previousArticle.title}" (orden ${previousArticle.sort_order})`)
+      
+      // 1. ACTUALIZACIÓN OPTIMISTA: Actualizar estado local inmediatamente
+      const updatedArticles = articles.map(article => {
+        if (article.id === currentArticle.id) {
+          return { ...article, sort_order: previousArticle.sort_order }
+        }
+        if (article.id === previousArticle.id) {
+          return { ...article, sort_order: currentArticle.sort_order }
+        }
+        return article
+      }).sort((a, b) => a.sort_order - b.sort_order)
+      
+      setArticles(updatedArticles)
+      
+      // 2. GUARDADO EN BASE DE DATOS
+      const supabase = createClient()
+      
+      // Intercambiar los sort_orders
+      const updates = [
+        supabase
+          .from('articles')
+          .update({ sort_order: previousArticle.sort_order })
+          .eq('id', currentArticle.id),
+        supabase
+          .from('articles')
+          .update({ sort_order: currentArticle.sort_order })
+          .eq('id', previousArticle.id)
+      ]
+      
+      await Promise.all(updates)
+      
+      console.log('Intercambio completado')
+      
+      // 3. INVALIDACIÓN DE CACHÉ (opcional, para sincronizar con otros clientes)
+      router.refresh()
+      
+    } catch (error) {
+      console.error('Error moviendo artículo hacia arriba:', error)
+      alert('Error al mover artículo hacia arriba')
+      // En caso de error, recargar para obtener el estado correcto
+      router.refresh()
+    }
+  }
+
+  const handleMoveArticleDown = async (articleId: string) => {
+    try {
+      console.log('=== MOVIENDO ARTÍCULO HACIA ABAJO ===')
+      
+      const currentArticle = articles.find(a => a.id === articleId)
+      if (!currentArticle) return
+      
+      // Determinar la sección actual
+      const currentSection = getHomeLocationFromOrder(currentArticle.sort_order)
+      
+      // Encontrar todos los artículos de la misma sección ordenados
+      const sectionArticles = articles
+        .filter(a => getHomeLocationFromOrder(a.sort_order) === currentSection)
+        .sort((a, b) => a.sort_order - b.sort_order)
+      
+      // Encontrar el artículo actual y el siguiente
+      const currentIndex = sectionArticles.findIndex(a => a.id === articleId)
+      const nextArticle = sectionArticles[currentIndex + 1]
+      
+      if (!nextArticle) {
+        console.log('El artículo ya está en la última posición de su sección')
+        return
+      }
+      
+      console.log(`Intercambiando "${currentArticle.title}" (orden ${currentArticle.sort_order}) con "${nextArticle.title}" (orden ${nextArticle.sort_order})`)
+      
+      // 1. ACTUALIZACIÓN OPTIMISTA: Actualizar estado local inmediatamente
+      const updatedArticles = articles.map(article => {
+        if (article.id === currentArticle.id) {
+          return { ...article, sort_order: nextArticle.sort_order }
+        }
+        if (article.id === nextArticle.id) {
+          return { ...article, sort_order: currentArticle.sort_order }
+        }
+        return article
+      }).sort((a, b) => a.sort_order - b.sort_order)
+      
+      setArticles(updatedArticles)
+      
+      // 2. GUARDADO EN BASE DE DATOS
+      const supabase = createClient()
+      
+      // Intercambiar los sort_orders
+      const updates = [
+        supabase
+          .from('articles')
+          .update({ sort_order: nextArticle.sort_order })
+          .eq('id', currentArticle.id),
+        supabase
+          .from('articles')
+          .update({ sort_order: currentArticle.sort_order })
+          .eq('id', nextArticle.id)
+      ]
+      
+      await Promise.all(updates)
+      
+      console.log('Intercambio completado')
+      
+      // 3. INVALIDACIÓN DE CACHÉ (opcional, para sincronizar con otros clientes)
+      router.refresh()
+      
+    } catch (error) {
+      console.error('Error moviendo artículo hacia abajo:', error)
+      alert('Error al mover artículo hacia abajo')
+      // En caso de error, recargar para obtener el estado correcto
+      router.refresh()
+    }
+  }
+
+  // Función auxiliar para determinar si un artículo se puede mover
+  const canMoveArticle = (articleId: string, direction: 'up' | 'down') => {
+    const currentArticle = articles.find(a => a.id === articleId)
+    if (!currentArticle) return false
+    
+    const currentSection = getHomeLocationFromOrder(currentArticle.sort_order)
+    const sectionArticles = articles
+      .filter(a => getHomeLocationFromOrder(a.sort_order) === currentSection)
+      .sort((a, b) => a.sort_order - b.sort_order)
+    
+    const currentIndex = sectionArticles.findIndex(a => a.id === articleId)
+    
+    if (direction === 'up') {
+      return currentIndex > 0
+    } else {
+      return currentIndex < sectionArticles.length - 1
+    }
+  }
+
+  // Función definitiva de Drag & Drop con recálculo total y bulk updates
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    
+    if (!over) return
+
+    const activeId = active.id as string
+    const overId = over.id as string
+
+    if (activeId === overId) return
+
+    const activeArticle = articles.find(a => a.id === activeId)
+    if (!activeArticle) return
+
+    // Detectar tipo de dispositivo para logging
+    const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+    const deviceType = isTouch ? 'MOBILE' : 'PC'
+    
+    console.log(`=== DRAG & DROP DETECTADO (${deviceType}) ===`)
+    console.log(`Artículo activo: "${activeArticle.title}"`)
+    console.log(`Orden actual: ${activeArticle.sort_order}`)
+    console.log(`Ubicación actual: ${activeArticle.home_location}`)
+
+    // Determinar la sección de destino basado en el overId
+    let targetSection = ''
+    let targetPosition = 0 // Posición dentro de la sección (0, 1, 2, 3...)
+
+    // Si overId es un artículo, obtener su sección y posición
+    const overArticle = articles.find(a => a.id === overId)
+    if (overArticle) {
+      targetSection = getHomeLocationFromOrder(overArticle.sort_order)
+      // Calcular posición relativa dentro de la sección
+      const sectionArticles = articles
+        .filter(a => getHomeLocationFromOrder(a.sort_order) === targetSection)
+        .sort((a, b) => a.sort_order - b.sort_order)
+      targetPosition = sectionArticles.findIndex(a => a.id === overId)
+    } else {
+      // Si overId es una sección, determinar la sección y la primera posición
+      if (overId.includes('principal')) {
+        targetSection = 'principal'
+        targetPosition = 0
+      } else if (overId.includes('destacada')) {
+        targetSection = 'destacada'
+        targetPosition = 0
+      } else if (overId.includes('ultimas')) {
+        targetSection = 'ultimas'
+        targetPosition = 0
+      } else if (overId.includes('repositorio')) {
+        targetSection = 'repositorio'
+        targetPosition = 0
+      }
+    }
+
+    // Solo mover si la sección es diferente
+    if (activeArticle.home_location !== targetSection) {
+      // 1. ACTUALIZACIÓN OPTIMISTA: Actualizar estado local inmediatamente
+      const originalArticles = [...articles]
+      
+      try {
+        console.log(`Moviendo "${activeArticle.title}" de "${activeArticle.home_location}" a "${targetSection}" (posición ${targetPosition})`)
+        
+        // Crear nuevo array con el artículo movido a la nueva sección
+        let updatedArticles = articles.filter(a => a.id !== activeId)
+        
+        // Insertar el artículo en la nueva posición de la nueva sección
+        const sectionArticles = updatedArticles
+          .filter(a => getHomeLocationFromOrder(a.sort_order) === targetSection)
+          .sort((a, b) => a.sort_order - b.sort_order)
+        
+        // Insertar en la posición correcta
+        sectionArticles.splice(targetPosition, 0, {
+          ...activeArticle,
+          home_location: targetSection,
+          is_featured: targetSection === 'principal' || targetSection === 'destacada'
+        })
+        
+        // Reconstruir el array completo con todos los artículos
+        const otherArticles = updatedArticles.filter(a => getHomeLocationFromOrder(a.sort_order) !== targetSection)
+        updatedArticles = [...otherArticles, ...sectionArticles]
+
+        // 2. RECÁLCULO TOTAL DE SORT_ORDERS
+        console.log('Iniciando recálculo total de sort_orders...')
+        
+        // Definir rangos por sección
+        const sectionRanges = {
+          'principal': { start: 0, end: 0 },
+          'destacada': { start: 1, end: 3 },
+          'ultimas': { start: 4, end: 13 },
+          'repositorio': { start: 14, end: 999 }
+        }
+
+        // Agrupar artículos por sección y asignar nuevos sort_orders secuenciales
+        const bulkUpdates: any[] = []
+        
+        Object.entries(sectionRanges).forEach(([section, range]) => {
+          const sectionArticles = updatedArticles
+            .filter(a => a.home_location === section)
+            .sort((a, b) => {
+              // Mantener orden relativo si ya existen en la sección
+              const aIndex = articles.findIndex(art => art.id === a.id)
+              const bIndex = articles.findIndex(art => art.id === b.id)
+              return aIndex - bIndex
+            })
+
+          sectionArticles.forEach((article, index) => {
+            const newSortOrder = range.start + index
+            bulkUpdates.push({
+              id: article.id,
+              sort_order: newSortOrder,
+              home_location: section,
+              is_featured: section === 'principal' || section === 'destacada'
+            })
+            
+            console.log(`[${section}] "${article.title}": ${article.sort_order} -> ${newSortOrder}`)
+          })
+        })
+
+        // Actualizar estado local con los nuevos sort_orders
+        const finalArticles = updatedArticles.map(article => {
+          const update = bulkUpdates.find(u => u.id === article.id)
+          return update ? { ...article, ...update } : article
+        }).sort((a, b) => a.sort_order - b.sort_order)
+        
+        setArticles(finalArticles)
+
+        // 3. GUARDADO EN LOTE (BULK UPDATE)
+        console.log(`Ejecutando bulk update de ${bulkUpdates.length} artículos...`)
+        const supabase = createClient()
+        
+        // Ejecutar todas las actualizaciones en paralelo
+        const updatePromises = bulkUpdates.map(update =>
+          supabase
+            .from('articles')
+            .update({
+              sort_order: update.sort_order,
+              home_location: update.home_location,
+              is_featured: update.is_featured,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', update.id)
+        )
+
+        const results = await Promise.all(updatePromises)
+        
+        // Verificar si hubo errores
+        const errors = results.filter(result => result.error)
+        if (errors.length > 0) {
+          console.error('Errores en bulk update:', errors)
+          throw new Error(`Error en ${errors.length} actualizaciones`)
+        }
+
+        console.log(`✅ Bulk update completado exitosamente (${deviceType})`)
+        
+        // 4. INVALIDACIÓN DE CACHÉ
+        router.refresh()
+        
+        console.log(`=== DRAG & DROP CON RECÁLCULO TOTAL COMPLETADO (${deviceType}) ===`)
+        
+      } catch (error) {
+        console.error(`Error en drag & drop con recálculo (${deviceType}):`, error)
+        
+        // Revertir al estado original en caso de error
+        console.log('Revirtiendo estado local...')
+        setArticles(originalArticles)
+        
+        const errorMessage = (error as any).message || 'Error desconocido al reordenar'
+        toast.error(`Error al reordenar: ${errorMessage}`)
+      }
+    } else {
+      console.log(`El artículo ya está en la sección correcta. No se requiere movimiento.`)
+    }
   }
 
   // Función para diagnosticar y corregir órdenes de noticias destacadas por BLOQUES
@@ -1280,10 +1057,9 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                 {/* Bloque 1: Noticia Principal */}
                 <Card className="mb-6">
                   <CardHeader>
-                    <CardTitle className="text-lg font-semibold flex items-center gap-2 text-red-600">
+                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
                       Noticia Principal
-                      <Badge variant="secondary">{mainFeaturedArticle ? 1 : 0}</Badge>
-                      <Badge variant="outline">1/1</Badge>
+                      <Badge variant="destructive">1/1</Badge>
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3 transition-all duration-200 ease-in-out">
@@ -1301,6 +1077,10 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                         article={mainFeaturedArticle}
                         onTogglePublished={togglePublished}
                         onDelete={deleteArticle}
+                        onMoveUp={handleMoveArticleUp}
+                        onMoveDown={handleMoveArticleDown}
+                        canMoveUp={canMoveArticle(mainFeaturedArticle.id, 'up')}
+                        canMoveDown={canMoveArticle(mainFeaturedArticle.id, 'down')}
                       />
                     ) : (
                       <p className="text-muted-foreground text-center py-4">
@@ -1340,6 +1120,10 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                         article={article}
                         onTogglePublished={togglePublished}
                         onDelete={deleteArticle}
+                        onMoveUp={handleMoveArticleUp}
+                        onMoveDown={handleMoveArticleDown}
+                        canMoveUp={canMoveArticle(article.id, 'up')}
+                        canMoveDown={canMoveArticle(article.id, 'down')}
                       />
                     ))
                     )}
@@ -1371,13 +1155,17 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                       </p>
                     ) : (
                       latestArticles.map((article) => (
-                        <DraggableArticleRow
-                          key={`latest-${article.id}-${article.sort_order}`}
-                          article={article}
-                          onTogglePublished={togglePublished}
-                          onDelete={deleteArticle}
-                        />
-                      ))
+                      <DraggableArticleRow
+                        key={`latest-${article.id}-${article.sort_order}`}
+                        article={article}
+                        onTogglePublished={togglePublished}
+                        onDelete={deleteArticle}
+                        onMoveUp={handleMoveArticleUp}
+                        onMoveDown={handleMoveArticleDown}
+                        canMoveUp={canMoveArticle(article.id, 'up')}
+                        canMoveDown={canMoveArticle(article.id, 'down')}
+                      />
+                    ))
                     )}
                   </CardContent>
                 </Card>
@@ -1435,6 +1223,10 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                         article={article}
                         onTogglePublished={togglePublished}
                         onDelete={deleteArticle}
+                        onMoveUp={handleMoveArticleUp}
+                        onMoveDown={handleMoveArticleDown}
+                        canMoveUp={canMoveArticle(article.id, 'up')}
+                        canMoveDown={canMoveArticle(article.id, 'down')}
                       />
                     ))
                     )}

@@ -10,8 +10,8 @@ export interface Obituary {
   id: number
   full_name: string
   age: number
+  death_date: string
   service_info: string
-  date: string
   created_at: string
   updated_at: string
 }
@@ -50,7 +50,10 @@ export default function NecrologicasPage() {
   }
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
+    if (!dateString) return 'Sin fecha'
+    
+    // Asegurarse de que la fecha se interprete correctamente en zona horaria local
+    const date = new Date(dateString + 'T00:00:00')
     return date.toLocaleDateString('es-AR', {
       day: 'numeric',
       month: 'long',
@@ -129,13 +132,17 @@ export default function NecrologicasPage() {
                   {/* Fecha */}
                   <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
                     <Calendar className="h-4 w-4" />
-                    <span>{formatDate(obituary.date)}</span>
+                    <span>{formatDate(obituary.death_date)}</span>
                   </div>
 
-                  {/* Información del servicio */}
-                  <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
-                    <p className="font-medium mb-1">Servicio:</p>
-                    <p>{obituary.service_info}</p>
+                  {/* Información del servicio - texto personalizado */}
+                  <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg whitespace-pre-wrap">
+                    {obituary.service_info}
+                  </div>
+
+                  {/* Firma */}
+                  <div className="text-xs text-gray-500 pt-2 border-t text-center">
+                    Caronte - Servicios Sociales
                   </div>
                 </CardContent>
               </Card>

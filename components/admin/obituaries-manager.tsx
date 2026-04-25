@@ -19,6 +19,7 @@ export function ObituariesManager() {
   const [formData, setFormData] = useState({
     full_name: '',
     age: '',
+    death_date: '',
     service_info: ''
   })
 
@@ -41,18 +42,23 @@ export function ObituariesManager() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
+      // Convertir la fecha a formato ISO sin conversión de timezone
+      const deathDateISO = formData.death_date ? new Date(formData.death_date + 'T00:00:00').toISOString() : null
+      
       if (editingObituary) {
         await updateObituary(editingObituary.id, {
           full_name: formData.full_name,
           age: parseInt(formData.age),
+          death_date: deathDateISO?.split('T')[0] || '', // Solo la parte YYYY-MM-DD
           service_info: formData.service_info
         })
       } else {
         await createObituary({
           full_name: formData.full_name,
           age: parseInt(formData.age),
+          death_date: deathDateISO?.split('T')[0] || '', // Solo la parte YYYY-MM-DD
           service_info: formData.service_info,
-          date: new Date().toISOString()
+          created_at: new Date().toISOString()
         })
       }
       
@@ -69,6 +75,7 @@ export function ObituariesManager() {
     setFormData({
       full_name: obituary.full_name,
       age: obituary.age.toString(),
+      death_date: obituary.death_date ? new Date(obituary.death_date).toISOString().split('T')[0] : '',
       service_info: obituary.service_info
     })
     setIsDialogOpen(true)
@@ -99,6 +106,7 @@ export function ObituariesManager() {
     setFormData({
       full_name: '',
       age: '',
+      death_date: '',
       service_info: ''
     })
     setEditingObituary(null)
@@ -167,13 +175,23 @@ export function ObituariesManager() {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="death_date">Fecha de Fallecimiento</Label>
+                <Input
+                  id="death_date"
+                  type="date"
+                  value={formData.death_date}
+                  onChange={(e) => setFormData({ ...formData, death_date: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="service_info">Información del Servicio</Label>
                 <Textarea
                   id="service_info"
                   value={formData.service_info}
                   onChange={(e) => setFormData({ ...formData, service_info: e.target.value })}
-                  placeholder="Ej: Servicio mañana 10:00 en Iglesia San Rafael"
-                  rows={3}
+                  placeholder="Ej: Servicio mañana 10:00 en Iglesia San Rafael&#10;Dirección completa&#10;Información adicional"
+                  rows={4}
                   required
                 />
               </div>
@@ -207,13 +225,19 @@ export function ObituariesManager() {
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Calendar className="h-4 w-4" />
-                    {new Date(obituary.date).toLocaleDateString('es-AR', {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric'
-                    })}
+                    {obituary.death_date ? (() => {
+                      const date = new Date(obituary.death_date + 'T00:00:00')
+                      return date.toLocaleDateString('es-AR', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric'
+                      })
+                    })() : 'Sin fecha de fallecimiento'}
                   </div>
-                  <p className="text-sm">{obituary.service_info}</p>
+                  <div className="text-sm whitespace-pre-wrap">{obituary.service_info}</div>
+                  <div className="text-xs text-muted-foreground pt-2 border-t">
+                    Caronte - Servicios Sociales
+                  </div>
                 </div>
                 <div className="flex space-x-2">
                   <Button
