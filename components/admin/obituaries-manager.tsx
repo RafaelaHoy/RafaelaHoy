@@ -58,8 +58,7 @@ export function ObituariesManager() {
           age: parseInt(formData.age),
           death_date: deathDateISO?.split('T')[0] || '', // Solo la parte YYYY-MM-DD
           service_info: formData.service_info,
-          created_at: new Date().toISOString()
-        })
+          })
       }
       
       resetForm()
