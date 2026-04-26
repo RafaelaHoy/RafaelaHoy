@@ -35,13 +35,18 @@ export async function updateSession(request: NextRequest) {
       data: { session },
     } = await supabase.auth.getSession()
 
+    // EXCEPTION: Allow access to /admin/login without session
+    if (request.nextUrl.pathname === '/admin/login') {
+      return supabaseResponse
+    }
+
     // Protect admin routes
     if (
       !session &&
       request.nextUrl.pathname.startsWith('/admin')
     ) {
       const url = request.nextUrl.clone()
-      url.pathname = '/auth/login'
+      url.pathname = '/admin/login'
       return NextResponse.redirect(url)
     }
 
