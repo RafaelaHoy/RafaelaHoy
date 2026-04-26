@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import { fetchObituaries, createObituary, updateObituary, deleteObituary, type Obituary } from '@/lib/api'
+import { handleAuthError } from '@/lib/supabase/client'
 import { Plus, Edit, Trash2, Calendar, User } from 'lucide-react'
 
 export function ObituariesManager() {
@@ -33,6 +34,7 @@ export function ObituariesManager() {
       const data = await fetchObituaries()
       setObituaries(data)
     } catch (error) {
+      if (handleAuthError(error)) return
       console.error('Error loading obituaries:', error)
     } finally {
       setLoading(false)
@@ -58,14 +60,17 @@ export function ObituariesManager() {
           age: parseInt(formData.age),
           death_date: deathDateISO?.split('T')[0] || '', // Solo la parte YYYY-MM-DD
           service_info: formData.service_info,
-          })
+          created_at: new Date().toISOString()
+        })
       }
       
       resetForm()
       setIsDialogOpen(false)
       loadObituaries()
     } catch (error) {
+      if (handleAuthError(error)) return
       console.error('Error saving obituary:', error)
+      alert('Error al guardar la necrológica. Por favor, inténtelo de nuevo.')
     }
   }
 
@@ -94,6 +99,7 @@ export function ObituariesManager() {
           loadObituaries()
         }, 100)
       } catch (error) {
+        if (handleAuthError(error)) return
         console.error('Error deleting obituary:', error)
         // Si hay error, recargar los datos originales
         loadObituaries()

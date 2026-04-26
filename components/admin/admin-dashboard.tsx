@@ -383,37 +383,83 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
     try {
       console.log(`Moviendo "${article.title}" a sección "${targetSection}"`)
       
-      const supabase = createClient()
-      let newSortOrder = 0
+      // 1. ACTUALIZACIÓN OPTIMISTA: Crear nuevo estado local
+      const updatedArticles = articles.map(a => 
+        a.id === articleId 
+          ? { ...a, home_location: targetSection, is_featured: targetSection === 'principal' || targetSection === 'destacada' }
+          : a
+      )
       
-      // Determinar el nuevo sort_order según la sección
-      if (targetSection === 'principal') {
-        newSortOrder = 0
-      } else if (targetSection === 'destacada') {
-        // Encontrar el primer lugar disponible en destacadas
-        const featuredArticles = articles.filter(a => a.sort_order >= 1 && a.sort_order <= 3).sort((a, b) => a.sort_order - b.sort_order)
-        newSortOrder = featuredArticles.length < 3 ? featuredArticles.length + 1 : 3
-      } else if (targetSection === 'ultimas') {
-        // Encontrar el primer lugar disponible en últimas
-        const latestArticles = articles.filter(a => a.sort_order >= 4 && a.sort_order <= 13).sort((a, b) => a.sort_order - b.sort_order)
-        newSortOrder = latestArticles.length < 10 ? latestArticles.length + 4 : 13
+      // 2. RECÁLCULO TOTAL DE SORT_ORDERS (misma lógica que handleDragEnd)
+      const sectionRanges = {
+        'principal': { start: 0, end: 0 },
+        'destacada': { start: 1, end: 3 },
+        'ultimas': { start: 4, end: 13 },
+        'repositorio': { start: 14, end: 999 }
+      }
+
+      const bulkUpdates: any[] = []
+      
+      Object.entries(sectionRanges).forEach(([section, range]) => {
+        const sectionArticles = updatedArticles
+          .filter(a => a.home_location === section)
+          .sort((a, b) => {
+            const aIndex = updatedArticles.findIndex(art => art.id === a.id)
+            const bIndex = updatedArticles.findIndex(art => art.id === b.id)
+            return aIndex - bIndex
+          })
+
+        // Forzar matemáticamente sort_order secuencial index + base
+        sectionArticles.forEach((article, index) => {
+          const newSortOrder = range.start + index
+          bulkUpdates.push({
+            id: article.id,
+            sort_order: newSortOrder,
+            home_location: section,
+            is_featured: section === 'principal' || section === 'destacada'
+          })
+        })
+      })
+
+      // Actualizar estado local
+      const finalArticles = updatedArticles.map(article => {
+        const update = bulkUpdates.find(u => u.id === article.id)
+        return update ? { ...article, ...update } : article
+      }).sort((a, b) => a.sort_order - b.sort_order)
+      
+      setArticles(finalArticles)
+
+      // 3. BULK UPDATE A BASE DE DATOS
+      console.log(`Ejecutando bulk update de ${bulkUpdates.length} artículos...`)
+      const supabase = createClient()
+      
+      const updatePromises = bulkUpdates.map(update =>
+        supabase
+          .from('articles')
+          .update({
+            sort_order: update.sort_order,
+            home_location: update.home_location,
+            is_featured: update.is_featured,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', update.id)
+      )
+
+      const results = await Promise.all(updatePromises)
+      
+      const errors = results.filter(result => result.error)
+      if (errors.length > 0) {
+        console.error('Errores en bulk update:', errors)
+        throw new Error('Error actualizando artículos')
       }
       
-      const { error } = await supabase
-        .from('articles')
-        .update({
-          sort_order: newSortOrder,
-          home_location: targetSection,
-          is_featured: targetSection === 'principal' || targetSection === 'destacada'
-        })
-        .eq('id', articleId)
+      console.log('✅ Movimiento y recálculo completados')
       
-      if (error) throw error
-      
-      router.refresh()
     } catch (error) {
       console.error('Error moviendo artículo:', error)
       alert('Error al mover artículo')
+      // Recargar para obtener estado correcto
+      router.refresh()
     }
   }
 
@@ -680,12 +726,13 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
           const sectionArticles = updatedArticles
             .filter(a => a.home_location === section)
             .sort((a, b) => {
-              // Mantener orden relativo si ya existen en la sección
-              const aIndex = articles.findIndex(art => art.id === a.id)
-              const bIndex = articles.findIndex(art => art.id === b.id)
+              // Mantener orden relativo basado en el array actualizado (no el original)
+              const aIndex = updatedArticles.findIndex(art => art.id === a.id)
+              const bIndex = updatedArticles.findIndex(art => art.id === b.id)
               return aIndex - bIndex
             })
 
+          // LÓGICA CORREGIDA: Forzar matemáticamente sort_order secuencial index + base
           sectionArticles.forEach((article, index) => {
             const newSortOrder = range.start + index
             bulkUpdates.push({
@@ -695,7 +742,7 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
               is_featured: section === 'principal' || section === 'destacada'
             })
             
-            console.log(`[${section}] "${article.title}": ${article.sort_order} -> ${newSortOrder}`)
+            console.log(`[${section}] "${article.title}": sort_order corregido a ${newSortOrder}`)
           })
         })
 
@@ -704,6 +751,35 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
           const update = bulkUpdates.find(u => u.id === article.id)
           return update ? { ...article, ...update } : article
         }).sort((a, b) => a.sort_order - b.sort_order)
+        
+        // VALIDACIÓN: Asegurar que no haya duplicados en los sort_orders
+        const sortOrders = bulkUpdates.map(u => u.sort_order)
+        const duplicates = sortOrders.filter((order, index) => sortOrders.indexOf(order) !== index)
+        
+        if (duplicates.length > 0) {
+          console.error('❌ ERROR CRÍTICO: Se detectaron duplicados en sort_orders:', duplicates)
+          console.error('Bulk Updates:', bulkUpdates)
+          throw new Error('Error de lógica: Se generaron sort_orders duplicados')
+        }
+        
+        // VALIDACIÓN: Asegurar que todos los sort_orders sean secuenciales por sección
+        Object.entries(sectionRanges).forEach(([section, range]) => {
+          const sectionUpdates = bulkUpdates.filter(u => u.home_location === section)
+          const expectedOrders = sectionUpdates.map((_, index) => range.start + index)
+          const actualOrders = sectionUpdates.map(u => u.sort_order)
+          
+          const mismatches = expectedOrders.filter((expected, index) => actualOrders[index] !== expected)
+          if (mismatches.length > 0) {
+            console.error(`❌ ERROR: Sort_orders no secuenciales en sección ${section}:`, {
+              expected: expectedOrders,
+              actual: actualOrders,
+              mismatches
+            })
+            throw new Error(`Error de lógica: Sort_orders no secuenciales en sección ${section}`)
+          }
+        })
+        
+        console.log('✅ Validación pasada: Todos los sort_orders son correctos y secuenciales')
         
         setArticles(finalArticles)
 
@@ -862,12 +938,26 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
         
         console.log("Promocionando desde repositorio:", toPromote.map(a => `${a.title} (orden ${a.sort_order})`))
 
-        // 5. Mover las noticias a los órdenes faltantes
+        // 5. Mover las noticias a los órdenes faltantes con validación
+        const supabase = createClient()
+        
         for (let i = 0; i < toPromote.length; i++) {
           const article = toPromote[i]
           const newOrder = missingOrders[i]
 
-          await createClient()
+          // Validación: Verificar que el orden esté realmente libre
+          const { data: existingArticle } = await supabase
+            .from("articles")
+            .select("id, title, sort_order")
+            .eq("sort_order", newOrder)
+            .single()
+          
+          if (existingArticle) {
+            console.error(`❌ ERROR: El orden ${newOrder} ya está ocupado por "${existingArticle.title}"`)
+            throw new Error(`Error de lógica: El orden ${newOrder} ya está ocupado`)
+          }
+
+          const { error } = await supabase
             .from("articles")
             .update({
               sort_order: newOrder,
@@ -876,7 +966,9 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
             })
             .eq("id", article.id)
 
-          console.log(`Moviendo "${article.title}" a últimas noticias con orden ${newOrder}`)
+          if (error) throw error
+
+          console.log(`✅ Moviendo "${article.title}" a últimas noticias con orden ${newOrder}`)
         }
 
         // 6. Refrescar los artículos
