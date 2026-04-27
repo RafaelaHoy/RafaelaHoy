@@ -7,7 +7,7 @@ import { arrayMove } from '@dnd-kit/sortable'
 import { useDroppable } from '@dnd-kit/core'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { fixSortOrders } from '@/lib/sort-order-utils'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
@@ -219,8 +219,8 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
   // Filtrado de noticias para el Repositorio General
   const filteredRepositoryArticles = useMemo(() => {
     if (!debouncedSearchQuery.trim()) {
-      // Si no hay búsqueda, mostrar todas las noticias del repositorio
-      return articles.filter(article => article.sort_order >= 14)
+      // Si no hay búsqueda, mostrar todas las noticias del repositorio ordenadas por sort_order ascendente
+      return articles.filter(article => article.sort_order >= 14).sort((a, b) => a.sort_order - b.sort_order)
     }
 
     const normalizedQuery = normalizeText(debouncedSearchQuery)
@@ -794,8 +794,7 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
             .update({
               sort_order: update.sort_order,
               home_location: update.home_location,
-              is_featured: update.is_featured,
-              updated_at: new Date().toISOString()
+              is_featured: update.is_featured
             })
             .eq('id', update.id)
         )
@@ -905,146 +904,6 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
     }
   }
 
-  // Función para agregar las noticias faltantes en últimas noticias (órdenes 6 y 7)
-  const addMissingLatestArticles = async () => {
-    try {
-      // 1. Obtener todas las noticias publicadas ordenadas por sort_order
-      const { data: allArticles, error } = await createClient()
-        .from("articles")
-        .select("*")
-        .eq("is_published", true)
-        .order("sort_order", { ascending: true })
-
-      if (error) throw error
-
-      // 2. Analizar estado actual
-      const currentLatest = allArticles.filter(a => a.sort_order >= 4 && a.sort_order <= 13)
-      const currentRepository = allArticles.filter(a => a.sort_order >= 14)
-
-      console.log("=== ANÁLISIS DE ÚLTIMAS NOTICIAS ===")
-      console.log("Noticias en Últimas (4-13):", currentLatest.length)
-      console.log("Noticias en Repositorio (14+):", currentRepository.length)
-      
-      // 3. Identificar qué órdenes faltan en últimas noticias (6 y 7)
-      const usedOrders = currentLatest.map(a => a.sort_order)
-      const missingOrders = [6, 7].filter(order => !usedOrders.includes(order))
-      
-      console.log("Órdenes usados en últimas:", usedOrders)
-      console.log("Órdenes faltantes:", missingOrders)
-
-      if (missingOrders.length > 0 && currentRepository.length >= missingOrders.length) {
-        // 4. Tomar las primeras noticias del repositorio
-        const toPromote = currentRepository.slice(0, missingOrders.length)
-        
-        console.log("Promocionando desde repositorio:", toPromote.map(a => `${a.title} (orden ${a.sort_order})`))
-
-        // 5. Mover las noticias a los órdenes faltantes con validación
-        const supabase = createClient()
-        
-        for (let i = 0; i < toPromote.length; i++) {
-          const article = toPromote[i]
-          const newOrder = missingOrders[i]
-
-          // Validación: Verificar que el orden esté realmente libre
-          const { data: existingArticle } = await supabase
-            .from("articles")
-            .select("id, title, sort_order")
-            .eq("sort_order", newOrder)
-            .single()
-          
-          if (existingArticle) {
-            console.error(`❌ ERROR: El orden ${newOrder} ya está ocupado por "${existingArticle.title}"`)
-            throw new Error(`Error de lógica: El orden ${newOrder} ya está ocupado`)
-          }
-
-          const { error } = await supabase
-            .from("articles")
-            .update({
-              sort_order: newOrder,
-              home_location: "ultimas",
-              is_featured: false
-            })
-            .eq("id", article.id)
-
-          if (error) throw error
-
-          console.log(`✅ Moviendo "${article.title}" a últimas noticias con orden ${newOrder}`)
-        }
-
-        // 6. Refrescar los artículos
-        alert("¡Se agregaron las noticias faltantes! La página se recargará.")
-        window.location.reload()
-      } else {
-        if (missingOrders.length === 0) {
-          alert("No faltan noticias en últimas noticias (órdenes 6 y 7)")
-        } else {
-          alert("No hay suficientes noticias en el repositorio para agregar")
-        }
-      }
-    } catch (error) {
-      console.error("Error agregando noticias faltantes:", error)
-      alert("Error al agregar las noticias faltantes")
-    }
-  }
-
-  // Función para corregir el orden de todas las noticias del repositorio (desplazar hacia abajo)
-  const fixRepositoryFirstOrder = async () => {
-    try {
-      // 1. Obtener todas las noticias del repositorio (órdenes >= 16)
-      const { data: repositoryArticles, error } = await createClient()
-        .from("articles")
-        .select("*")
-        .eq("is_published", true)
-        .gte("sort_order", 16)
-        .order("sort_order", { ascending: true })
-
-      if (error) throw error
-
-      if (repositoryArticles && repositoryArticles.length > 0) {
-        console.log("=== CORRECCIÓN COMPLETA REPOSITORIO ===")
-        console.log("Noticias del repositorio a desplazar:", repositoryArticles.length)
-        console.log("Primera noticia:", repositoryArticles[0].title, "(orden:", repositoryArticles[0].sort_order, ")")
-        
-        // 2. Verificar si ya existe una noticia con orden 14
-        const { data: existingOrder14 } = await createClient()
-          .from("articles")
-          .select("*")
-          .eq("sort_order", 14)
-          .single()
-
-        if (existingOrder14) {
-          alert("Ya existe una noticia con orden 14. No se puede realizar la corrección.")
-          return
-        }
-
-        // 3. Desplazar todas las noticias del repositorio hacia abajo
-        for (let i = 0; i < repositoryArticles.length; i++) {
-          const article = repositoryArticles[i]
-          const currentOrder = article.sort_order
-          const newOrder = currentOrder - 2 // 16→14, 17→15, 18→16, etc.
-
-          await createClient()
-            .from("articles")
-            .update({
-              sort_order: newOrder,
-              home_location: "repositorio"
-            })
-            .eq("id", article.id)
-
-          console.log(`Moviendo "${article.title}" de orden ${currentOrder} a orden ${newOrder}`)
-        }
-        
-        alert("¡Corrección completada! Todas las noticias del repositorio fueron desplazadas. La página se recargará.")
-        window.location.reload()
-      } else {
-        alert("No hay noticias en el repositorio para corregir.")
-      }
-    } catch (error) {
-      console.error("Error corrigiendo orden del repositorio:", error)
-      alert("Error al corregir el orden del repositorio")
-    }
-  }
-
   // Toggle publicado
   const togglePublished = async (articleId: string, published: boolean) => {
     try {
@@ -1080,8 +939,8 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
 
   // Noticias de los bloques superiores (no afectados por la búsqueda)
   const mainFeaturedArticle = articles.find(a => a.sort_order === 0)
-  const secondaryFeaturedArticles = articles.filter(a => a.sort_order >= 1 && a.sort_order <= 3)
-  const latestArticles = articles.filter(a => a.sort_order >= 4 && a.sort_order <= 13)
+  const secondaryFeaturedArticles = articles.filter(a => a.sort_order >= 1 && a.sort_order <= 3).sort((a, b) => a.sort_order - b.sort_order)
+  const latestArticles = articles.filter(a => a.sort_order >= 4 && a.sort_order <= 13).sort((a, b) => a.sort_order - b.sort_order)
 
   return (
     <div className="min-h-screen bg-background">

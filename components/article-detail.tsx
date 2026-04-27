@@ -57,7 +57,7 @@ interface Article {
   content: string
   image_url: string | null
   image_caption: string | null
-  published_at: string
+  published_at: string | null
   categories: {
     name: string
     slug: string
@@ -80,7 +80,7 @@ type RelatedArticle = {
   excerpt: string | null
   image_url: string | null
   image_caption: string | null
-  published_at: string
+  published_at: string | null
   categories: {
     name: string
     slug: string
@@ -154,16 +154,10 @@ export function ArticleDetail({ article }: { article: Article }) {
     }
   )
 
-  const formattedDate = format(new Date(article.published_at), "d 'de' MMMM 'de' yyyy", {
-    locale: es,
-  })
+  const formattedDate = article.published_at 
+    ? format(new Date(article.published_at), "d 'de' MMMM 'de' yyyy", { locale: es })
+    : 'Sin fecha'
   
-  // Validación de seguridad: si el año es menor a 2000, usar fecha actual
-  const articleDate = new Date(article.published_at)
-  const safeFormattedDate = articleDate.getFullYear() < 2000 
-    ? format(new Date(), "d 'de' MMMM 'de' yyyy", { locale: es })
-    : formattedDate
-
   const shareUrl = typeof window !== "undefined" ? window.location.href : ""
 
   const handleShare = async () => {
@@ -213,8 +207,8 @@ export function ArticleDetail({ article }: { article: Article }) {
 
       {/* Meta and share */}
       <div className="flex flex-wrap items-center justify-between gap-4 mb-8 pb-6 border-b">
-        <time className="text-sm text-muted-foreground" dateTime={article.published_at}>
-          {safeFormattedDate}
+        <time className="text-sm text-muted-foreground" dateTime={article.published_at || undefined}>
+          {formattedDate}
         </time>
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground mr-2">Compartir:</span>

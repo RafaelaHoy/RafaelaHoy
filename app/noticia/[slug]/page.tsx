@@ -27,13 +27,54 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return { title: "Noticia no encontrada - Rafaela hoy" }
   }
 
+  // Función para convertir URLs relativas a absolutas
+  const getAbsoluteUrl = (url: string | null): string => {
+    if (!url) return "https://rafaelahoy.com/og-default-image.jpg"
+    
+    // Si ya es una URL absoluta, devolverla tal cual
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url
+    }
+    
+    // Si es una URL relativa, convertirla a absoluta
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://rafaelahoy.com"
+    return url.startsWith('/') ? `${baseUrl}${url}` : `${baseUrl}/${url}`
+  }
+
+  const imageUrl = getAbsoluteUrl(article.image_url)
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://rafaelahoy.com"
+  const fullUrl = `${siteUrl}/noticia/${slug}`
+
   return {
     title: `${article.title} - Rafaela hoy`,
-    description: article.excerpt || undefined,
+    description: article.excerpt || `Leer más sobre ${article.title} en Rafaela hoy`,
+    metadataBase: new URL(siteUrl),
     openGraph: {
       title: article.title,
-      description: article.excerpt || undefined,
-      images: article.image_url ? [article.image_url] : undefined,
+      description: article.excerpt || `Leer más sobre ${article.title} en Rafaela hoy`,
+      url: fullUrl,
+      siteName: "Rafaela hoy",
+      images: [
+        {
+          url: imageUrl,
+          width: 1200,
+          height: 630,
+          alt: article.title,
+        },
+      ],
+      locale: "es_AR",
+      type: "article",
+      publishedTime: (article as any).published_at,
+      authors: ["Rafaela hoy"],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: article.title,
+      description: article.excerpt || `Leer más sobre ${article.title} en Rafaela hoy`,
+      images: [imageUrl],
+    },
+    alternates: {
+      canonical: fullUrl,
     },
   }
 }

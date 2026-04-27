@@ -34,8 +34,8 @@ export default async function AdminPage() {
         slug
       )
     `)
-    .order("sort_order", { ascending: true })
     .order("published_at", { ascending: false })
+    .order("sort_order", { ascending: true })
 
   // Fetch categories
   const { data: categories } = await supabase

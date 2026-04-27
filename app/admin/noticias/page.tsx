@@ -162,8 +162,8 @@ export default function AdminNoticiasPage() {
             slug
           )
         `)
-        .order("sort_order", { ascending: true })
         .order("published_at", { ascending: false })
+        .order("sort_order", { ascending: true })
         .limit(50) // Limitar para reducir memoria
 
       if (error) throw error

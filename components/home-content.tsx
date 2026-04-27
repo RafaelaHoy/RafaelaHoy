@@ -70,6 +70,7 @@ async function fetchArticles(): Promise<Article[]> {
       )
     `)
     .eq("is_published", true)
+    .order("published_at", { ascending: false })
     .order("sort_order", { ascending: true })
     .limit(50)
 
@@ -98,6 +99,7 @@ async function fetchArticlesByCategory(categorySlug: string): Promise<Article[]>
     `)
     .eq("is_published", true)
     .eq("categories.slug", categorySlug)
+    .order("published_at", { ascending: false })
     .order("sort_order", { ascending: true })
     .limit(4)
 
@@ -136,6 +138,18 @@ export function HomeContent() {
   const secondaryFeaturedArticles = articles?.filter(a => a.sort_order >= 1 && a.sort_order <= 3).sort((a, b) => a.sort_order - b.sort_order).slice(0, 3) || []
   // Obtener las siguientes 10 noticias después de las destacadas (sort_order 4 en adelante)
   const latestArticles = articles?.filter(a => a.sort_order >= 4).sort((a, b) => a.sort_order - b.sort_order).slice(0, 10) || []
+  
+  // Debug: Verificar el orden de las noticias
+  console.log('=== DEBUG ORDEN DE NOTICIAS ===')
+  console.log('Destacadas (orden 1-3):')
+  secondaryFeaturedArticles.forEach((article, index) => {
+    console.log(`  ${index + 1}. sort_order: ${article.sort_order}, título: ${article.title}`)
+  })
+  console.log('Últimas noticias (orden 4-13):')
+  latestArticles.forEach((article, index) => {
+    console.log(`  ${index + 1}. sort_order: ${article.sort_order}, título: ${article.title}`)
+  })
+  console.log('============================')
   
   // Para compatibilidad con el código existente
   const featuredArticle = mainFeaturedArticle

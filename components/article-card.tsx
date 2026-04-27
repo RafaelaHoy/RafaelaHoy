@@ -9,7 +9,7 @@ interface ArticleCardProps {
     excerpt: string | null
     image_url: string | null
     image_caption: string | null
-    published_at: string
+    published_at: string | null
     categories?: {
       name: string
       slug: string
@@ -19,16 +19,14 @@ interface ArticleCardProps {
 }
 
 // Función para formatear fecha a solo día y mes
-const formatDate = (dateString: string) => {
+const formatDate = (dateString: string | null | undefined) => {
+  if (!dateString) return 'Sin fecha'
+  
   const date = new Date(dateString)
   
-  // Validación de seguridad: si el año es menor a 2000, usar fecha actual
-  if (date.getFullYear() < 2000) {
-    console.warn('Fecha inválida detectada (año < 2000), usando fecha actual')
-    return new Date().toLocaleDateString('es-AR', {
-      day: 'numeric',
-      month: 'short'
-    })
+  // Validar si la fecha es válida
+  if (isNaN(date.getTime())) {
+    return 'Fecha inválida'
   }
   
   return date.toLocaleDateString('es-AR', {

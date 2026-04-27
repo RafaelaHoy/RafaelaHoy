@@ -374,6 +374,8 @@ export default function CreateNewsPage() {
   const [content, setContent] = useState("")
   const [categoryId, setCategoryId] = useState("")
   const [homeLocation, setHomeLocation] = useState("repositorio") // Por defecto en repositorio
+  const [sortOrder, setSortOrder] = useState<number | null>(null) // Orden manual
+  const [occupiedOrders, setOccupiedOrders] = useState<{ destacadas: number[], ultimas: number[] }>({ destacadas: [], ultimas: [] })
   const [isPublished, setIsPublished] = useState(false)
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
   const [featuredImage, setFeaturedImage] = useState<string>("")
@@ -419,6 +421,37 @@ export default function CreateNewsPage() {
     
     loadCategories()
   }, [])
+
+  // Cargar órdenes ocupados
+  const loadOccupiedOrders = async () => {
+    try {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from('articles')
+        .select('sort_order')
+        .eq('is_published', true)
+        .in('sort_order', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13])
+      
+      if (error) throw error
+      
+      const destacadas = data?.filter(a => a.sort_order >= 1 && a.sort_order <= 3).map(a => a.sort_order) || []
+      const ultimas = data?.filter(a => a.sort_order >= 4 && a.sort_order <= 13).map(a => a.sort_order) || []
+      
+      setOccupiedOrders({ destacadas, ultimas })
+    } catch (error) {
+      console.error('Error cargando órdenes ocupados:', error)
+    }
+  }
+
+  // Cargar órdenes ocupados al montar y cuando cambia la ubicación
+  useEffect(() => {
+    loadOccupiedOrders()
+  }, [])
+
+  // Resetear sort_order cuando cambia la ubicación
+  useEffect(() => {
+    setSortOrder(null)
+  }, [homeLocation])
 
   // Cargar medios existentes
   useEffect(() => {
@@ -491,6 +524,12 @@ export default function CreateNewsPage() {
       return
     }
 
+    // Validar sort_order si es requerido
+    if ((homeLocation === "destacada" || homeLocation === "ultimas") && sortOrder === null) {
+      alert("Por favor selecciona un número de orden para esta ubicación")
+      return
+    }
+
     setSaving(true)
     
     try {
@@ -499,145 +538,47 @@ export default function CreateNewsPage() {
       // Procesar Markdown a HTML
       const processedContent = processMarkdownToHTML(content.trim())
       
-      console.log('=== CREACIÓN CON GESTIÓN MANUAL Y VALIDACIÓN DE CUPOS ===')
+      console.log('=== CREACIÓN CON GESTIÓN MANUAL DE ORDEN ===')
       console.log('Título:', title.trim())
       console.log('Ubicación elegida:', homeLocation)
+      console.log('Orden seleccionado:', sortOrder)
       
-      // 1. VERIFICACIÓN DE CUPOS (Antes de Guardar) - CON FORZADO DE ACTUALIZACIÓN
-      console.log('Verificando cupos disponibles...')
-      
-      // Forzar actualización de datos para evitar cache
-      const { data: existingArticles, error: countError } = await supabase
-        .from('articles')
-        .select('*')
-        .eq('is_published', true)
-        .order('sort_order', { ascending: true })
-        // Forzar no usar cache
-        .then(result => {
-          console.log('Datos frescos obtenidos de la base de datos:', result.data?.length || 0, 'noticias')
-          return result
-        })
-      
-      if (countError) throw countError
-      
-      // Contar noticias por sección
-      const principal = existingArticles?.filter(a => a.sort_order === 0).length || 0
-      const destacadas = existingArticles?.filter(a => a.sort_order >= 1 && a.sort_order <= 3).length || 0
-      const ultimas = existingArticles?.filter(a => a.sort_order >= 4 && a.sort_order <= 13).length || 0
-      
-      console.log(`Cupos actuales (datos frescos):`)
-      console.log(`- Principal: ${principal}/1`)
-      console.log(`- Destacadas: ${destacadas}/3`)
-      console.log(`- Últimas: ${ultimas}/10`)
-      
-      // Mostrar detalles para debugging
-      if (homeLocation === "principal") {
-        const principalArticles = existingArticles?.filter(a => a.sort_order === 0) || []
-        console.log('Noticias en Principal:', principalArticles.map(a => ({ id: a.id, title: a.title, order: a.sort_order })))
+      // Validar que el orden no esté ocupado
+      if (sortOrder !== null) {
+        const isOccupied = homeLocation === "destacada" 
+          ? occupiedOrders.destacadas.includes(sortOrder)
+          : occupiedOrders.ultimas.includes(sortOrder)
+        
+        if (isOccupied) {
+          alert(`El orden ${sortOrder} ya está ocupado por otra noticia. Por favor selecciona otro.`)
+          setSaving(false)
+          return
+        }
       }
       
-      // 2. VALIDACIÓN ESTRICTA DE CUPOS
-      if (homeLocation === "principal" && principal >= 1) {
-        // Verificación adicional: si el usuario viene del dashboard, podría ser un estado desactualizado
-        console.log('Cupo de Principal lleno. Verificando si los datos están actualizados...')
-        
-        // Intentar una segunda consulta para asegurar datos frescos
-        const { data: freshCheck } = await supabase
+      // Determinar sort_order final
+      let finalSortOrder: number
+      if (homeLocation === "principal") {
+        finalSortOrder = 0
+      } else if (homeLocation === "destacada" || homeLocation === "ultimas") {
+        finalSortOrder = sortOrder!
+      } else {
+        // Repositorio: buscar el siguiente orden disponible
+        const { data: repoArticles } = await supabase
           .from('articles')
-          .select('*')
-          .eq('is_published', true)
-          .eq('sort_order', 0)
-          .single()
+          .select('sort_order')
+          .gte('sort_order', 14)
+          .order('sort_order', { ascending: false })
+          .limit(1)
         
-        if (freshCheck) {
-          console.log('Confirmado: Hay una noticia principal:', freshCheck.title)
-          throw new Error('El cupo de Noticia Principal está lleno. La noticia "' + freshCheck.title + '" está ocupando el lugar. Por favor, esperá unos segundos y volvé a intentar, o movela manualmente al Repositorio.')
-        } else {
-          console.log('Segunda consulta no encontró noticia principal. Hubo un error en la primera consulta.')
-          // Si la segunda consulta no encuentra nada, permitimos continuar
-        }
+        finalSortOrder = repoArticles && repoArticles.length > 0 ? repoArticles[0].sort_order + 1 : 14
       }
       
-      if (homeLocation === "destacada" && destacadas >= 3) {
-        const destacadasArticles = existingArticles?.filter(a => a.sort_order >= 1 && a.sort_order <= 3) || []
-        console.log('Noticias en Destacadas:', destacadasArticles.map(a => ({ id: a.id, title: a.title, order: a.sort_order })))
-        throw new Error('El cupo de Noticias Destacadas está lleno (3/3). Hay ' + destacadasArticles.length + ' noticias ocupando los lugares. Mové alguna de las actuales a Últimas Noticias o al Repositorio para liberar espacio.')
-      }
+      console.log(`Orden final asignado: ${finalSortOrder}`)
       
-      if (homeLocation === "ultimas" && ultimas >= 10) {
-        const ultimasArticles = existingArticles?.filter(a => a.sort_order >= 4 && a.sort_order <= 13) || []
-        console.log('Noticias en Últimas:', ultimasArticles.length, 'de 10 cupos')
-        throw new Error('El cupo de Últimas Noticias está lleno (10/10). Hay ' + ultimasArticles.length + ' noticias ocupando los lugares. Mové alguna de las actuales al Repositorio para liberar espacio.')
-      }
-      
-      console.log('¡Cupo disponible! Procediendo con la inserción...')
-      
-      // 3. ASIGNACIÓN DE SORT_ORDER CON LÓGICA ESTRICTA
-      let newSortOrder = 0
-      
-      if (homeLocation === "principal") {
-        // Principal: siempre 0
-        newSortOrder = 0
-      } else if (homeLocation === "destacada") {
-        // Destacadas: First-In - desplazar existentes hacia abajo y asignar 1
-        newSortOrder = 1
-        
-        // Desplazar todas las noticias con sort_order >= 1 y <= 3 hacia abajo
-        const currentInDestacadas = existingArticles?.filter(a => a.sort_order >= 1 && a.sort_order <= 3) || []
-        for (const article of currentInDestacadas) {
-          if (article.sort_order < 3) {
-            await supabase
-              .from('articles')
-              .update({ sort_order: article.sort_order + 1 })
-              .eq('id', article.id)
-          }
-        }
-      } else if (homeLocation === "ultimas") {
-        // Últimas: First-In - desplazar existentes hacia abajo y asignar 4
-        newSortOrder = 4
-        
-        // Desplazar todas las noticias con sort_order >= 4 y <= 13 hacia abajo
-        const currentInUltimas = existingArticles?.filter(a => a.sort_order >= 4 && a.sort_order <= 13) || []
-        for (const article of currentInUltimas) {
-          if (article.sort_order < 13) {
-            await supabase
-              .from('articles')
-              .update({ sort_order: article.sort_order + 1 })
-              .eq('id', article.id)
-          }
-        }
-      } else if (homeLocation === "repositorio") {
-        // Repositorio: siempre 14 + desplazar existentes
-        newSortOrder = 14
-        
-        // Desplazar todas las noticias >= 14 hacia abajo
-        console.log('Aplicando desplazamiento en Repositorio...')
-        const shiftSuccess = await shiftArticlesUp(14)
-        if (!shiftSuccess) {
-          console.error('Error en desplazamiento de Repositorio, pero continuando...')
-        }
-      }
-      
-      console.log(`Asignando sort_order = ${newSortOrder} para la nueva noticia`)
-      
-      // 4. VERIFICACIÓN FINAL ANTES DE INSERTAR
-      console.log('Verificación final antes de insertar...')
-      const { data: finalCheck } = await supabase
-        .from('articles')
-        .select('*')
-        .eq('is_published', true)
-        .eq('sort_order', newSortOrder)
-        .single()
-      
-      if (finalCheck) {
-        throw new Error('Conflicto detectado: El sort_order ' + newSortOrder + ' está siendo usado por "' + finalCheck.title + '". Por favor, recargá la página y volvé a intentar.')
-      }
-      
-      // 5. INSERCIÓN CON DESPLAZAMIENTO APLICADO
-      console.log('Insertando noticia con desplazamiento aplicado...')
-      
-      const { data: newArticle, error: insertError } = await supabase
-        .from('articles')
+      // 3. INSERCIÓN DIRECTA CON SORT_ORDER MANUAL
+      const { data, error } = await supabase
+        .from("articles")
         .insert({
           title: title.trim(),
           excerpt: excerpt.trim(),
@@ -648,48 +589,24 @@ export default function CreateNewsPage() {
           image_caption: imageCaption.trim() || null,
           slug: slug.trim() || generateSlug(title.trim()),
           published_at: isPublished ? new Date().toISOString() : null,
-          sort_order: newSortOrder, // Posición con desplazamiento aplicado
-          is_featured: newSortOrder <= 3,
-          home_location: getHomeLocationByOrder(newSortOrder),
+          sort_order: finalSortOrder,
+          is_featured: finalSortOrder <= 3,
+          home_location: getHomeLocationByOrder(finalSortOrder),
           author: 'Rafaela hoy'
         })
         .select()
-        .single()
 
-      if (insertError) throw insertError
+      if (error) throw error
 
-      console.log(`Noticia "${newArticle.title}" insertada exitosamente en orden ${newSortOrder}`)
-      console.log('=== PROCESO DE CREACIÓN CON DESPLAZAMIENTO COMPLETADO ===')
+      console.log(`Noticia creada exitosamente con orden ${finalSortOrder}`)
+      console.log('=== CREACIÓN CON ORDEN MANUAL COMPLETADA ===')
       
-      // 6. VERIFICACIÓN FINAL (opcional, para debugging)
-      const { data: finalArticles } = await supabase
-        .from('articles')
-        .select('*')
-        .eq('is_published', true)
-        .order('sort_order', { ascending: true })
-      
-      const finalPrincipal = finalArticles?.filter(a => a.sort_order === 0).length || 0
-      const finalDestacadas = finalArticles?.filter(a => a.sort_order >= 1 && a.sort_order <= 3).length || 0
-      const finalUltimas = finalArticles?.filter(a => a.sort_order >= 4 && a.sort_order <= 13).length || 0
-      
-      console.log(`Estado final de cupos:`)
-      console.log(`- Principal: ${finalPrincipal}/1`)
-      console.log(`- Destacadas: ${finalDestacadas}/3`)
-      console.log(`- Últimas: ${finalUltimas}/10`)
-      
-      // Redirigir a la lista con estado actualizado
-      router.push('/admin')
-      router.refresh() // Forzar actualización del estado
+      // Redirigir al panel de administración
+      router.push('/admin/noticias')
       
     } catch (error) {
       console.error('Error al guardar:', error)
-      
-      // Mostrar error específico de cupos o error genérico
-      if (error instanceof Error && (error.message.includes('cupo') || error.message.includes('lleno') || error.message.includes('Conflicto detectado'))) {
-        alert(error.message) // Error de validación de cupos
-      } else {
-        alert('Error al guardar el artículo: ' + (error instanceof Error ? error.message : 'Error desconocido')) // Error genérico
-      }
+      alert('Error al guardar el artículo: ' + (error instanceof Error ? error.message : 'Error desconocido'))
     } finally {
       setSaving(false)
     }
@@ -879,6 +796,51 @@ export default function CreateNewsPage() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Selector de Orden (solo para Destacadas y Últimas) */}
+              {(homeLocation === "destacada" || homeLocation === "ultimas") && (
+                <div className="space-y-2 mb-4">
+                  <Label htmlFor="sortOrder">
+                    Número de Orden <span className="text-red-500">*</span>
+                  </Label>
+                  <Select value={sortOrder?.toString() || ""} onValueChange={(value) => setSortOrder(value ? parseInt(value) : null)} disabled={saving}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleccionar orden" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {homeLocation === "destacada" ? (
+                        // Órdenes para Destacadas: 1, 2, 3
+                        [1, 2, 3].map((order) => (
+                          <SelectItem 
+                            key={order} 
+                            value={order.toString()}
+                            disabled={occupiedOrders.destacadas.includes(order)}
+                          >
+                            {order} {occupiedOrders.destacadas.includes(order) && "(Ocupado)"}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        // Órdenes para Últimas: 4 al 13
+                        Array.from({ length: 10 }, (_, i) => i + 4).map((order) => (
+                          <SelectItem 
+                            key={order} 
+                            value={order.toString()}
+                            disabled={occupiedOrders.ultimas.includes(order)}
+                          >
+                            {order} {occupiedOrders.ultimas.includes(order) && "(Ocupado)"}
+                          </SelectItem>
+                        ))
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {homeLocation === "destacada" 
+                      ? "Selecciona la posición (1-3). Las opciones marcadas como 'Ocupado' no están disponibles."
+                      : "Selecciona la posición (4-13). Las opciones marcadas como 'Ocupado' no están disponibles."
+                    }
+                  </p>
+                </div>
+              )}
 
               {/* Autor */}
               <div className="space-y-2">

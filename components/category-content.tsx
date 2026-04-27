@@ -44,8 +44,8 @@ async function fetchCategoryArticles(categoryId: string): Promise<Article[]> {
     `)
     .eq("category_id", categoryId)
     .eq("is_published", true)
-    .order("sort_order", { ascending: true })
     .order("published_at", { ascending: false })
+    .order("sort_order", { ascending: true })
     .limit(50)
 
   if (error) throw error
