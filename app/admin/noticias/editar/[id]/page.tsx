@@ -802,6 +802,9 @@ export default function EditNewsPage() {
       console.log(`Noticia actualizada exitosamente con orden ${finalSortOrder}`)
       console.log('=== EDICIÓN CON ORDEN MANUAL COMPLETADA ===')
       
+      // Refrescar para mostrar cambios inmediatamente
+      router.refresh()
+      
       // Redirigir al panel de administración
       router.push('/admin/noticias')
       

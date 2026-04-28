@@ -70,7 +70,12 @@ function ArticleRow({
 
       {/* Título y categoría */}
       <div className="flex-1 min-w-0">
-        <h4 className="font-medium text-sm truncate">{article.title}</h4>
+        <div className="flex items-center gap-2">
+          <h4 className="font-medium text-sm truncate">{article.title}</h4>
+          <Badge variant="secondary" className="text-xs">
+            Orden: {article.sort_order}
+          </Badge>
+        </div>
         {article.categories && (
           <Badge variant="outline" className="text-xs mt-1">
             {article.categories.name}

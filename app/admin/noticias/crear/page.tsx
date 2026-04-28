@@ -601,6 +601,9 @@ export default function CreateNewsPage() {
       console.log(`Noticia creada exitosamente con orden ${finalSortOrder}`)
       console.log('=== CREACIÓN CON ORDEN MANUAL COMPLETADA ===')
       
+      // Refrescar para mostrar cambios inmediatamente
+      router.refresh()
+      
       // Redirigir al panel de administración
       router.push('/admin/noticias')
       

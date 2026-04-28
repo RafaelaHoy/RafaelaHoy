@@ -759,321 +759,105 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
             </div>
 
             <div className="space-y-6">
-                {/* Bloque 1: Noticia Principal */}
-                <Card className="mb-6">
-                  <CardHeader>
-                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                      Noticia Principal
-                      <Badge variant="destructive">1/1</Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {mainFeaturedArticle ? (
-                      <div className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                        <div className="w-16 h-12 bg-muted rounded flex-shrink-0 overflow-hidden">
-                          {mainFeaturedArticle.image_url ? (
-                            <img
-                              src={mainFeaturedArticle.image_url}
-                              alt={mainFeaturedArticle.title}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
-                              Sin imagen
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-medium text-sm truncate">{mainFeaturedArticle.title}</h4>
-                            <Badge variant="outline" className="text-xs">
-                              Orden: {mainFeaturedArticle.sort_order}
-                            </Badge>
-                          </div>
-                          {mainFeaturedArticle.categories && (
-                            <Badge variant="outline" className="text-xs mt-1">
-                              {mainFeaturedArticle.categories.name}
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleMoveArticleUp(mainFeaturedArticle.id)}
-                            disabled={!canMoveArticle(mainFeaturedArticle.id, 'up')}
-                            className="h-8 w-8 p-0"
-                          >
-                            <ChevronUp className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleMoveArticleDown(mainFeaturedArticle.id)}
-                            disabled={!canMoveArticle(mainFeaturedArticle.id, 'down')}
-                            className="h-8 w-8 p-0"
-                          >
-                            <ChevronDown className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => togglePublished(mainFeaturedArticle.id, !mainFeaturedArticle.is_published)}
-                            className={`h-8 w-8 p-0 ${
-                              mainFeaturedArticle.is_published ? "text-green-600" : "text-gray-400"
-                            }`}
-                          >
-                            {mainFeaturedArticle.is_published ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                          </Button>
-                          <Link href={`/admin/noticias/editar/${mainFeaturedArticle.id}`}>
-                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => deleteArticle(mainFeaturedArticle.id)}
-                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <p className="text-muted-foreground text-center py-4">
-                        No hay noticia principal
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Bloque 2: Noticias Destacadas */}
-                <Card className="mb-6">
-                  <CardHeader>
-                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                      Noticias Destacadas
-                      <Badge variant={secondaryFeaturedArticles.length >= 3 ? "destructive" : "outline"}>
-                        {secondaryFeaturedArticles.length}/3
-                      </Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {secondaryFeaturedArticles.length === 0 ? (
-                      <p className="text-muted-foreground text-center py-4">
-                        No hay noticias destacadas
-                      </p>
-                    ) : (
-                      secondaryFeaturedArticles.map((article) => (
-                      <div key={article.id} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                        <div className="w-16 h-12 bg-muted rounded flex-shrink-0 overflow-hidden">
-                          {article.image_url ? (
-                            <img
-                              src={article.image_url}
-                              alt={article.title}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
-                              Sin imagen
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-medium text-sm truncate">{article.title}</h4>
-                            <Badge variant="outline" className="text-xs">
-                              Orden: {article.sort_order}
-                            </Badge>
-                          </div>
-                          {article.categories && (
-                            <Badge variant="outline" className="text-xs mt-1">
-                              {article.categories.name}
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleMoveArticleUp(article.id)}
-                            disabled={!canMoveArticle(article.id, 'up')}
-                            className="h-8 w-8 p-0"
-                          >
-                            <ChevronUp className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleMoveArticleDown(article.id)}
-                            disabled={!canMoveArticle(article.id, 'down')}
-                            className="h-8 w-8 p-0"
-                          >
-                            <ChevronDown className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => togglePublished(article.id, !article.is_published)}
-                            className={`h-8 w-8 p-0 ${
-                              article.is_published ? "text-green-600" : "text-gray-400"
-                            }`}
-                          >
-                            {article.is_published ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                          </Button>
-                          <Link href={`/admin/noticias/editar/${article.id}`}>
-                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => deleteArticle(article.id)}
-                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Bloque 3: Últimas Noticias */}
-                <Card className="mb-6">
-                  <CardHeader>
-                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                      Últimas Noticias
-                      <Badge variant={latestArticles.length >= 10 ? "destructive" : "outline"}>
-                        {latestArticles.length}/10
-                      </Badge>
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {latestArticles.length === 0 ? (
-                      <p className="text-muted-foreground text-center py-4">
-                        No hay últimas noticias
-                      </p>
-                    ) : (
-                      latestArticles.map((article) => (
-                      <div key={article.id} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                        <div className="w-16 h-12 bg-muted rounded flex-shrink-0 overflow-hidden">
-                          {article.image_url ? (
-                            <img
-                              src={article.image_url}
-                              alt={article.title}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
-                              Sin imagen
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-medium text-sm truncate">{article.title}</h4>
-                            <Badge variant="outline" className="text-xs">
-                              Orden: {article.sort_order}
-                            </Badge>
-                          </div>
-                          {article.categories && (
-                            <Badge variant="outline" className="text-xs mt-1">
-                              {article.categories.name}
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleMoveArticleUp(article.id)}
-                            disabled={!canMoveArticle(article.id, 'up')}
-                            className="h-8 w-8 p-0"
-                          >
-                            <ChevronUp className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleMoveArticleDown(article.id)}
-                            disabled={!canMoveArticle(article.id, 'down')}
-                            className="h-8 w-8 p-0"
-                          >
-                            <ChevronDown className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => togglePublished(article.id, !article.is_published)}
-                            className={`h-8 w-8 p-0 ${
-                              article.is_published ? "text-green-600" : "text-gray-400"
-                            }`}
-                          >
-                            {article.is_published ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                          </Button>
-                          <Link href={`/admin/noticias/editar/${article.id}`}>
-                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => deleteArticle(article.id)}
-                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Bloque 4: Repositorio General */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                      Repositorio General
-                      <Badge variant="secondary">{filteredRepositoryArticles.length}</Badge>
-                    </CardTitle>
-                    
-                    {/* Barra de Búsqueda */}
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                      <Input
-                        type="text"
-                        placeholder="Buscar por título, contenido o categoría..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10 w-full"
-                      />
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                  {filteredRepositoryArticles.length === 0 ? (
-                      <div className="text-center py-4">
-                        {debouncedSearchQuery.trim() ? (
-                          <div>
-                            <p className="text-muted-foreground">
-                              No se encontraron noticias que coincidan con tu búsqueda
-                            </p>
-                            <p className="text-sm text-muted-foreground/60 mt-1">
-                              "{debouncedSearchQuery}"
-                            </p>
-                          </div>
+              {/* Bloque 1: Noticia Principal */}
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                    Noticia Principal
+                    <Badge variant="destructive">1/1</Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {mainFeaturedArticle ? (
+                    <div className="flex items-center gap-3 p-3 border rounded-lg bg-muted/30">
+                      <div className="w-16 h-12 bg-muted rounded flex-shrink-0 overflow-hidden">
+                        {mainFeaturedArticle.image_url ? (
+                          <img
+                            src={mainFeaturedArticle.image_url}
+                            alt={mainFeaturedArticle.title}
+                            className="w-full h-full object-cover"
+                          />
                         ) : (
-                          <p className="text-muted-foreground">
-                            No hay noticias en el repositorio
-                          </p>
+                          <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
+                            Sin imagen
+                          </div>
                         )}
                       </div>
-                    ) : (
-                      filteredRepositoryArticles.map((article) => (
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-sm truncate">{mainFeaturedArticle.title}</h4>
+                        {mainFeaturedArticle.categories && (
+                          <Badge variant="outline" className="text-xs mt-1">
+                            {mainFeaturedArticle.categories.name}
+                          </Badge>
+                        )}
+                        <Badge variant="outline" className="text-xs mt-1">
+                          Orden: {mainFeaturedArticle.sort_order}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleMoveArticleUp(mainFeaturedArticle.id)}
+                          disabled={!canMoveArticle(mainFeaturedArticle.id, 'up')}
+                          className="h-8 w-8 p-0"
+                        >
+                          <ChevronUp className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleMoveArticleDown(mainFeaturedArticle.id)}
+                          disabled={!canMoveArticle(mainFeaturedArticle.id, 'down')}
+                          className="h-8 w-8 p-0"
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => togglePublished(mainFeaturedArticle.id, !mainFeaturedArticle.is_published)}
+                          className={`h-8 w-8 p-0 ${
+                            mainFeaturedArticle.is_published ? "text-green-600" : "text-gray-400"
+                          }`}
+                        >
+                          {mainFeaturedArticle.is_published ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                        </Button>
+                        <Link href={`/admin/noticias/editar/${mainFeaturedArticle.id}`}>
+                          <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => deleteArticle(mainFeaturedArticle.id)}
+                          className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                </CardContent>
+              </Card>
+
+              {/* Bloque 2: Noticias Destacadas */}
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                    Noticias Destacadas
+                    <Badge variant={secondaryFeaturedArticles.length >= 3 ? "destructive" : "outline"}>
+                      {secondaryFeaturedArticles.length}/3
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {secondaryFeaturedArticles.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-4">
+                      No hay noticias destacadas
+                    </p>
+                  ) : (
+                    secondaryFeaturedArticles.map((article) => (
                       <div key={article.id} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
                         <div className="w-16 h-12 bg-muted rounded flex-shrink-0 overflow-hidden">
                           {article.image_url ? (
@@ -1089,17 +873,15 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h4 className="font-medium text-sm truncate">{article.title}</h4>
-                            <Badge variant="outline" className="text-xs">
-                              Orden: {article.sort_order}
-                            </Badge>
-                          </div>
+                          <h4 className="font-medium text-sm truncate">{article.title}</h4>
                           {article.categories && (
                             <Badge variant="outline" className="text-xs mt-1">
                               {article.categories.name}
                             </Badge>
                           )}
+                          <Badge variant="outline" className="text-xs mt-1">
+                            Orden: {article.sort_order}
+                          </Badge>
                         </div>
                         <div className="flex items-center gap-1">
                           <Button
@@ -1146,10 +928,215 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                         </div>
                       </div>
                     ))
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Bloque 3: Últimas Noticias */}
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                    Últimas Noticias
+                    <Badge variant={latestArticles.length >= 10 ? "destructive" : "outline"}>
+                      {latestArticles.length}/10
+                    </Badge>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {latestArticles.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-4">
+                      No hay últimas noticias
+                    </p>
+                  ) : (
+                    latestArticles.map((article) => (
+                      <div key={article.id} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div className="w-16 h-12 bg-muted rounded flex-shrink-0 overflow-hidden">
+                          {article.image_url ? (
+                            <img
+                              src={article.image_url}
+                              alt={article.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
+                              Sin imagen
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-sm truncate">{article.title}</h4>
+                          {article.categories && (
+                            <Badge variant="outline" className="text-xs mt-1">
+                              {article.categories.name}
+                            </Badge>
+                          )}
+                          <Badge variant="outline" className="text-xs mt-1">
+                            Orden: {article.sort_order}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleMoveArticleUp(article.id)}
+                            disabled={!canMoveArticle(article.id, 'up')}
+                            className="h-8 w-8 p-0"
+                          >
+                            <ChevronUp className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleMoveArticleDown(article.id)}
+                            disabled={!canMoveArticle(article.id, 'down')}
+                            className="h-8 w-8 p-0"
+                          >
+                            <ChevronDown className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => togglePublished(article.id, !article.is_published)}
+                            className={`h-8 w-8 p-0 ${
+                              article.is_published ? "text-green-600" : "text-gray-400"
+                            }`}
+                          >
+                            {article.is_published ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                          </Button>
+                          <Link href={`/admin/noticias/editar/${article.id}`}>
+                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => deleteArticle(article.id)}
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Bloque 4: Repositorio General */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                    Repositorio General
+                    <Badge variant="secondary">{filteredRepositoryArticles.length}</Badge>
+                  </CardTitle>
+                  
+                  {/* Barra de Búsqueda */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Input
+                      type="text"
+                      placeholder="Buscar por título, contenido o categoría..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10 w-full"
+                    />
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {filteredRepositoryArticles.length === 0 ? (
+                    <div className="text-center py-4">
+                      {debouncedSearchQuery.trim() ? (
+                        <div>
+                          <p className="text-muted-foreground">
+                            No se encontraron noticias que coincidan con tu búsqueda
+                          </p>
+                          <p className="text-sm text-muted-foreground/60 mt-1">
+                            "{debouncedSearchQuery}"
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="text-muted-foreground">
+                          No hay noticias en el repositorio
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    filteredRepositoryArticles.map((article) => (
+                      <div key={article.id} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div className="w-16 h-12 bg-muted rounded flex-shrink-0 overflow-hidden">
+                          {article.image_url ? (
+                            <img
+                              src={article.image_url}
+                              alt={article.title}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
+                              Sin imagen
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-sm truncate">{article.title}</h4>
+                          {article.categories && (
+                            <Badge variant="outline" className="text-xs mt-1">
+                              {article.categories.name}
+                            </Badge>
+                          )}
+                          <Badge variant="outline" className="text-xs mt-1">
+                            Orden: {article.sort_order}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleMoveArticleUp(article.id)}
+                            disabled={!canMoveArticle(article.id, 'up')}
+                            className="h-8 w-8 p-0"
+                          >
+                            <ChevronUp className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleMoveArticleDown(article.id)}
+                            disabled={!canMoveArticle(article.id, 'down')}
+                            className="h-8 w-8 p-0"
+                          >
+                            <ChevronDown className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => togglePublished(article.id, !article.is_published)}
+                            className={`h-8 w-8 p-0 ${
+                              article.is_published ? "text-green-600" : "text-gray-400"
+                            }`}
+                          >
+                            {article.is_published ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                          </Button>
+                          <Link href={`/admin/noticias/editar/${article.id}`}>
+                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => deleteArticle(article.id)}
+                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* Necrológicas Tab */}

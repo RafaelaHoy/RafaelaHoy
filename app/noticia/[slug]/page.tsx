@@ -60,21 +60,31 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
           width: 1200,
           height: 630,
           alt: article.title,
+          type: 'image/jpeg'
         },
       ],
       locale: "es_AR",
       type: "article",
       publishedTime: (article as any).published_at,
       authors: ["Rafaela hoy"],
-    },
+      },
     twitter: {
       card: "summary_large_image",
       title: article.title,
       description: article.excerpt || `Leer más sobre ${article.title} en Rafaela hoy`,
       images: [imageUrl],
+      site: "@rafaelahoy", // Agrega tu handle de Twitter si tienes
     },
     alternates: {
       canonical: fullUrl,
+    },
+    // Metaetiquetas adicionales para Facebook
+    other: {
+      'og:image:secure_url': imageUrl,
+      'og:image:type': 'image/jpeg',
+      'og:image:width': '1200',
+      'og:image:height': '630',
+      'og:image:alt': article.title,
     },
   }
 }
