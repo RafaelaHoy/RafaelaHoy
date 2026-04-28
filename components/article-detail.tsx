@@ -154,9 +154,26 @@ export function ArticleDetail({ article }: { article: Article }) {
     }
   )
 
-  const formattedDate = article.published_at 
-    ? format(new Date(article.published_at), "d 'de' MMMM 'de' yyyy", { locale: es })
-    : 'Sin fecha'
+  // Función para formatear fecha con validación
+const formatArticleDate = (dateString: string | null) => {
+  if (!dateString) return 'Sin fecha'
+  
+  const date = new Date(dateString)
+  
+  // Validar si la fecha es válida
+  if (isNaN(date.getTime())) {
+    return 'Fecha inválida'
+  }
+  
+  // Validar si la fecha es muy antigua (antes de 2020) - probablemente epoch error
+  if (date.getFullYear() < 2020) {
+    return 'Fecha reciente'
+  }
+  
+  return format(date, "d 'de' MMMM 'de' yyyy", { locale: es })
+}
+
+  const formattedDate = formatArticleDate(article.published_at)
   
   const shareUrl = typeof window !== "undefined" ? window.location.href : ""
 

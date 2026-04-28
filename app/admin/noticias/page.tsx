@@ -10,8 +10,6 @@ import {
   Trash2, 
   Eye, 
   EyeOff, 
-  ChevronUp, 
-  ChevronDown, 
   Plus
 } from "lucide-react"
 import Link from "next/link"
@@ -34,22 +32,12 @@ interface Article {
 
 function ArticleRow({ 
   article, 
-  onMoveUp, 
-  onMoveDown, 
   onTogglePublished, 
-  onDelete,
-  showMoveButtons = true,
-  isFirst = false,
-  isLast = false
+  onDelete
 }: {
   article: Article
-  onMoveUp?: (id: string) => void
-  onMoveDown?: (id: string) => void
   onTogglePublished: (id: string, published: boolean) => void
   onDelete: (id: string) => void
-  showMoveButtons?: boolean
-  isFirst?: boolean
-  isLast?: boolean
 }) {
   return (
     <div className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
@@ -62,52 +50,37 @@ function ArticleRow({
             className="w-full h-full object-cover"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
-            Sin imagen
+          <div className="w-full h-full flex items-center justify-center bg-gray-200">
+            <img
+              src="/images/logo.jpg"
+              alt="Sin imagen"
+              className="w-full h-full object-contain opacity-30 p-1"
+            />
           </div>
         )}
       </div>
 
-      {/* Título y categoría */}
+      {/* Título, categoría y fecha */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <h4 className="font-medium text-sm truncate">{article.title}</h4>
-          <Badge variant="secondary" className="text-xs">
-            Orden: {article.sort_order}
-          </Badge>
+        <h4 className="font-medium text-sm truncate">{article.title}</h4>
+        <div className="flex items-center gap-2 mt-1">
+          {article.categories && (
+            <Badge variant="outline" className="text-xs">
+              {article.categories.name}
+            </Badge>
+          )}
+          <span className="text-xs text-muted-foreground">
+            {new Date(article.published_at).toLocaleDateString('es-AR', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric'
+            })}
+          </span>
         </div>
-        {article.categories && (
-          <Badge variant="outline" className="text-xs mt-1">
-            {article.categories.name}
-          </Badge>
-        )}
       </div>
 
       {/* Botones de acción */}
       <div className="flex items-center gap-1">
-        {showMoveButtons && (
-          <>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => onMoveUp?.(article.id)}
-              disabled={isFirst}
-              className="h-8 w-8 p-0"
-            >
-              <ChevronUp className="h-4 w-4" />
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => onMoveDown?.(article.id)}
-              disabled={isLast}
-              className="h-8 w-8 p-0"
-            >
-              <ChevronDown className="h-4 w-4" />
-            </Button>
-          </>
-        )}
-        
         <Button
           size="sm"
           variant="ghost"
@@ -181,86 +154,33 @@ export default function AdminNoticiasPage() {
     }
   }
 
-  // Organizar artículos según la estructura de la Home
-  const allFeaturedArticles = articles.filter(article => article.is_featured)
-  const mainFeaturedArticle = allFeaturedArticles[0] || null
-  const secondaryFeaturedArticles = allFeaturedArticles.slice(1, 4)
-  const latestArticles = articles.slice(4, 14)
-
-  // Funciones de reordenamiento
-  const moveArticleUp = async (articleId: string) => {
-    const articleIndex = articles.findIndex(a => a.id === articleId)
-    if (articleIndex <= 0) return
-
-    const articleToMove = articles[articleIndex]
-    const articleAbove = articles[articleIndex - 1]
-
-    // Intercambiar sort_order
-    const tempOrder = articleToMove.sort_order
-    articleToMove.sort_order = articleAbove.sort_order
-    articleAbove.sort_order = tempOrder
-
-    try {
-      await Promise.all([
-        supabase
-          .from("articles")
-          .update({ sort_order: articleToMove.sort_order })
-          .eq("id", articleToMove.id),
-        supabase
-          .from("articles")
-          .update({ sort_order: articleAbove.sort_order })
-          .eq("id", articleAbove.id)
-      ])
-
-      // Actualizar estado local
-      const newArticles = [...articles]
-      newArticles[articleIndex] = articleAbove
-      newArticles[articleIndex - 1] = articleToMove
-      setArticles(newArticles)
-
-      alert("Noticia movida hacia arriba")
-    } catch (error) {
-      console.error("Error moviendo artículo:", error)
-      alert("Error al mover la noticia")
+  // Organizar artículos según la estructura de la Home usando sort_order
+  const mainFeaturedArticle = articles.find(article => article.sort_order === 0)
+  const secondaryFeaturedArticles = articles.filter(article => article.sort_order !== null && article.sort_order >= 1 && article.sort_order <= 3).sort((a, b) => {
+    // Primero por sort_order ascendente, luego por published_at descendente
+    if (a.sort_order !== b.sort_order) {
+      return a.sort_order - b.sort_order
     }
-  }
-
-  const moveArticleDown = async (articleId: string) => {
-    const articleIndex = articles.findIndex(a => a.id === articleId)
-    if (articleIndex >= articles.length - 1) return
-
-    const articleToMove = articles[articleIndex]
-    const articleBelow = articles[articleIndex + 1]
-
-    // Intercambiar sort_order
-    const tempOrder = articleToMove.sort_order
-    articleToMove.sort_order = articleBelow.sort_order
-    articleBelow.sort_order = tempOrder
-
-    try {
-      await Promise.all([
-        supabase
-          .from("articles")
-          .update({ sort_order: articleToMove.sort_order })
-          .eq("id", articleToMove.id),
-        supabase
-          .from("articles")
-          .update({ sort_order: articleBelow.sort_order })
-          .eq("id", articleBelow.id)
-      ])
-
-      // Actualizar estado local
-      const newArticles = [...articles]
-      newArticles[articleIndex] = articleBelow
-      newArticles[articleIndex + 1] = articleToMove
-      setArticles(newArticles)
-
-      alert("Noticia movida hacia abajo")
-    } catch (error) {
-      console.error("Error moviendo artículo:", error)
-      alert("Error al mover la noticia")
+    return new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
+  })
+  const latestArticles = articles.filter(article => article.sort_order !== null && article.sort_order >= 4 && article.sort_order <= 13).sort((a, b) => {
+    // Primero por sort_order ascendente, luego por published_at descendente
+    if (a.sort_order !== b.sort_order) {
+      return a.sort_order - b.sort_order
     }
-  }
+    return new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
+  })
+  
+  // Repositorio: artículos con sort_order === null || article.sort_order > 13
+  const repositoryArticles = articles.filter(article => article.sort_order === null || article.sort_order > 13).sort((a, b) => {
+    // Primero por sort_order ascendente (null al final), luego por published_at descendente
+    if (a.sort_order === null && b.sort_order !== null) return 1
+    if (a.sort_order !== null && b.sort_order === null) return -1
+    if (a.sort_order !== null && b.sort_order !== null && a.sort_order !== b.sort_order) {
+      return a.sort_order - b.sort_order
+    }
+    return new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
+  })
 
   // Toggle publicado
   const togglePublished = async (articleId: string, published: boolean) => {
@@ -348,7 +268,6 @@ export default function AdminNoticiasPage() {
                 article={mainFeaturedArticle}
                 onTogglePublished={togglePublished}
                 onDelete={deleteArticle}
-                showMoveButtons={false}
               />
             ) : (
               <p className="text-muted-foreground text-center py-4">
@@ -376,13 +295,9 @@ export default function AdminNoticiasPage() {
                 <ArticleRow
                   key={article.id}
                   article={article}
-                  onMoveUp={moveArticleUp}
-                  onMoveDown={moveArticleDown}
                   onTogglePublished={togglePublished}
                   onDelete={deleteArticle}
-                  isFirst={index === 0}
-                  isLast={index === secondaryFeaturedArticles.length - 1}
-                />
+                  />
               ))
             )}
           </CardContent>
@@ -406,12 +321,10 @@ export default function AdminNoticiasPage() {
                 <ArticleRow
                   key={article.id}
                   article={article}
-                  onMoveUp={moveArticleUp}
-                  onMoveDown={moveArticleDown}
+                  
                   onTogglePublished={togglePublished}
                   onDelete={deleteArticle}
-                  isFirst={index === 0}
-                  isLast={index === latestArticles.length - 1}
+                  
                 />
               ))
             )}
@@ -423,23 +336,23 @@ export default function AdminNoticiasPage() {
           <CardHeader>
             <CardTitle className="text-lg font-semibold flex items-center gap-2">
               Repositorio General de Noticias
-              <Badge variant="secondary">{articles.length - 14}</Badge>
+              <Badge variant="secondary">{repositoryArticles.length}</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {articles.length <= 14 ? (
+            {repositoryArticles.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">
                 No hay noticias en el repositorio
               </p>
             ) : (
               <div className="space-y-2">
-                {articles.slice(14).map((article) => (
+                {repositoryArticles.map((article) => (
                   <ArticleRow
                     key={article.id}
                     article={article}
                     onTogglePublished={togglePublished}
                     onDelete={deleteArticle}
-                    showMoveButtons={false}
+                    
                   />
                 ))}
               </div>

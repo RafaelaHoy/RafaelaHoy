@@ -29,6 +29,11 @@ const formatDate = (dateString: string | null | undefined) => {
     return 'Fecha inválida'
   }
   
+  // Validar si la fecha es muy antigua (antes de 2020) - probablemente epoch error
+  if (date.getFullYear() < 2020) {
+    return 'Fecha reciente'
+  }
+  
   return date.toLocaleDateString('es-AR', {
     day: 'numeric',
     month: 'short'

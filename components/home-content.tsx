@@ -135,9 +135,21 @@ export function HomeContent() {
   // Separate featured and other articles by sort_order (solo para sección superior)
   const mainFeaturedArticle = articles?.find(a => a.sort_order === 0)
   // Garantizar exactamente 3 noticias destacadas con sort_order 1, 2, 3
-  const secondaryFeaturedArticles = articles?.filter(a => a.sort_order >= 1 && a.sort_order <= 3).sort((a, b) => a.sort_order - b.sort_order).slice(0, 3) || []
-  // Obtener las siguientes 10 noticias después de las destacadas (sort_order 4 en adelante)
-  const latestArticles = articles?.filter(a => a.sort_order >= 4).sort((a, b) => a.sort_order - b.sort_order).slice(0, 10) || []
+  const secondaryFeaturedArticles = articles?.filter(a => a.sort_order >= 1 && a.sort_order <= 3).sort((a, b) => {
+    // Primero por sort_order ascendente, luego por published_at descendente
+    if (a.sort_order !== b.sort_order) {
+      return a.sort_order - b.sort_order
+    }
+    return new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
+  }).slice(0, 3) || []
+  // Obtener las siguientes 10 noticias después de las destacadas (sort_order 4 al 13)
+  const latestArticles = articles?.filter(a => a.sort_order >= 4 && a.sort_order <= 13).sort((a, b) => {
+    // Primero por sort_order ascendente, luego por published_at descendente
+    if (a.sort_order !== b.sort_order) {
+      return a.sort_order - b.sort_order
+    }
+    return new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
+  }).slice(0, 10) || []
   
   // Debug: Verificar el orden de las noticias
   console.log('=== DEBUG ORDEN DE NOTICIAS ===')

@@ -589,6 +589,7 @@ export default function CreateNewsPage() {
           image_caption: imageCaption.trim() || null,
           slug: slug.trim() || generateSlug(title.trim()),
           published_at: isPublished ? new Date().toISOString() : null,
+          created_at: new Date().toISOString(),
           sort_order: finalSortOrder,
           is_featured: finalSortOrder <= 3,
           home_location: getHomeLocationByOrder(finalSortOrder),

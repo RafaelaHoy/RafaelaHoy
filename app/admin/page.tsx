@@ -17,13 +17,15 @@ export default async function AdminPage() {
     redirect("/admin/login")
   }
 
-  // Fetch articles for the dashboard
+  // Fetch ALL articles for the dashboard (including those with null sort_order)
   const { data: articles } = await supabase
     .from("articles")
     .select(`
       id,
       title,
       slug,
+      excerpt,
+      image_url,
       is_published,
       is_featured,
       published_at,
@@ -34,7 +36,7 @@ export default async function AdminPage() {
         slug
       )
     `)
-    .order("published_at", { ascending: false })
+    .order("created_at", { ascending: false })
     .order("sort_order", { ascending: true })
 
   // Fetch categories

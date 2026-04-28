@@ -46,22 +46,12 @@ interface AdminDashboardProps {
 
 function ArticleRow({ 
   article, 
-  onMoveUp, 
-  onMoveDown, 
   onTogglePublished, 
-  onDelete,
-  showMoveButtons = true,
-  isFirst = false,
-  isLast = false
+  onDelete
 }: {
   article: Article
-  onMoveUp?: (id: string) => void
-  onMoveDown?: (id: string) => void
   onTogglePublished: (id: string, published: boolean) => void
   onDelete: (id: string) => void
-  showMoveButtons?: boolean
-  isFirst?: boolean
-  isLast?: boolean
 }) {
   return (
     <div className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
@@ -105,29 +95,6 @@ function ArticleRow({
 
       {/* Botones de acción */}
       <div className="flex items-center gap-1">
-        {showMoveButtons && (
-          <>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => onMoveUp?.(article.id)}
-              disabled={isFirst}
-              className="h-8 w-8 p-0"
-            >
-              <ChevronUp className="h-4 w-4" />
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => onMoveDown?.(article.id)}
-              disabled={isLast}
-              className="h-8 w-8 p-0"
-            >
-              <ChevronDown className="h-4 w-4" />
-            </Button>
-          </>
-        )}
-        
         <Button
           size="sm"
           variant="ghost"
@@ -431,164 +398,6 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
     return "repositorio"
   }
 
-  // Funciones para mover artículos arriba y abajo
-  const handleMoveArticleUp = async (articleId: string) => {
-    try {
-      console.log('=== MOVIENDO ARTÍCULO HACIA ARRIBA ===')
-      
-      const currentArticle = articles.find(a => a.id === articleId)
-      if (!currentArticle) return
-      
-      // Determinar la sección actual
-      const currentSection = getHomeLocationFromOrder(currentArticle.sort_order)
-      
-      // Encontrar todos los artículos de la misma sección ordenados
-      const sectionArticles = articles
-        .filter(a => getHomeLocationFromOrder(a.sort_order) === currentSection)
-        .sort((a, b) => a.sort_order - b.sort_order)
-      
-      // Encontrar el artículo actual y el anterior
-      const currentIndex = sectionArticles.findIndex(a => a.id === articleId)
-      const previousArticle = sectionArticles[currentIndex - 1]
-      
-      if (!previousArticle) {
-        console.log('El artículo ya está en la primera posición de su sección')
-        return
-      }
-      
-      console.log(`Intercambiando "${currentArticle.title}" (orden ${currentArticle.sort_order}) con "${previousArticle.title}" (orden ${previousArticle.sort_order})`)
-      
-      // 1. ACTUALIZACIÓN OPTIMISTA: Actualizar estado local inmediatamente
-      const updatedArticles = articles.map(article => {
-        if (article.id === currentArticle.id) {
-          return { ...article, sort_order: previousArticle.sort_order }
-        }
-        if (article.id === previousArticle.id) {
-          return { ...article, sort_order: currentArticle.sort_order }
-        }
-        return article
-      }).sort((a, b) => a.sort_order - b.sort_order)
-      
-      setArticles(updatedArticles)
-      
-      // 2. GUARDADO EN BASE DE DATOS
-      const supabase = createClient()
-      
-      // Intercambiar los sort_orders
-      const updates = [
-        supabase
-          .from('articles')
-          .update({ sort_order: previousArticle.sort_order })
-          .eq('id', currentArticle.id),
-        supabase
-          .from('articles')
-          .update({ sort_order: currentArticle.sort_order })
-          .eq('id', previousArticle.id)
-      ]
-      
-      await Promise.all(updates)
-      
-      console.log('Intercambio completado')
-      
-      // 3. INVALIDACIÓN DE CACHÉ (opcional, para sincronizar con otros clientes)
-      router.refresh()
-      
-    } catch (error) {
-      console.error('Error moviendo artículo hacia arriba:', error)
-      alert('Error al mover artículo hacia arriba')
-      // En caso de error, recargar para obtener el estado correcto
-      router.refresh()
-    }
-  }
-
-  const handleMoveArticleDown = async (articleId: string) => {
-    try {
-      console.log('=== MOVIENDO ARTÍCULO HACIA ABAJO ===')
-      
-      const currentArticle = articles.find(a => a.id === articleId)
-      if (!currentArticle) return
-      
-      // Determinar la sección actual
-      const currentSection = getHomeLocationFromOrder(currentArticle.sort_order)
-      
-      // Encontrar todos los artículos de la misma sección ordenados
-      const sectionArticles = articles
-        .filter(a => getHomeLocationFromOrder(a.sort_order) === currentSection)
-        .sort((a, b) => a.sort_order - b.sort_order)
-      
-      // Encontrar el artículo actual y el siguiente
-      const currentIndex = sectionArticles.findIndex(a => a.id === articleId)
-      const nextArticle = sectionArticles[currentIndex + 1]
-      
-      if (!nextArticle) {
-        console.log('El artículo ya está en la última posición de su sección')
-        return
-      }
-      
-      console.log(`Intercambiando "${currentArticle.title}" (orden ${currentArticle.sort_order}) con "${nextArticle.title}" (orden ${nextArticle.sort_order})`)
-      
-      // 1. ACTUALIZACIÓN OPTIMISTA: Actualizar estado local inmediatamente
-      const updatedArticles = articles.map(article => {
-        if (article.id === currentArticle.id) {
-          return { ...article, sort_order: nextArticle.sort_order }
-        }
-        if (article.id === nextArticle.id) {
-          return { ...article, sort_order: currentArticle.sort_order }
-        }
-        return article
-      }).sort((a, b) => a.sort_order - b.sort_order)
-      
-      setArticles(updatedArticles)
-      
-      // 2. GUARDADO EN BASE DE DATOS
-      const supabase = createClient()
-      
-      // Intercambiar los sort_orders
-      const updates = [
-        supabase
-          .from('articles')
-          .update({ sort_order: nextArticle.sort_order })
-          .eq('id', currentArticle.id),
-        supabase
-          .from('articles')
-          .update({ sort_order: currentArticle.sort_order })
-          .eq('id', nextArticle.id)
-      ]
-      
-      await Promise.all(updates)
-      
-      console.log('Intercambio completado')
-      
-      // 3. INVALIDACIÓN DE CACHÉ (opcional, para sincronizar con otros clientes)
-      router.refresh()
-      
-    } catch (error) {
-      console.error('Error moviendo artículo hacia abajo:', error)
-      alert('Error al mover artículo hacia abajo')
-      // En caso de error, recargar para obtener el estado correcto
-      router.refresh()
-    }
-  }
-
-  // Función auxiliar para determinar si un artículo se puede mover
-  const canMoveArticle = (articleId: string, direction: 'up' | 'down') => {
-    const currentArticle = articles.find(a => a.id === articleId)
-    if (!currentArticle) return false
-    
-    const currentSection = getHomeLocationFromOrder(currentArticle.sort_order)
-    const sectionArticles = articles
-      .filter(a => getHomeLocationFromOrder(a.sort_order) === currentSection)
-      .sort((a, b) => a.sort_order - b.sort_order)
-    
-    const currentIndex = sectionArticles.findIndex(a => a.id === articleId)
-    
-    if (direction === 'up') {
-      return currentIndex > 0
-    } else {
-      return currentIndex < sectionArticles.length - 1
-    }
-  }
-
   // Función para diagnosticar y corregir órdenes de noticias destacadas por BLOQUES
   const fixFeaturedArticlesOrder = async () => {
     try {
@@ -663,6 +472,109 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
     }
   }
 
+  // Funciones para mover artículos arriba y abajo (simple swap)
+  const handleMoveArticleUp = async (articleId: string) => {
+    try {
+      console.log('=== MOVIENDO ARTÍCULO HACIA ARRIBA ===')
+      
+      const currentArticle = articles.find(a => a.id === articleId)
+      if (!currentArticle) return
+      
+      // Determinar la sección actual
+      const currentSection = currentArticle.sort_order === 0 ? 'principal' :
+                           currentArticle.sort_order >= 1 && currentArticle.sort_order <= 3 ? 'destacada' :
+                           currentArticle.sort_order >= 4 && currentArticle.sort_order <= 13 ? 'ultimas' : 'repositorio'
+      
+      // Encontrar todos los artículos de la misma sección ordenados
+      const sectionArticles = articles
+        .filter(a => {
+          const section = a.sort_order === 0 ? 'principal' :
+                        a.sort_order >= 1 && a.sort_order <= 3 ? 'destacada' :
+                        a.sort_order >= 4 && a.sort_order <= 13 ? 'ultimas' : 'repositorio'
+          return section === currentSection
+        })
+        .sort((a, b) => a.sort_order - b.sort_order)
+      
+      // Encontrar el artículo actual y el anterior
+      const currentIndex = sectionArticles.findIndex(a => a.id === articleId)
+      const previousArticle = sectionArticles[currentIndex - 1]
+      
+      if (!previousArticle) {
+        console.log('No hay artículo anterior para mover')
+        return
+      }
+      
+      console.log(`Intercambiando "${currentArticle.title}" (orden ${currentArticle.sort_order}) con "${previousArticle.title}" (orden ${previousArticle.sort_order})`)
+      
+      // Intercambiar sort_orders
+      const supabase = createClient()
+      await Promise.all([
+        supabase.from('articles').update({ sort_order: previousArticle.sort_order }).eq('id', currentArticle.id),
+        supabase.from('articles').update({ sort_order: currentArticle.sort_order }).eq('id', previousArticle.id)
+      ])
+      
+      // Refrescar para mostrar cambios
+      router.refresh()
+      
+      console.log('Intercambio completado')
+      
+    } catch (error) {
+      console.error('Error moviendo artículo hacia arriba:', error)
+      toast.error('Error al mover artículo')
+    }
+  }
+
+  const handleMoveArticleDown = async (articleId: string) => {
+    try {
+      console.log('=== MOVIENDO ARTÍCULO HACIA ABAJO ===')
+      
+      const currentArticle = articles.find(a => a.id === articleId)
+      if (!currentArticle) return
+      
+      // Determinar la sección actual
+      const currentSection = currentArticle.sort_order === 0 ? 'principal' :
+                           currentArticle.sort_order >= 1 && currentArticle.sort_order <= 3 ? 'destacada' :
+                           currentArticle.sort_order >= 4 && currentArticle.sort_order <= 13 ? 'ultimas' : 'repositorio'
+      
+      // Encontrar todos los artículos de la misma sección ordenados
+      const sectionArticles = articles
+        .filter(a => {
+          const section = a.sort_order === 0 ? 'principal' :
+                        a.sort_order >= 1 && a.sort_order <= 3 ? 'destacada' :
+                        a.sort_order >= 4 && a.sort_order <= 13 ? 'ultimas' : 'repositorio'
+          return section === currentSection
+        })
+        .sort((a, b) => a.sort_order - b.sort_order)
+      
+      // Encontrar el artículo actual y el siguiente
+      const currentIndex = sectionArticles.findIndex(a => a.id === articleId)
+      const nextArticle = sectionArticles[currentIndex + 1]
+      
+      if (!nextArticle) {
+        console.log('No hay artículo siguiente para mover')
+        return
+      }
+      
+      console.log(`Intercambiando "${currentArticle.title}" (orden ${currentArticle.sort_order}) con "${nextArticle.title}" (orden ${nextArticle.sort_order})`)
+      
+      // Intercambiar sort_orders
+      const supabase = createClient()
+      await Promise.all([
+        supabase.from('articles').update({ sort_order: nextArticle.sort_order }).eq('id', currentArticle.id),
+        supabase.from('articles').update({ sort_order: currentArticle.sort_order }).eq('id', nextArticle.id)
+      ])
+      
+      // Refrescar para mostrar cambios
+      router.refresh()
+      
+      console.log('Intercambio completado')
+      
+    } catch (error) {
+      console.error('Error moviendo artículo hacia abajo:', error)
+      toast.error('Error al mover artículo')
+    }
+  }
+
   // Toggle publicado
   const togglePublished = async (articleId: string, published: boolean) => {
     try {
@@ -699,7 +611,7 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
   // Noticias de los bloques superiores (no afectados por la búsqueda)
   const mainFeaturedArticle = articles.find(a => a.sort_order === 0)
   const secondaryFeaturedArticles = articles.filter(a => a.sort_order >= 1 && a.sort_order <= 3).sort((a, b) => a.sort_order - b.sort_order)
-  const latestArticles = articles.filter(a => a.sort_order >= 4 && a.sort_order <= 13).sort((a, b) => a.sort_order - b.sort_order)
+  const latestArticles = articles.filter(a => a.sort_order >= 4).sort((a, b) => a.sort_order - b.sort_order).slice(0, 10)
 
   return (
     <div className="min-h-screen bg-background">
@@ -801,7 +713,6 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                             size="sm"
                             variant="ghost"
                             onClick={() => handleMoveArticleUp(mainFeaturedArticle.id)}
-                            disabled={!canMoveArticle(mainFeaturedArticle.id, 'up')}
                             className="h-8 w-8 p-0"
                           >
                             <ChevronUp className="h-4 w-4" />
@@ -810,7 +721,6 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                             size="sm"
                             variant="ghost"
                             onClick={() => handleMoveArticleDown(mainFeaturedArticle.id)}
-                            disabled={!canMoveArticle(mainFeaturedArticle.id, 'down')}
                             className="h-8 w-8 p-0"
                           >
                             <ChevronDown className="h-4 w-4" />
@@ -897,7 +807,6 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                             size="sm"
                             variant="ghost"
                             onClick={() => handleMoveArticleUp(article.id)}
-                            disabled={!canMoveArticle(article.id, 'up')}
                             className="h-8 w-8 p-0"
                           >
                             <ChevronUp className="h-4 w-4" />
@@ -906,7 +815,6 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                             size="sm"
                             variant="ghost"
                             onClick={() => handleMoveArticleDown(article.id)}
-                            disabled={!canMoveArticle(article.id, 'down')}
                             className="h-8 w-8 p-0"
                           >
                             <ChevronDown className="h-4 w-4" />
@@ -990,7 +898,6 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                             size="sm"
                             variant="ghost"
                             onClick={() => handleMoveArticleUp(article.id)}
-                            disabled={!canMoveArticle(article.id, 'up')}
                             className="h-8 w-8 p-0"
                           >
                             <ChevronUp className="h-4 w-4" />
@@ -999,7 +906,6 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                             size="sm"
                             variant="ghost"
                             onClick={() => handleMoveArticleDown(article.id)}
-                            disabled={!canMoveArticle(article.id, 'down')}
                             className="h-8 w-8 p-0"
                           >
                             <ChevronDown className="h-4 w-4" />
@@ -1106,7 +1012,6 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                             size="sm"
                             variant="ghost"
                             onClick={() => handleMoveArticleUp(article.id)}
-                            disabled={!canMoveArticle(article.id, 'up')}
                             className="h-8 w-8 p-0"
                           >
                             <ChevronUp className="h-4 w-4" />
@@ -1115,7 +1020,6 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                             size="sm"
                             variant="ghost"
                             onClick={() => handleMoveArticleDown(article.id)}
-                            disabled={!canMoveArticle(article.id, 'down')}
                             className="h-8 w-8 p-0"
                           >
                             <ChevronDown className="h-4 w-4" />
