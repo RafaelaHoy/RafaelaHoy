@@ -175,7 +175,7 @@ const formatArticleDate = (dateString: string | null) => {
 
   const formattedDate = formatArticleDate(article.published_at)
   
-  const shareUrl = typeof window !== "undefined" ? window.location.href : ""
+  const shareUrl = typeof window !== "undefined" ? window.location.href : `https://rafaelahoy.com/noticia/${article.slug}`
 
   const handleShare = async () => {
     if (navigator.share) {
@@ -229,33 +229,33 @@ const formatArticleDate = (dateString: string | null) => {
         </time>
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground mr-2">Compartir:</span>
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(`${article.title}\n\n${shareUrl}`)}`, "_blank")}
+          <a
+            href={`https://wa.me/?text=${encodeURIComponent(`${article.title}\n\n${shareUrl}`)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center h-8 w-8 border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md"
           >
             <WhatsAppIcon />
             <span className="sr-only">Compartir en WhatsApp</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, "_blank")}
+          </a>
+          <a
+            href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center h-8 w-8 border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md"
           >
             <Facebook className="h-4 w-4" />
             <span className="sr-only">Compartir en Facebook</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-8 w-8"
-            onClick={() => window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(article.title)}`, "_blank")}
+          </a>
+          <a
+            href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(article.title)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center justify-center h-8 w-8 border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md"
           >
             <XIcon />
             <span className="sr-only">Compartir en X</span>
-          </Button>
+          </a>
           <Button
             variant="outline"
             size="icon"
