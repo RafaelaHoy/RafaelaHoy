@@ -155,25 +155,26 @@ export function ArticleDetail({ article }: { article: Article }) {
   )
 
   // Función para formatear fecha con validación
-const formatArticleDate = (dateString: string | null) => {
-  if (!dateString) return 'Sin fecha'
+const formatArticleDate = (dateString: string | null, createdDateString?: string | null) => {
+  // Usar published_at, si no usar created_at, si no usar fecha actual
+  const dateToUse = dateString || createdDateString || new Date().toISOString()
   
-  const date = new Date(dateString)
+  const date = new Date(dateToUse)
   
   // Validar si la fecha es válida
   if (isNaN(date.getTime())) {
-    return 'Fecha inválida'
+    return new Date().toLocaleDateString('es-AR', { year: 'numeric', month: 'long', day: 'numeric' })
   }
   
   // Validar si la fecha es muy antigua (antes de 2020) - probablemente epoch error
   if (date.getFullYear() < 2020) {
-    return 'Fecha reciente'
+    return new Date().toLocaleDateString('es-AR', { year: 'numeric', month: 'long', day: 'numeric' })
   }
   
   return format(date, "d 'de' MMMM 'de' yyyy", { locale: es })
 }
 
-  const formattedDate = formatArticleDate(article.published_at)
+  const formattedDate = formatArticleDate(article.published_at, (article as any).created_at)
   
   const shareUrl = typeof window !== "undefined" ? window.location.href : `https://rafaelahoy.com/noticia/${article.slug}`
 
