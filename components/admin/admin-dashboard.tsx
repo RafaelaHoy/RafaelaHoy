@@ -16,6 +16,38 @@ import { ObituariesManager } from "./obituaries-manager"
 import { PharmaciesManager } from "./pharmacies-manager"
 import { toast } from 'sonner'
 
+// Función para formatear fecha con validación
+const formatAdminDate = (dateString: string | null, createdDateString?: string | null) => {
+  // Usar published_at, si no usar created_at, si no usar fecha actual
+  const dateToUse = dateString || createdDateString || new Date().toISOString()
+  
+  const date = new Date(dateToUse)
+  
+  // Validar si la fecha es válida
+  if (isNaN(date.getTime())) {
+    return new Date().toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    })
+  }
+  
+  // Validar si la fecha es muy antigua (antes de 2020) - probablemente epoch error
+  if (date.getFullYear() < 2020) {
+    return new Date().toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    })
+  }
+  
+  return date.toLocaleDateString('es-AR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  })
+}
+
 interface Article {
   id: string
   title: string
@@ -84,11 +116,7 @@ function ArticleRow({
             </Badge>
           )}
           <span className="text-xs text-muted-foreground">
-            {new Date(article.published_at).toLocaleDateString('es-AR', {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric'
-            })}
+            {formatAdminDate(article.published_at, (article as any).created_at)}
           </span>
         </div>
       </div>
@@ -513,8 +541,18 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
         supabase.from('articles').update({ sort_order: currentArticle.sort_order }).eq('id', previousArticle.id)
       ])
       
-      // Refrescar para mostrar cambios
-      router.refresh()
+      // Actualizar estado local para mostrar cambios instantáneamente
+      setArticles(prevArticles => 
+        prevArticles.map(article => {
+          if (article.id === currentArticle.id) {
+            return { ...article, sort_order: previousArticle.sort_order }
+          }
+          if (article.id === previousArticle.id) {
+            return { ...article, sort_order: currentArticle.sort_order }
+          }
+          return article
+        })
+      )
       
       console.log('Intercambio completado')
       
@@ -564,8 +602,18 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
         supabase.from('articles').update({ sort_order: currentArticle.sort_order }).eq('id', nextArticle.id)
       ])
       
-      // Refrescar para mostrar cambios
-      router.refresh()
+      // Actualizar estado local para mostrar cambios instantáneamente
+      setArticles(prevArticles => 
+        prevArticles.map(article => {
+          if (article.id === currentArticle.id) {
+            return { ...article, sort_order: nextArticle.sort_order }
+          }
+          if (article.id === nextArticle.id) {
+            return { ...article, sort_order: currentArticle.sort_order }
+          }
+          return article
+        })
+      )
       
       console.log('Intercambio completado')
       
@@ -610,8 +658,25 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
 
   // Noticias de los bloques superiores (no afectados por la búsqueda)
   const mainFeaturedArticle = articles.find(a => a.sort_order === 0)
-  const secondaryFeaturedArticles = articles.filter(a => a.sort_order >= 1 && a.sort_order <= 3).sort((a, b) => a.sort_order - b.sort_order)
-  const latestArticles = articles.filter(a => a.sort_order >= 4).sort((a, b) => a.sort_order - b.sort_order).slice(0, 10)
+  const secondaryFeaturedArticles = articles.filter(a => a.sort_order !== null && a.sort_order >= 1 && a.sort_order <= 3).sort((a, b) => {
+    // Primero por sort_order ascendente, luego por published_at descendente
+    if (a.sort_order !== b.sort_order) {
+      return a.sort_order - b.sort_order
+    }
+    return new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
+  })
+  const latestArticles = articles.filter(a => a.sort_order !== null && a.sort_order >= 4 && a.sort_order <= 13).sort((a, b) => {
+    // Primero por sort_order ascendente, luego por published_at descendente
+    if (a.sort_order !== b.sort_order) {
+      return a.sort_order - b.sort_order
+    }
+    return new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
+  })
+  // Repositorio: artículos con sort_order === null || sort_order > 13
+  const repositoryArticles = articles.filter(a => a.sort_order === null || a.sort_order > 13).sort((a, b) => {
+    // Ordenar exclusivamente por fecha descendente (las más nuevas primero)
+    return new Date(b.published_at || (b as any).created_at).getTime() - new Date(a.published_at || (a as any).created_at).getTime()
+  })
 
   return (
     <div className="min-h-screen bg-background">
@@ -696,17 +761,24 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
+                          {/* Fila superior: Título y Orden */}
                           <div className="flex items-center gap-2">
                             <h4 className="font-medium text-sm truncate">{mainFeaturedArticle.title}</h4>
                             <Badge variant="outline" className="text-xs">
-                              Orden: {mainFeaturedArticle.sort_order}
+                              Orden: {mainFeaturedArticle.sort_order ?? '-'}
                             </Badge>
                           </div>
-                          {mainFeaturedArticle.categories && (
-                            <Badge variant="outline" className="text-xs mt-1">
-                              {mainFeaturedArticle.categories.name}
-                            </Badge>
-                          )}
+                          {/* Fila inferior: Categoría y Fecha */}
+                          <div className="flex items-center gap-2 mt-1">
+                            {mainFeaturedArticle.categories && (
+                              <Badge variant="secondary" className="text-xs">
+                                {mainFeaturedArticle.categories.name}
+                              </Badge>
+                            )}
+                            <span className="text-xs text-muted-foreground">
+                              {formatAdminDate(mainFeaturedArticle.published_at, (mainFeaturedArticle as any).created_at)}
+                            </span>
+                          </div>
                         </div>
                         <div className="flex items-center gap-1">
                           <Button
@@ -790,17 +862,24 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
+                          {/* Fila superior: Título y Orden */}
                           <div className="flex items-center gap-2">
                             <h4 className="font-medium text-sm truncate">{article.title}</h4>
                             <Badge variant="outline" className="text-xs">
-                              Orden: {article.sort_order}
+                              Orden: {article.sort_order ?? '-'}
                             </Badge>
                           </div>
-                          {article.categories && (
-                            <Badge variant="outline" className="text-xs mt-1">
-                              {article.categories.name}
-                            </Badge>
-                          )}
+                          {/* Fila inferior: Categoría y Fecha */}
+                          <div className="flex items-center gap-2 mt-1">
+                            {article.categories && (
+                              <Badge variant="secondary" className="text-xs">
+                                {article.categories.name}
+                              </Badge>
+                            )}
+                            <span className="text-xs text-muted-foreground">
+                              {formatAdminDate(article.published_at, (article as any).created_at)}
+                            </span>
+                          </div>
                         </div>
                         <div className="flex items-center gap-1">
                           <Button
@@ -881,17 +960,24 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
+                          {/* Fila superior: Título y Orden */}
                           <div className="flex items-center gap-2">
                             <h4 className="font-medium text-sm truncate">{article.title}</h4>
                             <Badge variant="outline" className="text-xs">
-                              Orden: {article.sort_order}
+                              Orden: {article.sort_order ?? '-'}
                             </Badge>
                           </div>
-                          {article.categories && (
-                            <Badge variant="outline" className="text-xs mt-1">
-                              {article.categories.name}
-                            </Badge>
-                          )}
+                          {/* Fila inferior: Categoría y Fecha */}
+                          <div className="flex items-center gap-2 mt-1">
+                            {article.categories && (
+                              <Badge variant="secondary" className="text-xs">
+                                {article.categories.name}
+                              </Badge>
+                            )}
+                            <span className="text-xs text-muted-foreground">
+                              {formatAdminDate(article.published_at, (article as any).created_at)}
+                            </span>
+                          </div>
                         </div>
                         <div className="flex items-center gap-1">
                           <Button
@@ -995,17 +1081,24 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
+                          {/* Fila superior: Título y Orden */}
                           <div className="flex items-center gap-2">
                             <h4 className="font-medium text-sm truncate">{article.title}</h4>
                             <Badge variant="outline" className="text-xs">
-                              Orden: {article.sort_order}
+                              Orden: {article.sort_order ?? '-'}
                             </Badge>
                           </div>
-                          {article.categories && (
-                            <Badge variant="outline" className="text-xs mt-1">
-                              {article.categories.name}
-                            </Badge>
-                          )}
+                          {/* Fila inferior: Categoría y Fecha */}
+                          <div className="flex items-center gap-2 mt-1">
+                            {article.categories && (
+                              <Badge variant="secondary" className="text-xs">
+                                {article.categories.name}
+                              </Badge>
+                            )}
+                            <span className="text-xs text-muted-foreground">
+                              {formatAdminDate(article.published_at, (article as any).created_at)}
+                            </span>
+                          </div>
                         </div>
                         <div className="flex items-center gap-1">
                           <Button
@@ -1050,6 +1143,104 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                         </div>
                       </div>
                     ))
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Repositorio General de Noticias */}
+              <div>
+                <Card className="mb-6">
+                  <CardHeader>
+                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                      Repositorio General de Noticias
+                      <Badge variant="secondary">{repositoryArticles.length}</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {repositoryArticles.length === 0 ? (
+                      <p className="text-muted-foreground text-center py-8">
+                        No hay noticias en el repositorio
+                      </p>
+                    ) : (
+                      repositoryArticles.map((article) => (
+                        <div key={article.id} className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                          <div className="w-16 h-12 bg-muted rounded flex-shrink-0 overflow-hidden">
+                            {article.image_url ? (
+                              <img
+                                src={article.image_url}
+                                alt={article.title}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-xs text-muted-foreground">
+                                Sin imagen
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            {/* Fila superior: Título y Orden */}
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-medium text-sm truncate">{article.title}</h4>
+                              <Badge variant="outline" className="text-xs">
+                                Orden: {article.sort_order ?? '-'}
+                              </Badge>
+                            </div>
+                            {/* Fila inferior: Categoría y Fecha */}
+                            <div className="flex items-center gap-2 mt-1">
+                              {article.categories && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {article.categories.name}
+                                </Badge>
+                              )}
+                              <span className="text-xs text-muted-foreground">
+                                {formatAdminDate(article.published_at, (article as any).created_at)}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleMoveArticleUp(article.id)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <ChevronUp className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleMoveArticleDown(article.id)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <ChevronDown className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => togglePublished(article.id, !article.is_published)}
+                              className={`h-8 w-8 p-0 ${
+                                article.is_published ? "text-green-600" : "text-gray-400"
+                              }`}
+                            >
+                              {article.is_published ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                            </Button>
+                            <Link href={`/admin/noticias/editar/${article.id}`}>
+                              <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </Link>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => deleteArticle(article.id)}
+                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))
                     )}
                   </CardContent>
                 </Card>

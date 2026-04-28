@@ -60,7 +60,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
           width: 1200,
           height: 630,
           alt: article.title,
-          type: 'image/jpeg'
         },
       ],
       locale: "es_AR",
@@ -77,14 +76,6 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     },
     alternates: {
       canonical: fullUrl,
-    },
-    // Metaetiquetas adicionales para Facebook
-    other: {
-      'og:image:secure_url': imageUrl,
-      'og:image:type': 'image/jpeg',
-      'og:image:width': '1200',
-      'og:image:height': '630',
-      'og:image:alt': article.title,
     },
   }
 }

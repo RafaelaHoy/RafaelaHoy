@@ -28,7 +28,7 @@ export async function fixPublishedAt(): Promise<{ success: boolean; message: str
     // 2. Actualizar cada noticia con su created_at
     let fixedCount = 0
     for (const article of articlesWithNullDate) {
-      const publishedAt = article.created_at || new Date().toISOString()
+      const publishedAt = (article as any).created_at || new Date().toISOString()
       
       const { error: updateError } = await supabase
         .from('articles')
