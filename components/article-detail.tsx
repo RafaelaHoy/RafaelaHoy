@@ -176,7 +176,7 @@ const formatArticleDate = (dateString: string | null, createdDateString?: string
 
   const formattedDate = formatArticleDate(article.published_at, (article as any).created_at)
   
-  const shareUrl = typeof window !== "undefined" ? window.location.href : `https://rafaelahoy.com/noticia/${article.slug}`
+  const shareUrl = `https://rafaelahoy.com/noticia/${article.slug}`
 
   const handleShare = async () => {
     if (navigator.share) {
