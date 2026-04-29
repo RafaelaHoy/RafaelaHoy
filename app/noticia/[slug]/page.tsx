@@ -41,43 +41,34 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return url.startsWith('/') ? `${baseUrl}${url}` : `${baseUrl}/${url}`
   }
 
-  const imageUrl = getAbsoluteUrl(article.image_url)
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://rafaelahoy.com"
-  const fullUrl = `${siteUrl}/noticia/${slug}`
+  // Validación de imagen: asegurar URL absoluta con fallback
+  const absoluteImageUrl = getAbsoluteUrl(article.image_url) || "https://rafaelahoy.com/images/logo.png"
 
   return {
-    title: `${article.title} - Rafaela hoy`,
-    description: article.excerpt || `Leer más sobre ${article.title} en Rafaela hoy`,
-    metadataBase: new URL(siteUrl),
+    title: article.title,
+    description: article.excerpt || article.title,
     openGraph: {
       title: article.title,
-      description: article.excerpt || `Leer más sobre ${article.title} en Rafaela hoy`,
-      url: fullUrl,
-      siteName: "Rafaela hoy",
+      description: article.excerpt || article.title,
+      url: `https://rafaelahoy.com/noticia/${article.slug}`,
+      siteName: 'RafaelaHoy',
+      type: 'article',
       images: [
         {
-          url: imageUrl,
+          url: absoluteImageUrl,
           width: 1200,
           height: 630,
           alt: article.title,
-        },
+        }
       ],
-      locale: "es_AR",
-      type: "article",
-      publishedTime: (article as any).published_at,
-      authors: ["Rafaela hoy"],
-      },
+    },
     twitter: {
-      card: "summary_large_image",
+      card: 'summary_large_image',
       title: article.title,
-      description: article.excerpt || `Leer más sobre ${article.title} en Rafaela hoy`,
-      images: [imageUrl],
-      site: "@rafaelahoy", // Agrega tu handle de Twitter si tienes
-    },
-    alternates: {
-      canonical: fullUrl,
-    },
-  }
+      description: article.excerpt || article.title,
+      images: [absoluteImageUrl],
+    }
+  };
 }
 
 export default async function ArticlePage({ params }: PageProps) {
