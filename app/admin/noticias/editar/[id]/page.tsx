@@ -598,7 +598,6 @@ export default function EditNewsPage() {
       const { data, error } = await supabase
         .from('articles')
         .select('sort_order')
-        .eq('is_published', true)
         .in('sort_order', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13])
         .neq('id', articleId) // Excluir artículo actual
       
