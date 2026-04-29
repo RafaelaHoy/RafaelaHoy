@@ -41,8 +41,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     return url.startsWith('/') ? `${baseUrl}${url}` : `${baseUrl}/${url}`
   }
 
-  // Validación de imagen: asegurar URL absoluta con fallback
-  const absoluteImageUrl = getAbsoluteUrl(article.image_url) || "https://rafaelahoy.com/images/logo.png"
+  // Validación de imagen: usar la real del artículo con fallback
+  const imageUrl = article?.image_url;
+  const absoluteImageUrl = imageUrl
+    ? (imageUrl.startsWith('http') ? imageUrl : `https://rafaelahoy.com${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`)
+    : 'https://rafaelahoy.com/images/logo.png';
 
   return {
     title: article.title,
