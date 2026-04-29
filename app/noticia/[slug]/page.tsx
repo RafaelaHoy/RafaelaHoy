@@ -5,9 +5,8 @@ import { Footer } from "@/components/footer"
 import { ArticleDetail } from "@/components/article-detail"
 import type { Metadata } from "next"
 
-// Forzar renderizado dinámico para evitar caché
-export const dynamic = 'force-dynamic'
-export const revalidate = 0
+// Permitir caché ISR por 60 segundos para Warm-Up
+export const revalidate = 60
 
 interface PageProps {
   params: Promise<{ slug: string }>

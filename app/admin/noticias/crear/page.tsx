@@ -376,7 +376,7 @@ export default function CreateNewsPage() {
   const [homeLocation, setHomeLocation] = useState("repositorio") // Por defecto en repositorio
   const [sortOrder, setSortOrder] = useState<number | null>(null) // Orden manual
   const [occupiedOrders, setOccupiedOrders] = useState<{ destacadas: number[], ultimas: number[] }>({ destacadas: [], ultimas: [] })
-  const [isPublished, setIsPublished] = useState(false)
+  const [isPublished, setIsPublished] = useState(true)
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
   const [featuredImage, setFeaturedImage] = useState<string>("")
   const [imageCaption, setImageCaption] = useState<string>("")
@@ -604,7 +604,7 @@ export default function CreateNewsPage() {
       // Forzar el renderizado de la página pública para calentar la caché (Warm-up para Facebook)
       try {
         const slugGuardado = slug.trim() || generateSlug(title.trim())
-        fetch(`https://rafaelahoy.com/noticia/${slugGuardado}`, { cache: 'no-store', mode: 'no-cors' }).catch(() => {});
+        await fetch(`https://rafaelahoy.com/noticia/${slugGuardado}`, { cache: 'no-store', mode: 'no-cors' }).catch(() => {});
       } catch (error) {
         // Silenciar errores del warm-up
       }
