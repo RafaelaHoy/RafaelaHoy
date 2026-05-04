@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Instagram, Facebook, Mail, Lock } from "lucide-react"
+import { Instagram, Facebook, Mail, Phone, Lock } from "lucide-react"
 import { Logo } from "./logo"
 
 const categories = [
@@ -52,6 +52,12 @@ export function Footer() {
                 <a href="mailto:Hoyrafaela@gmail.com" className="flex items-center gap-2 hover:text-white transition-colors">
                   <Mail className="h-4 w-4" />
                   Hoyrafaela@gmail.com
+                </a>
+              </li>
+              <li>
+                <a href="tel:3492411879" className="flex items-center gap-2 hover:text-white transition-colors">
+                  <Phone className="h-4 w-4" />
+                  3492 411879
                 </a>
               </li>
               <li className="pt-2">

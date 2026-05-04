@@ -266,14 +266,7 @@ export function HomeContent() {
                       )}
                     </div>
                     
-                    {/* Pie de foto - Desktop only */}
-                    {featuredArticle.image_caption && (
-                      <div className="lg:absolute lg:bottom-6 lg:left-6 lg:right-6 hidden lg:block">
-                        <p className="text-white text-sm italic text-center bg-black/50 px-3 py-2 rounded-lg backdrop-blur-sm">
-                          {featuredArticle.image_caption}
-                        </p>
-                      </div>
-                    )}
+                    {/* Pie de foto eliminado de la portada */}
                     
                     {/* Overlay content - Desktop only */}
                     <div className="lg:absolute lg:bottom-0 lg:left-0 lg:right-0 lg:bg-gradient-to-t lg:from-black/80 lg:to-transparent lg:p-6 hidden lg:block">
@@ -300,14 +293,7 @@ export function HomeContent() {
                           />
                         )}
                       </div>
-                      {/* Pie de foto - Mobile */}
-                      {featuredArticle.image_caption && (
-                        <div className="px-4 pt-2">
-                          <p className="text-gray-600 text-sm italic text-center">
-                            {featuredArticle.image_caption}
-                          </p>
-                        </div>
-                      )}
+                      {/* Pie de foto eliminado de la portada móvil */}
                       {/* Content */}
                       <div className="p-4 space-y-2">
                         {/* Category */}
