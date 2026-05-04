@@ -4,7 +4,8 @@ import Image from "next/image"
 import Link from "next/link"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
-import { GoogleAnalytics } from '@next/third-parties/google'
+import { useEffect } from 'react'
+import { sendGAEvent } from '@next/third-parties/google'
 // Componente para logo de WhatsApp
 const WhatsAppIcon = () => (
   <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
@@ -138,20 +139,15 @@ export function ArticleDetail({ article }: { article: Article }) {
   console.log('============================')
 
   // Trackear vista de artículo con categoría en Google Analytics
-  React.useEffect(() => {
+  useEffect(() => {
     if (article.categories?.name && typeof window !== 'undefined') {
-      // Enviar evento personalizado con categoría
-      gtag('event', 'article_view', {
-        category: 'engagement',
-        action: 'view',
-        custom_parameters: {
-          article_title: article.title,
-          article_category: article.categories.name,
-          article_id: article.id
-        }
-      })
+      sendGAEvent('event', 'article_view', {
+        article_title: article.title,
+        article_category: article.categories.name,
+        article_id: article.id
+      });
     }
-  }, [article.id, article.categories?.name])
+  }, [article]);
 
   const { data: relatedArticles } = useSWR(
     article.categories ? `related-${article.categories.slug}-${article.id}` : null,
