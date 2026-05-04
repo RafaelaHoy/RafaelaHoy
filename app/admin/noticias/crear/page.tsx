@@ -609,7 +609,7 @@ export default function CreateNewsPage() {
         // Silenciar errores del warm-up
       }
       
-      // Refrescar para mostrar cambios inmediatamente
+      // Forzar invalidación de caché del router antes de redirigir
       router.refresh()
       
       // Redirigir al panel de administración

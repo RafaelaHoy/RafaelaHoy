@@ -809,8 +809,10 @@ export default function EditNewsPage() {
         // Silenciar errores del warm-up
       }
       
-      // Refrescar caché y redirigir al panel principal
+      // Forzar invalidación de caché del router antes de redirigir
       router.refresh()
+      
+      // Redirigir al panel principal
       router.push('/admin')
       
     } catch (error) {

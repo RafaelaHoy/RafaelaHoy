@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { GoogleAnalytics } from '@next/third-parties/google'
 import { Toaster } from 'sonner'
 import './globals.css'
 
@@ -80,12 +81,17 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const gaId = process.env.NEXT_PUBLIC_GA_ID
+  
   return (
     <html lang="es">
       <body className={`${inter.className} antialiased`}>
         {children}
         <Toaster />
         {process.env.NODE_ENV === 'production' && <Analytics />}
+        {process.env.NODE_ENV === 'production' && gaId && (
+          <GoogleAnalytics gaId={gaId} />
+        )}
       </body>
     </html>
   )

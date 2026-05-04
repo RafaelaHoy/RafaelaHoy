@@ -159,6 +159,11 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
   const router = useRouter()
 
+  // Sincronizar artículos cuando las props cambian (después de router.refresh)
+  useEffect(() => {
+    setArticles(initialArticles)
+  }, [initialArticles])
+
   // Consolidar sort_orders al montar el dashboard
   useEffect(() => {
     const consolidateSortOrders = async () => {
