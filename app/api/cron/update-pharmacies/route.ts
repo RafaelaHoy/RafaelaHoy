@@ -58,16 +58,21 @@ export async function GET(request: NextRequest) {
       console.log(`📊 Found ${allPharmacies?.length || 0} total pharmacies`);
       
       // Encontrar IDs de las farmacias que están de turno
-      const dutyPharmacyIds = allPharmacies
-        .filter(pharmacy => {
-          const normalizedPharmacyName = normalizePharmacyName(pharmacy.name)
-          const isOnDuty = normalizedDutyPharmacies.includes(normalizedPharmacyName)
-          if (isOnDuty) {
-            console.log(`✅ Match found: "${pharmacy.name}" -> "${normalizedPharmacyName}"`);
-          }
-          return isOnDuty
-        })
-        .map(pharmacy => pharmacy.id)
+      const pharmaciesToActivate = allPharmacies.filter(dbPharmacy => {
+        const dbNameNormalized = dbPharmacy.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const hasMatch = normalizedDutyPharmacies.some(targetName => 
+          dbNameNormalized.includes(targetName.toLowerCase()) || 
+          targetName.toLowerCase().includes(dbNameNormalized)
+        );
+        
+        if (hasMatch) {
+          console.log(`✅ Match found: "${dbPharmacy.name}" -> "${dbNameNormalized}"`);
+        }
+        
+        return hasMatch;
+      });
+      
+      const dutyPharmacyIds = pharmaciesToActivate.map(pharmacy => pharmacy.id);
       
       console.log(`🎯 Found ${dutyPharmacyIds.length} pharmacies to activate:`, dutyPharmacyIds);
       
