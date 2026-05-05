@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { AdminDashboard } from "@/components/admin/admin-dashboard"
 
+export const dynamic = 'force-dynamic'
+
 export const metadata = {
   title: "Panel de Administración - Rafaela hoy",
 }

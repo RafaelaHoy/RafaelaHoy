@@ -609,11 +609,9 @@ export default function CreateNewsPage() {
         // Silenciar errores del warm-up
       }
       
-      // Forzar invalidación de caché del router antes de redirigir
-      router.refresh()
-      
-      // Redirigir al panel de administración
-      router.push('/admin/noticias')
+      // Redirigir al panel de administración con datos frescos
+      // Usamos window.location.href para forzar recarga completa y evitar race conditions
+      window.location.href = '/admin/noticias'
       
     } catch (error) {
       console.error('Error al guardar:', error)

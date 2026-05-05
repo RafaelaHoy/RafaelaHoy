@@ -18,7 +18,7 @@ const anchorDate = new Date('2026-04-23T00:00:00-03:00'); // 23/04/2026 medianoc
 /**
  * Determina qué farmacias están de turno en este momento exacto
  * Basado en la hora de Argentina (America/Argentina/Buenos_Aires)
- * Turnos de 08:00 AM a 08:00 AM del día siguiente
+ * Turnos de 07:00 AM a 07:00 AM del día siguiente
  */
 export function getCurrentDutyPharmacies(): string[] {
   // Obtener fecha y hora actual en zona horaria de Argentina
@@ -28,9 +28,9 @@ export function getCurrentDutyPharmacies(): string[] {
   // Extraer hora y fecha
   const currentHour = argentinaTime.getHours();
   
-  // Si la hora es MENOR a las 08:00 AM, usar el día de AYER
-  // Si la hora es MAYOR o IGUAL a las 08:00 AM, usar el día de HOY
-  const referenceDate = currentHour < 8 
+  // Si la hora es MENOR a las 07:00 AM, usar el día de AYER
+  // Si la hora es MAYOR o IGUAL a las 07:00 AM, usar el día de HOY
+  const referenceDate = currentHour < 7 
     ? new Date(argentinaTime.getTime() - 24 * 60 * 60 * 1000) // Ayer
     : argentinaTime; // Hoy
   
@@ -75,7 +75,7 @@ export function getRotationInfo() {
   const argentinaTime = new Date(now.toLocaleString("en-US", { timeZone: "America/Argentina/Buenos_Aires" }));
   const currentHour = argentinaTime.getHours();
   
-  const referenceDate = currentHour < 8 
+  const referenceDate = currentHour < 7 
     ? new Date(argentinaTime.getTime() - 24 * 60 * 60 * 1000)
     : argentinaTime;
   
@@ -88,6 +88,6 @@ export function getRotationInfo() {
     daysSinceAnchor,
     cyclePosition,
     dutyPharmacies: getCurrentDutyPharmacies(),
-    isBefore8AM: currentHour < 8
+    isBefore7AM: currentHour < 7
   };
 }

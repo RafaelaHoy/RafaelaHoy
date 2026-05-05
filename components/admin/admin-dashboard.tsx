@@ -161,8 +161,14 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
 
   // Sincronizar artículos cuando las props cambian (después de router.refresh)
   useEffect(() => {
+    console.log('=== SYNCING ARTICLES ===')
+    console.log('Previous articles count:', articles.length)
+    console.log('New initialArticles count:', initialArticles.length)
+    console.log('Articles changed:', articles.length !== initialArticles.length || JSON.stringify(articles) !== JSON.stringify(initialArticles))
+    
+    // Forzar actualización del estado con los datos frescos
     setArticles(initialArticles)
-  }, [initialArticles])
+  }, [initialArticles, initialArticles.length]) // Agregar longitud como dependencia explícita
 
   // Consolidar sort_orders al montar el dashboard
   useEffect(() => {
