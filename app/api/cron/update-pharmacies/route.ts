@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
     const { error: resetError } = await supabase
       .from('pharmacies')
       .update({ is_on_duty: false })
+      .eq('is_on_duty', true)
     
     if (resetError) {
       console.error('❌ Error resetting pharmacy duties:', resetError);
