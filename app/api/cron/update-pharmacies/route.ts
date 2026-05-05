@@ -6,16 +6,16 @@ import { createClient } from '@/lib/supabase/server'
 export async function GET(request: NextRequest) {
   try {
     // Verify the request is from Vercel cron
-    const authHeader = request.headers.get('authorization')
-    const cronSecret = process.env.CRON_SECRET
+    const authHeader = request.headers.get('authorization');
     
-    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      console.log('Cron authentication failed');
+      console.log('Auth header received:', authHeader);
+      console.log('Expected Bearer:', process.env.CRON_SECRET ? 'Bearer [REDACTED]' : 'NOT_SET');
+      return new Response('Unauthorized', { status: 401 });
     }
 
+    console.log('Cron authentication successful');
     console.log('Starting scheduled pharmacy update with rotation system...')
     
     // Obtener farmacias de turno según el sistema matemático
