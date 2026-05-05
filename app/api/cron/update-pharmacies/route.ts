@@ -101,7 +101,6 @@ export async function GET(request: NextRequest) {
     console.log('🎉 Pharmacy update completed successfully:', result);
     
     return NextResponse.json({
-      success: true,
       message: 'Pharmacies updated successfully with rotation system',
       ...result
     })
