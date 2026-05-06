@@ -773,7 +773,7 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                         </div>
                         <div className="flex-1 min-w-0">
                           {/* Fila superior: Título */}
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-start gap-2">
                             <h4 className="font-medium line-clamp-2 whitespace-normal text-xs sm:text-sm flex-1">{mainFeaturedArticle.title}</h4>
                             <Badge variant="outline" className="text-xs hidden sm:inline-flex">
                               Orden: {mainFeaturedArticle.sort_order ?? '-'}
@@ -881,7 +881,7 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                         </div>
                         <div className="flex-1 min-w-0">
                           {/* Fila superior: Título */}
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-start gap-2">
                             <h4 className="font-medium line-clamp-2 whitespace-normal text-xs sm:text-sm flex-1">{article.title}</h4>
                             <Badge variant="outline" className="text-xs hidden sm:inline-flex">
                               Orden: {article.sort_order ?? '-'}
@@ -988,7 +988,7 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                         </div>
                         <div className="flex-1 min-w-0">
                           {/* Fila superior: Título */}
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-start gap-2">
                             <h4 className="font-medium line-clamp-2 whitespace-normal text-xs sm:text-sm flex-1">{article.title}</h4>
                             <Badge variant="outline" className="text-xs hidden sm:inline-flex">
                               Orden: {article.sort_order ?? '-'}
@@ -1118,7 +1118,7 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                         </div>
                         <div className="flex-1 min-w-0">
                           {/* Fila superior: Título */}
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-start gap-2">
                             <h4 className="font-medium line-clamp-2 whitespace-normal text-xs sm:text-sm flex-1">{article.title}</h4>
                             <Badge variant="outline" className="text-xs hidden sm:inline-flex">
                               Orden: {article.sort_order ?? '-'}
