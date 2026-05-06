@@ -88,15 +88,18 @@ export function DraggableArticleRow({
 
         {/* Información */}
         <div className="flex-1 min-w-0">
-          <h4 className="font-medium text-sm line-clamp-2 leading-tight">{article.title}</h4>
-          <div className="flex items-center gap-2 mt-1">
+          <h4 className="font-medium text-sm line-clamp-2 leading-tight truncate">{article.title}</h4>
+          <div className="flex items-center gap-1 sm:gap-2 mt-1">
+            {/* Badge de estado - SIEMPRE VISIBLE */}
             <Badge variant={article.is_published ? "default" : "secondary"} className="text-xs">
               {article.is_published ? "Publicado" : "Borrador"}
             </Badge>
-            {/* Número de orden - OCULTO en móviles */}
-            <span className="hidden sm:inline text-xs text-muted-foreground">
-              Orden: {article.sort_order}
-            </span>
+            {/* Número de orden y flechas - OCULTOS en mobile */}
+            <div className="hidden sm:flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">
+                Orden: {article.sort_order}
+              </span>
+            </div>
             {/* Ocultar extracto y fecha larga en móviles */}
             <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
               {article.excerpt && (
@@ -108,10 +111,9 @@ export function DraggableArticleRow({
           </div>
         </div>
 
-        {/* Estado de publicación - mostrar editar en móviles */}
-        <div className="flex items-center gap-1 sm:gap-2">
-          {/* Botones de flechas para subir/bajar */}
-          <div className="flex flex-col gap-0.5">
+        {/* Control de orden y flechas - VISIBLE SOLO en mobile */}
+        <div className="flex sm:hidden items-center gap-1 flex-shrink-0">
+          <div className="flex items-center gap-1">
             <Button
               variant="ghost"
               size="sm"
@@ -132,38 +134,49 @@ export function DraggableArticleRow({
             >
               <ChevronDown className="h-3 w-3" />
             </Button>
+            <span className="text-xs text-muted-foreground min-w-0 truncate">
+              #{article.sort_order}
+            </span>
           </div>
+        </div>
 
+        {/* Botones de acción - VISIBLES en mobile y desktop */}
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+          {/* Botón de ojo - más pequeño en mobile */}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => onTogglePublished(article.id, !article.is_published)}
-            className={`h-7 w-7 sm:h-8 sm:w-8 p-0 ${
+            className={`h-6 w-6 sm:h-7 sm:w-7 p-1 sm:p-0 ${
               article.is_published 
                 ? 'text-green-600 hover:text-green-700' 
                 : 'text-gray-400 hover:text-gray-600'
             }`}
+            title={article.is_published ? "Despublicar" : "Publicar"}
           >
             <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
           </Button>
 
-          {/* Botones de acción - EDITAR VISIBLE en móviles */}
+          {/* Botón de editar - más pequeño en mobile */}
           <Button
             variant="ghost"
             size="sm"
             asChild
-            className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+            className="h-6 w-6 sm:h-7 sm:w-7 p-1 sm:p-0"
             title="Editar"
           >
             <Link href={`/admin/noticias/editar/${article.id}`}>
               <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
             </Link>
           </Button>
+          
+          {/* Botón de eliminar - más pequeño en mobile */}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => onDelete(article.id)}
-            className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+            className="h-6 w-6 sm:h-7 sm:w-7 p-1 sm:p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+            title="Eliminar"
           >
             <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
           </Button>
@@ -214,15 +227,18 @@ export function DraggableArticleRow({
 
       {/* Información */}
       <div className="flex-1 min-w-0">
-        <h4 className="font-medium text-sm line-clamp-2 leading-tight">{article.title}</h4>
-        <div className="flex items-center gap-2 mt-1">
+        <h4 className="font-medium text-sm line-clamp-2 leading-tight truncate">{article.title}</h4>
+        <div className="flex items-center gap-1 sm:gap-2 mt-1">
+          {/* Badge de estado - SIEMPRE VISIBLE */}
           <Badge variant={article.is_published ? "default" : "secondary"} className="text-xs">
             {article.is_published ? "Publicado" : "Borrador"}
           </Badge>
-          {/* Número de orden - OCULTO en móviles */}
-          <span className="hidden sm:inline text-xs text-muted-foreground">
-            Orden: {article.sort_order}
-          </span>
+          {/* Número de orden y flechas - OCULTOS en mobile */}
+          <div className="hidden sm:flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">
+              Orden: {article.sort_order}
+            </span>
+          </div>
           {/* Ocultar extracto y fecha larga en móviles */}
           <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
             {article.excerpt && (
@@ -234,10 +250,9 @@ export function DraggableArticleRow({
         </div>
       </div>
 
-      {/* Estado de publicación - mostrar editar en móviles */}
-      <div className="flex items-center gap-1 sm:gap-2">
-        {/* Botones de flechas para subir/bajar */}
-        <div className="flex flex-col gap-0.5">
+      {/* Control de orden y flechas - VISIBLE SOLO en mobile */}
+      <div className="flex sm:hidden items-center gap-1 flex-shrink-0">
+        <div className="flex items-center gap-1">
           <Button
             variant="ghost"
             size="sm"
@@ -258,38 +273,49 @@ export function DraggableArticleRow({
           >
             <ChevronDown className="h-3 w-3" />
           </Button>
+          <span className="text-xs text-muted-foreground min-w-0 truncate">
+            #{article.sort_order}
+          </span>
         </div>
+      </div>
 
+      {/* Botones de acción - VISIBLES en mobile y desktop */}
+      <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+        {/* Botón de ojo - más pequeño en mobile */}
         <Button
           variant="ghost"
           size="sm"
           onClick={() => onTogglePublished(article.id, !article.is_published)}
-          className={`h-7 w-7 sm:h-8 sm:w-8 p-0 ${
+          className={`h-6 w-6 sm:h-7 sm:w-7 p-1 sm:p-0 ${
             article.is_published 
               ? 'text-green-600 hover:text-green-700' 
               : 'text-gray-400 hover:text-gray-600'
           }`}
+          title={article.is_published ? "Despublicar" : "Publicar"}
         >
           <Eye className="h-3 w-3 sm:h-4 sm:w-4" />
         </Button>
 
-        {/* Botones de acción - EDITAR VISIBLE en móviles */}
+        {/* Botón de editar - más pequeño en mobile */}
         <Button
           variant="ghost"
           size="sm"
           asChild
-          className="h-7 w-7 sm:h-8 sm:w-8 p-0"
+          className="h-6 w-6 sm:h-7 sm:w-7 p-1 sm:p-0"
           title="Editar"
         >
           <Link href={`/admin/noticias/editar/${article.id}`}>
             <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
           </Link>
         </Button>
+        
+        {/* Botón de eliminar - más pequeño en mobile */}
         <Button
           variant="ghost"
           size="sm"
           onClick={() => onDelete(article.id)}
-          className="h-7 w-7 sm:h-8 sm:w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+          className="h-6 w-6 sm:h-7 sm:w-7 p-1 sm:p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+          title="Eliminar"
         >
           <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
         </Button>

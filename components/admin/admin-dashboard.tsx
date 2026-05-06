@@ -108,8 +108,8 @@ function ArticleRow({
 
       {/* Título, categoría y fecha */}
       <div className="flex-1 min-w-0">
-        <h4 className="font-medium text-sm truncate">{article.title}</h4>
-        <div className="flex items-center gap-2 mt-1">
+        <h4 className="font-medium line-clamp-2 whitespace-normal text-xs sm:text-sm flex-1">{article.title}</h4>
+        <div className="flex items-center gap-2 mt-1 hidden sm:flex">
           {article.categories && (
             <Badge variant="outline" className="text-xs">
               {article.categories.name}
@@ -122,7 +122,7 @@ function ArticleRow({
       </div>
 
       {/* Botones de acción */}
-      <div className="flex items-center gap-1">
+      <div className="flex flex-col items-end gap-1 flex-shrink-0">
         <Button
           size="sm"
           variant="ghost"
@@ -131,12 +131,12 @@ function ArticleRow({
             article.is_published ? "text-green-600" : "text-gray-400"
           }`}
         >
-          {article.is_published ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+          {article.is_published ? <Eye className="h-3 w-3 sm:h-4 sm:w-4" /> : <EyeOff className="h-3 w-3 sm:h-4 sm:w-4" />}
         </Button>
         
         <Link href={`/admin/noticias/editar/${article.id}`}>
-          <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-            <Edit className="h-4 w-4" />
+          <Button size="sm" variant="ghost" className="h-6 w-6 sm:h-8 sm:w-8 p-0">
+            <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
           </Button>
         </Link>
         
@@ -146,7 +146,7 @@ function ArticleRow({
           onClick={() => onDelete(article.id)}
           className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
         </Button>
       </div>
     </div>
@@ -718,15 +718,15 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
         <Tabs defaultValue="noticias" className="space-y-6">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="noticias" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
+              <FileText className="h-3 w-3 sm:h-4 sm:w-4" />
               Noticias
             </TabsTrigger>
             <TabsTrigger value="necrologicas" className="flex items-center gap-2">
-              <Cross className="h-4 w-4" />
+              <Cross className="h-3 w-3 sm:h-4 sm:w-4" />
               Necrológicas
             </TabsTrigger>
             <TabsTrigger value="farmacias" className="flex items-center gap-2">
-              <MapPin className="h-4 w-4" />
+              <MapPin className="h-3 w-3 sm:h-4 sm:w-4" />
               Farmacias
             </TabsTrigger>
           </TabsList>
@@ -772,15 +772,12 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          {/* Fila superior: Título y Orden */}
+                          {/* Fila superior: Título */}
                           <div className="flex items-center gap-2">
-                            <h4 className="font-medium text-sm truncate">{mainFeaturedArticle.title}</h4>
-                            <Badge variant="outline" className="text-xs">
-                              Orden: {mainFeaturedArticle.sort_order ?? '-'}
-                            </Badge>
+                            <h4 className="font-medium line-clamp-2 whitespace-normal text-xs sm:text-sm flex-1">{mainFeaturedArticle.title}</h4>
                           </div>
                           {/* Fila inferior: Categoría y Fecha */}
-                          <div className="flex items-center gap-2 mt-1">
+                          <div className="flex items-center gap-2 mt-1 hidden sm:flex">
                             {mainFeaturedArticle.categories && (
                               <Badge variant="secondary" className="text-xs">
                                 {mainFeaturedArticle.categories.name}
@@ -791,46 +788,53 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                             </span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleMoveArticleUp(mainFeaturedArticle.id)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <ChevronUp className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleMoveArticleDown(mainFeaturedArticle.id)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <ChevronDown className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => togglePublished(mainFeaturedArticle.id, !mainFeaturedArticle.is_published)}
-                            className={`h-8 w-8 p-0 ${
-                              mainFeaturedArticle.is_published ? "text-green-600" : "text-gray-400"
-                            }`}
-                          >
-                            {mainFeaturedArticle.is_published ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                          </Button>
-                          <Link href={`/admin/noticias/editar/${mainFeaturedArticle.id}`}>
-                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                              <Edit className="h-4 w-4" />
+                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                          {/* Botones de acción - Mobile: arriba, Desktop: lado */}
+                          <div className="flex items-center gap-0 sm:gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleMoveArticleUp(mainFeaturedArticle.id)}
+                              className="h-6 w-6 sm:h-8 sm:w-8 p-0"
+                            >
+                              <ChevronUp className="h-3 w-3 sm:h-4 sm:w-4" />
                             </Button>
-                          </Link>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => deleteArticle(mainFeaturedArticle.id)}
-                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleMoveArticleDown(mainFeaturedArticle.id)}
+                              className="h-6 w-6 sm:h-8 sm:w-8 p-0"
+                            >
+                              <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => togglePublished(mainFeaturedArticle.id, !mainFeaturedArticle.is_published)}
+                              className={`h-6 w-6 sm:h-8 sm:w-8 p-0 ${
+                                mainFeaturedArticle.is_published ? "text-green-600" : "text-gray-400"
+                              }`}
+                            >
+                              {mainFeaturedArticle.is_published ? <Eye className="h-3 w-3 sm:h-4 sm:w-4" /> : <EyeOff className="h-3 w-3 sm:h-4 sm:w-4" />}
+                            </Button>
+                            <Link href={`/admin/noticias/editar/${mainFeaturedArticle.id}`}>
+                              <Button size="sm" variant="ghost" className="h-6 w-6 sm:h-8 sm:w-8 p-0">
+                                <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
+                              </Button>
+                            </Link>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => deleteArticle(mainFeaturedArticle.id)}
+                              className="h-6 w-6 sm:h-8 sm:w-8 p-0 text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                            </Button>
+                          </div>
+                          {/* Badge de orden - Solo visible en mobile */}
+                          <Badge variant="outline" className="text-xs sm:hidden">
+                            Orden: {mainFeaturedArticle.sort_order ?? '-'}
+                          </Badge>
                         </div>
                       </div>
                     ) : (
@@ -873,15 +877,12 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          {/* Fila superior: Título y Orden */}
+                          {/* Fila superior: Título */}
                           <div className="flex items-center gap-2">
-                            <h4 className="font-medium text-sm truncate">{article.title}</h4>
-                            <Badge variant="outline" className="text-xs">
-                              Orden: {article.sort_order ?? '-'}
-                            </Badge>
+                            <h4 className="font-medium line-clamp-2 whitespace-normal text-xs sm:text-sm flex-1">{article.title}</h4>
                           </div>
                           {/* Fila inferior: Categoría y Fecha */}
-                          <div className="flex items-center gap-2 mt-1">
+                          <div className="flex items-center gap-2 mt-1 hidden sm:flex">
                             {article.categories && (
                               <Badge variant="secondary" className="text-xs">
                                 {article.categories.name}
@@ -892,46 +893,55 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                             </span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleMoveArticleUp(article.id)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <ChevronUp className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleMoveArticleDown(article.id)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <ChevronDown className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => togglePublished(article.id, !article.is_published)}
-                            className={`h-8 w-8 p-0 ${
-                              article.is_published ? "text-green-600" : "text-gray-400"
-                            }`}
-                          >
-                            {article.is_published ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                          </Button>
-                          <Link href={`/admin/noticias/editar/${article.id}`}>
-                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => deleteArticle(article.id)}
-                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                          {/* Botones de acción - Mobile: arriba, Desktop: lado */}
+                          <div className="flex flex-col items-end gap-1">
+                            <div className="flex items-center gap-0 sm:gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleMoveArticleUp(article.id)}
+                                className="h-6 w-6 sm:h-8 sm:w-8 p-0"
+                              >
+                                <ChevronUp className="h-3 w-3 sm:h-4 sm:w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleMoveArticleDown(article.id)}
+                                className="h-6 w-6 sm:h-8 sm:w-8 p-0"
+                              >
+                                <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => togglePublished(article.id, !article.is_published)}
+                                className={`h-6 w-6 sm:h-8 sm:w-8 p-0 ${
+                                  article.is_published ? "text-green-600" : "text-gray-400"
+                                }`}
+                              >
+                                {article.is_published ? <Eye className="h-3 w-3 sm:h-4 sm:w-4" /> : <EyeOff className="h-3 w-3 sm:h-4 sm:w-4" />}
+                              </Button>
+                              <Link href={`/admin/noticias/editar/${article.id}`}>
+                                <Button size="sm" variant="ghost" className="h-6 w-6 sm:h-8 sm:w-8 p-0">
+                                  <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
+                                </Button>
+                              </Link>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => deleteArticle(article.id)}
+                                className="h-6 w-6 sm:h-8 sm:w-8 p-0 text-red-600 hover:text-red-700"
+                              >
+                                <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                              </Button>
+                            </div>
+                            {/* Badge de orden - Solo visible en mobile */}
+                            <Badge variant="outline" className="text-xs sm:hidden">
+                              Orden: {article.sort_order ?? '-'}
+                            </Badge>
+                          </div>
                         </div>
                       </div>
                     ))
@@ -971,15 +981,12 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          {/* Fila superior: Título y Orden */}
+                          {/* Fila superior: Título */}
                           <div className="flex items-center gap-2">
-                            <h4 className="font-medium text-sm truncate">{article.title}</h4>
-                            <Badge variant="outline" className="text-xs">
-                              Orden: {article.sort_order ?? '-'}
-                            </Badge>
+                            <h4 className="font-medium line-clamp-2 whitespace-normal text-xs sm:text-sm flex-1">{article.title}</h4>
                           </div>
                           {/* Fila inferior: Categoría y Fecha */}
-                          <div className="flex items-center gap-2 mt-1">
+                          <div className="flex items-center gap-2 mt-1 hidden sm:flex">
                             {article.categories && (
                               <Badge variant="secondary" className="text-xs">
                                 {article.categories.name}
@@ -990,46 +997,55 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                             </span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleMoveArticleUp(article.id)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <ChevronUp className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleMoveArticleDown(article.id)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <ChevronDown className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => togglePublished(article.id, !article.is_published)}
-                            className={`h-8 w-8 p-0 ${
-                              article.is_published ? "text-green-600" : "text-gray-400"
-                            }`}
-                          >
-                            {article.is_published ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                          </Button>
-                          <Link href={`/admin/noticias/editar/${article.id}`}>
-                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => deleteArticle(article.id)}
-                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                          {/* Botones de acción - Mobile: arriba, Desktop: lado */}
+                          <div className="flex flex-col items-end gap-1">
+                            <div className="flex items-center gap-0 sm:gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleMoveArticleUp(article.id)}
+                                className="h-6 w-6 sm:h-8 sm:w-8 p-0"
+                              >
+                                <ChevronUp className="h-3 w-3 sm:h-4 sm:w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleMoveArticleDown(article.id)}
+                                className="h-6 w-6 sm:h-8 sm:w-8 p-0"
+                              >
+                                <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => togglePublished(article.id, !article.is_published)}
+                                className={`h-6 w-6 sm:h-8 sm:w-8 p-0 ${
+                                  article.is_published ? "text-green-600" : "text-gray-400"
+                                }`}
+                              >
+                                {article.is_published ? <Eye className="h-3 w-3 sm:h-4 sm:w-4" /> : <EyeOff className="h-3 w-3 sm:h-4 sm:w-4" />}
+                              </Button>
+                              <Link href={`/admin/noticias/editar/${article.id}`}>
+                                <Button size="sm" variant="ghost" className="h-6 w-6 sm:h-8 sm:w-8 p-0">
+                                  <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
+                                </Button>
+                              </Link>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => deleteArticle(article.id)}
+                                className="h-6 w-6 sm:h-8 sm:w-8 p-0 text-red-600 hover:text-red-700"
+                              >
+                                <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                              </Button>
+                            </div>
+                            {/* Badge de orden - Solo visible en mobile */}
+                            <Badge variant="outline" className="text-xs sm:hidden">
+                              Orden: {article.sort_order ?? '-'}
+                            </Badge>
+                          </div>
                         </div>
                       </div>
                     ))
@@ -1092,15 +1108,12 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
-                          {/* Fila superior: Título y Orden */}
+                          {/* Fila superior: Título */}
                           <div className="flex items-center gap-2">
-                            <h4 className="font-medium text-sm truncate">{article.title}</h4>
-                            <Badge variant="outline" className="text-xs">
-                              Orden: {article.sort_order ?? '-'}
-                            </Badge>
+                            <h4 className="font-medium line-clamp-2 whitespace-normal text-xs sm:text-sm flex-1">{article.title}</h4>
                           </div>
                           {/* Fila inferior: Categoría y Fecha */}
-                          <div className="flex items-center gap-2 mt-1">
+                          <div className="flex items-center gap-2 mt-1 hidden sm:flex">
                             {article.categories && (
                               <Badge variant="secondary" className="text-xs">
                                 {article.categories.name}
@@ -1111,46 +1124,55 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                             </span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleMoveArticleUp(article.id)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <ChevronUp className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleMoveArticleDown(article.id)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <ChevronDown className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => togglePublished(article.id, !article.is_published)}
-                            className={`h-8 w-8 p-0 ${
-                              article.is_published ? "text-green-600" : "text-gray-400"
-                            }`}
-                          >
-                            {article.is_published ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                          </Button>
-                          <Link href={`/admin/noticias/editar/${article.id}`}>
-                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => deleteArticle(article.id)}
-                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                        <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                          {/* Botones de acción - Mobile: arriba, Desktop: lado */}
+                          <div className="flex flex-col items-end gap-1">
+                            <div className="flex items-center gap-0 sm:gap-1">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleMoveArticleUp(article.id)}
+                                className="h-6 w-6 sm:h-8 sm:w-8 p-0"
+                              >
+                                <ChevronUp className="h-3 w-3 sm:h-4 sm:w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => handleMoveArticleDown(article.id)}
+                                className="h-6 w-6 sm:h-8 sm:w-8 p-0"
+                              >
+                                <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => togglePublished(article.id, !article.is_published)}
+                                className={`h-6 w-6 sm:h-8 sm:w-8 p-0 ${
+                                  article.is_published ? "text-green-600" : "text-gray-400"
+                                }`}
+                              >
+                                {article.is_published ? <Eye className="h-3 w-3 sm:h-4 sm:w-4" /> : <EyeOff className="h-3 w-3 sm:h-4 sm:w-4" />}
+                              </Button>
+                              <Link href={`/admin/noticias/editar/${article.id}`}>
+                                <Button size="sm" variant="ghost" className="h-6 w-6 sm:h-8 sm:w-8 p-0">
+                                  <Edit className="h-3 w-3 sm:h-4 sm:w-4" />
+                                </Button>
+                              </Link>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => deleteArticle(article.id)}
+                                className="h-6 w-6 sm:h-8 sm:w-8 p-0 text-red-600 hover:text-red-700"
+                              >
+                                <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                              </Button>
+                            </div>
+                            {/* Badge de orden - Solo visible en mobile */}
+                            <Badge variant="outline" className="text-xs sm:hidden">
+                              Orden: {article.sort_order ?? '-'}
+                            </Badge>
+                          </div>
                         </div>
                       </div>
                     ))
