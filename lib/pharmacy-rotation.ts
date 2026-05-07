@@ -4,7 +4,7 @@ const rotationMatrix = [
   ['Abrate', 'Cagnotti', 'Tomatis', 'Moreno', 'Zeballos'], // Día 1
   ['Dardati', 'Fogliatti', 'Caballero', 'Puig'], // Día 2
   ['Leiggener', 'Walter', 'Aboal', 'Pautasso'], // Día 3
-  ['Blatter', 'Elsener', 'Morello', 'Operto'], // Día 4
+  ['Blatter', 'Elsener', 'Morello', 'Operto', 'Castellano'], // Día 4
   ['Dechiara', 'Serra', 'Tibaldi', 'Cornatosky', 'Sudano'], // Día 5
   ['Corach', 'Mainero', 'Modenesi', 'Tessio'], // Día 6
   ['Ingaramo', 'Guembarena', 'Turino', 'Simoncini'], // Día 7
