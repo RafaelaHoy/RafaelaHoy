@@ -368,6 +368,18 @@ export function HomeContent() {
           </div>
         </div>
       </section>
+
+      {/* Horizontal Banner - Between Featured Section and Latest News */}
+      <div className="w-full my-8 flex justify-center">
+        <div className="max-w-screen-xl w-full">
+          <img
+            src="/images/publicidad/Publicidad Kantera (1250x125).jpeg"
+            alt="Publicidad"
+            className="w-full h-auto object-cover rounded-lg"
+          />
+        </div>
+      </div>
+
       {/* Latest News Grid - 2 Columns + Sidebar */}
       <section className="mb-8">
         <div className="mb-4">
@@ -391,35 +403,118 @@ export function HomeContent() {
                 ))}
               </>
             ) : (
-              gridArticles.slice(0, 10).map((article) => (
-                <Link key={article.id} href={`/noticia/${article.slug}`} className="group h-full">
-                  <div className="bg-card rounded-lg overflow-hidden border border-secondary hover:border-primary transition-colors h-full flex flex-col">
-                    {/* Image */}
-                    <div className="aspect-video overflow-hidden">
-                      {article.image_url && (
-                        <img
-                          src={article.image_url}
-                          alt={article.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                      )}
+              <>
+                {/* First row of articles (0-1) */}
+                {gridArticles.slice(0, 2).map((article) => (
+                  <Link key={article.id} href={`/noticia/${article.slug}`} className="group h-full">
+                    <div className="bg-card rounded-lg overflow-hidden border border-secondary hover:border-primary transition-colors h-full flex flex-col">
+                      {/* Image */}
+                      <div className="aspect-video overflow-hidden">
+                        {article.image_url && (
+                          <img
+                            src={article.image_url}
+                            alt={article.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        )}
+                      </div>
+                      {/* Content */}
+                      <div className="p-4 space-y-2 flex-1 flex flex-col">
+                        {/* Category */}
+                        {article.categories && (
+                          <div className="text-red-600 font-bold text-xs uppercase tracking-wide">
+                            {article.categories.name}
+                          </div>
+                        )}
+                        {/* Title */}
+                        <h3 className="font-semibold text-foreground leading-tight flex-1">
+                          {article.title}
+                        </h3>
+                      </div>
                     </div>
-                    {/* Content */}
-                    <div className="p-4 space-y-2 flex-1 flex flex-col">
-                      {/* Category */}
-                      {article.categories && (
-                        <div className="text-red-600 font-bold text-xs uppercase tracking-wide">
-                          {article.categories.name}
-                        </div>
-                      )}
-                      {/* Title */}
-                      <h3 className="font-semibold text-foreground leading-tight flex-1">
-                        {article.title}
-                      </h3>
+                  </Link>
+                ))}
+
+                {/* First Ad Banner - Full Width */}
+                <div className="col-span-full w-full flex justify-center my-2">
+                  <img
+                    src="/images/publicidad/Publicidad Kantera (825x213).jpeg"
+                    alt="Publicidad"
+                    className="w-full h-auto object-contain rounded-lg"
+                  />
+                </div>
+
+                {/* Second and third rows (2-5) */}
+                {gridArticles.slice(2, 6).map((article) => (
+                  <Link key={article.id} href={`/noticia/${article.slug}`} className="group h-full">
+                    <div className="bg-card rounded-lg overflow-hidden border border-secondary hover:border-primary transition-colors h-full flex flex-col">
+                      {/* Image */}
+                      <div className="aspect-video overflow-hidden">
+                        {article.image_url && (
+                          <img
+                            src={article.image_url}
+                            alt={article.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        )}
+                      </div>
+                      {/* Content */}
+                      <div className="p-4 space-y-2 flex-1 flex flex-col">
+                        {/* Category */}
+                        {article.categories && (
+                          <div className="text-red-600 font-bold text-xs uppercase tracking-wide">
+                            {article.categories.name}
+                          </div>
+                        )}
+                        {/* Title */}
+                        <h3 className="font-semibold text-foreground leading-tight flex-1">
+                          {article.title}
+                        </h3>
+                      </div>
                     </div>
-                  </div>
-                </Link>
-              ))
+                  </Link>
+                ))}
+
+                {/* Second Ad Banner - Full Width */}
+                <div className="col-span-full w-full flex justify-center my-2">
+                  <img
+                    src="/images/publicidad/Publicidad Kantera (825x213).jpeg"
+                    alt="Publicidad"
+                    className="w-full h-auto object-contain rounded-lg"
+                  />
+                </div>
+
+                {/* Remaining articles (6-9) */}
+                {gridArticles.slice(6, 10).map((article) => (
+                  <Link key={article.id} href={`/noticia/${article.slug}`} className="group h-full">
+                    <div className="bg-card rounded-lg overflow-hidden border border-secondary hover:border-primary transition-colors h-full flex flex-col">
+                      {/* Image */}
+                      <div className="aspect-video overflow-hidden">
+                        {article.image_url && (
+                          <img
+                            src={article.image_url}
+                            alt={article.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        )}
+                      </div>
+                      {/* Content */}
+                      <div className="p-4 space-y-2 flex-1 flex flex-col">
+                        {/* Category */}
+                        {article.categories && (
+                          <div className="text-red-600 font-bold text-xs uppercase tracking-wide">
+                            {article.categories.name}
+                          </div>
+                        )}
+                        {/* Title */}
+                        <h3 className="font-semibold text-foreground leading-tight flex-1">
+                          {article.title}
+                        </h3>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </>
             )}
           </div>
           {/* Sidebar - 4 columns */}
@@ -429,19 +524,37 @@ export function HomeContent() {
               <WeatherWidget />
             </div>
             
+            {/* Sidebar Ad 1 */}
+            <div className="w-full flex justify-center">
+              <img
+                src="/images/publicidad/Publicidad Kantera (937x781).jpeg"
+                alt="Publicidad"
+                className="w-full max-w-[300px] h-auto object-contain rounded-lg shadow-sm"
+              />
+            </div>
+            
             {/* Currency Widget */}
             <div className="border border-red-600 rounded-lg overflow-hidden">
               <CurrencyWidget />
             </div>
             
-            {/* Obituaries Widget */}
-            <div className="border border-red-600 rounded-lg overflow-hidden">
-              <ObituariesWidget />
-            </div>
-            
             {/* Pharmacies On Duty Widget */}
             <div className="border border-red-600 rounded-lg overflow-hidden">
               <PharmaciesOnDutyWidget />
+            </div>
+            
+            {/* Sidebar Ad 2 */}
+            <div className="w-full flex justify-center">
+              <img
+                src="/images/publicidad/Publicidad Kantera (937x781).jpeg"
+                alt="Publicidad"
+                className="w-full max-w-[300px] h-auto object-contain rounded-lg shadow-sm"
+              />
+            </div>
+            
+            {/* Obituaries Widget */}
+            <div className="border border-red-600 rounded-lg overflow-hidden">
+              <ObituariesWidget />
             </div>
           </div>
         </div>
@@ -454,43 +567,121 @@ export function HomeContent() {
         const style = getCategoryStyle(index)
         
         return (
-          <section key={category.slug} className={`mb-8 rounded-lg border-2 ${style.border} overflow-hidden ${style.bg}`}>
-            <div className="px-6 py-4 border-b border-black/20 flex items-center justify-between">
-              <h2 className="text-xl font-bold uppercase tracking-wide">
-                {category.name}
-              </h2>
-              <Link
-                href={`/categoria/${category.slug}`}
-                className={`text-sm font-medium flex items-center px-4 py-2 rounded transition-colors ${style.button}`}
-              >
-                Ver más <ChevronRight className="h-4 w-4 ml-1" />
-              </Link>
-            </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-                {articlesToShow.map((article, articleIndex) => (
-                  <Link key={article.id} href={`/noticia/${article.slug}`} className="group">
-                    <div className="overflow-hidden">
-                      {/* Image */}
-                      <div className="aspect-video overflow-hidden mb-3">
-                        {article.image_url && (
-                          <img
-                            src={article.image_url}
-                            alt={article.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                        )}
-                      </div>
-                      {/* Title */}
-                      <h3 className="font-semibold leading-tight text-sm line-clamp-3 group-hover:text-primary transition-colors">
-                        {article.title}
-                      </h3>
-                    </div>
-                  </Link>
-                ))}
+          <div key={category.slug}>
+            {/* Horizontal Banner Before Section */}
+            {index === 0 && (
+              <div className="w-full my-6 flex justify-center">
+                <div className="max-w-screen-xl w-full">
+                  <img
+                    src="/images/publicidad/Publicidad Kantera (1250x125).jpeg"
+                    alt="Publicidad"
+                    className="w-full h-auto object-cover rounded-lg"
+                  />
+                </div>
               </div>
-            </div>
-          </section>
+            )}
+            
+            <section className={`mb-8 rounded-lg border-2 ${style.border} overflow-hidden ${style.bg}`}>
+              <div className="px-6 py-4 border-b border-black/20 flex items-center justify-between">
+                <h2 className="text-xl font-bold uppercase tracking-wide">
+                  {category.name}
+                </h2>
+                <Link
+                  href={`/categoria/${category.slug}`}
+                  className={`text-sm font-medium flex items-center px-4 py-2 rounded transition-colors ${style.button}`}
+                >
+                  Ver más <ChevronRight className="h-4 w-4 ml-1" />
+                </Link>
+              </div>
+              <div className="p-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+                  {articlesToShow.map((article, articleIndex) => (
+                    <Link key={article.id} href={`/noticia/${article.slug}`} className="group">
+                      <div className="overflow-hidden">
+                        {/* Image */}
+                        <div className="aspect-video overflow-hidden mb-3">
+                          {article.image_url && (
+                            <img
+                              src={article.image_url}
+                              alt={article.title}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                          )}
+                        </div>
+                        {/* Title */}
+                        <h3 className="font-semibold leading-tight text-sm line-clamp-3 group-hover:text-primary transition-colors">
+                          {article.title}
+                        </h3>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </section>
+
+            {/* Ads Grid After Deportes Section - Instead of Banner */}
+            {index === 2 && (
+              <div className="w-full my-6 flex justify-center">
+                <div className="max-w-screen-xl w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  {[1, 2, 3, 4].map((item) => (
+                    <div key={item} className="flex justify-center">
+                      <img
+                        src="/images/publicidad/Publicidad Kantera (937x781).jpeg"
+                        alt="Publicidad"
+                        className="w-full h-auto object-cover rounded-lg shadow-sm"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {/* Banner After Locales */}
+            {index === 0 && (
+              <div className="w-full my-6 flex justify-center">
+                <div className="max-w-screen-xl w-full">
+                  <img
+                    src="/images/publicidad/Publicidad Kantera (1250x125).jpeg"
+                    alt="Publicidad"
+                    className="w-full h-auto object-cover rounded-lg"
+                  />
+                </div>
+              </div>
+            )}
+            {/* Banner After Provinciales */}
+            {index === 3 && (
+              <div className="w-full my-6 flex justify-center">
+                <div className="max-w-screen-xl w-full">
+                  <img
+                    src="/images/publicidad/Publicidad Kantera (1250x125).jpeg"
+                    alt="Publicidad"
+                    className="w-full h-auto object-cover rounded-lg"
+                  />
+                </div>
+              </div>
+            )}
+            {index === 4 && (
+              <div className="w-full my-6 flex justify-center">
+                <div className="max-w-screen-xl w-full">
+                  <img
+                    src="/images/publicidad/Publicidad Kantera (1250x125).jpeg"
+                    alt="Publicidad"
+                    className="w-full h-auto object-cover rounded-lg"
+                  />
+                </div>
+              </div>
+            )}
+            {index === 5 && (
+              <div className="w-full my-6 flex justify-center">
+                <div className="max-w-screen-xl w-full">
+                  <img
+                    src="/images/publicidad/Publicidad Kantera (1250x125).jpeg"
+                    alt="Publicidad"
+                    className="w-full h-auto object-cover rounded-lg"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
         )
       })}
     </div>

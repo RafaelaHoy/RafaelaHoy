@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button"
 import useSWR from "swr"
 import { createClient } from "@/lib/supabase/client"
 import { ArticleCard } from "./article-card"
+import { ArticleStickyAd } from "./article-sticky-ad"
 
 // Componente para procesar el contenido del artículo
 function ArticleContent({ content }: { content: string }) {
@@ -43,9 +44,21 @@ function ArticleContent({ content }: { content: string }) {
   return (
     <>
       {paragraphs.map((paragraph, index) => (
-        <p key={index} className="text-foreground leading-relaxed mb-4">
-          {paragraph}
-        </p>
+        <div key={index}>
+          <p className="text-foreground leading-relaxed mb-4">
+            {paragraph}
+          </p>
+          {/* Inyectar publicidad después del tercer párrafo */}
+          {index === 2 && (
+            <div className="w-full flex justify-center my-8">
+              <img
+                src="/images/publicidad/Publicidad Kantera (825x213).jpeg"
+                alt="Publicidad"
+                className="w-full h-auto object-contain rounded-lg"
+              />
+            </div>
+          )}
+        </div>
       ))}
     </>
   )
@@ -202,7 +215,7 @@ const formatArticleDate = (dateString: string | null, createdDateString?: string
   }
 
   return (
-    <article className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8">
       {/* Back button */}
       <Link
         href="/"
@@ -211,6 +224,11 @@ const formatArticleDate = (dateString: string | null, createdDateString?: string
         <ArrowLeft className="h-4 w-4" />
         Volver al inicio
       </Link>
+
+      {/* Main Grid: 8 cols for article, 4 cols for sidebar */}
+      <article className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Left Column - Article Content (8 cols) */}
+        <div className="lg:col-span-8">
 
       {/* Category badge */}
       {article.categories && (
@@ -343,18 +361,84 @@ const formatArticleDate = (dateString: string | null, createdDateString?: string
           </div>
         </section>
       )}
+        </div>
 
-      {/* Related articles */}
-      {relatedArticles && relatedArticles.length > 0 && (
-        <section className="mt-12 pt-8 border-t">
-          <h2 className="text-2xl font-bold mb-6">Noticias relacionadas</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {relatedArticles.map((relatedArticle) => (
-              <ArticleCard key={relatedArticle.id} article={relatedArticle} />
-            ))}
+        {/* Right Column - Sidebar (4 cols) */}
+        <div className="lg:col-span-4 space-y-6">
+          {/* Sidebar Ad 1 */}
+          <div className="w-full flex justify-center">
+            <img
+              src="/images/publicidad/Publicidad Kantera (937x781).jpeg"
+              alt="Publicidad"
+              className="w-full max-w-[340px] xl:max-w-[380px] h-auto object-cover rounded-lg shadow-sm"
+            />
           </div>
-        </section>
-      )}
-    </article>
+
+          {/* Related articles - Vertical Layout */}
+          {relatedArticles && relatedArticles.length > 0 && (
+            <section className="bg-card rounded-lg border border-secondary p-6">
+              <h3 className="text-lg font-bold mb-4">Noticias relacionadas</h3>
+              <div className="space-y-4">
+                {relatedArticles.map((relatedArticle) => (
+                  <Link
+                    key={relatedArticle.id}
+                    href={`/noticia/${relatedArticle.slug}`}
+                    className="group block p-3 rounded hover:bg-secondary/50 transition-colors"
+                  >
+                    <div className="space-y-2">
+                      {/* Thumbnail */}
+                      {relatedArticle.image_url && (
+                        <div className="relative w-full aspect-video rounded overflow-hidden">
+                          <Image
+                            src={relatedArticle.image_url}
+                            alt={relatedArticle.title}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-300"
+                            sizes="(max-width: 896px) 100vw, 300px"
+                          />
+                        </div>
+                      )}
+                      {/* Title */}
+                      <h4 className="font-semibold text-sm leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+                        {relatedArticle.title}
+                      </h4>
+                      {/* Category Badge */}
+                      {relatedArticle.categories && (
+                        <span className="inline-block text-xs font-medium bg-primary/20 text-primary px-2 py-1 rounded">
+                          {relatedArticle.categories.name}
+                        </span>
+                      )}
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Sidebar Ad 2 */}
+          <div className="w-full flex justify-center">
+            <img
+              src="/images/publicidad/Publicidad Kantera (937x781).jpeg"
+              alt="Publicidad"
+              className="w-full max-w-[340px] xl:max-w-[380px] h-auto object-cover rounded-lg shadow-sm"
+            />
+          </div>
+        </div>
+      </article>
+
+      {/* Bottom Horizontal Banner Ad */}
+      <div className="w-full my-8 flex justify-center">
+        <div className="max-w-screen-xl w-full">
+          <img
+            src="/images/publicidad/Publicidad Kantera (1250x125).jpeg"
+            alt="Publicidad"
+            className="w-full h-auto object-cover rounded-lg"
+          />
+        </div>
+      </div>
+
+      {/* Sticky Bottom Ad */}
+      <ArticleStickyAd />
+    </div>
   )
 }
