@@ -36,28 +36,25 @@ export function MediaManager({ articleId, mediaItems, onMediaChange, featuredIma
 
     try {
       for (const file of Array.from(files)) {
-        const fileExt = file.name.split('.').pop()
         const tempId = `temp-${Date.now()}`
-        const fileName = articleId ? `${articleId}/${Date.now()}.${fileExt}` : `temp/${tempId}.${fileExt}`
-        const filePath = `article-media/${fileName}`
-
-        // Determine file type
         const fileType = file.type.startsWith('video/') ? 'video' : 'image'
 
-        // Upload file
-        const { error: uploadError } = await supabase.storage
-          .from('media')
-          .upload(filePath, file)
+        const formData = new FormData()
+        formData.append('file', file)
 
-        if (uploadError) {
-          console.error('Error subiendo archivo:', uploadError)
+        const response = await fetch('/api/media/upload', {
+          method: 'POST',
+          body: formData,
+        })
+
+        const uploadResult = await response.json().catch(() => null)
+
+        if (!response.ok || !uploadResult?.url) {
+          console.error('Error subiendo archivo:', uploadResult)
           continue
         }
 
-        // Get public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from('media')
-          .getPublicUrl(filePath)
+        const publicUrl = uploadResult.url
 
         // Insert into database (solo si hay articleId)
         let mediaData = null

@@ -38,24 +38,23 @@ export function MediaManager({ articleId, mediaItems, onMediaChange, featuredIma
 
     try {
       for (const file of Array.from(files)) {
-        const fileExt = file.name.split('.').pop()
-        const fileName = `${articleId}/${Date.now()}.${fileExt}`
-        const filePath = `article-media/${fileName}`
-
-        // Determine file type
         const fileType = file.type.startsWith('video/') ? 'video' : 'image'
 
-        // Upload file
-        const { error: uploadError } = await supabase.storage
-          .from('media')
-          .upload(filePath, file)
+        const formData = new FormData()
+        formData.append('file', file)
 
-        if (uploadError) throw uploadError
+        const response = await fetch('/api/media/upload', {
+          method: 'POST',
+          body: formData,
+        })
 
-        // Get public URL
-        const { data: { publicUrl } } = supabase.storage
-          .from('media')
-          .getPublicUrl(filePath)
+        const uploadResult = await response.json().catch(() => null)
+
+        if (!response.ok || !uploadResult?.url) {
+          throw new Error(uploadResult?.error || 'No se pudo subir el archivo')
+        }
+
+        const publicUrl = uploadResult.url
 
         // Save to database
         const { data: mediaData, error: dbError } = await supabase
