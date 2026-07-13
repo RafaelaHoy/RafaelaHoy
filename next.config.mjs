@@ -15,7 +15,13 @@ const nextConfig = {
         hostname: 'fsuwpxnzdayupczabafs.supabase.co',
         pathname: '/storage/v1/object/public/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'media.rafaelahoy.com',
+        pathname: '/**',
+      },
     ],
+    unoptimized: true,
     formats: ['image/avif', 'image/webp'],
     minimumCacheTTL: 60,
   },
