@@ -5,8 +5,8 @@ import path from 'path'
 
 dotenv.config({ path: '.env.local' })
 
-const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://fsuwpxnzdayupczabafs.supabase.co'
-const SUPABASE_KEY = process.env.SUPABASE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZzdXdweG56ZGF5dXBjemFiYWZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0OTgzNDAsImV4cCI6MjA5MTA3NDM0MH0.mg2CUZkhF7FuCVHBfpbd9fFm4k9LhrbvuiNqijykVJs'
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+const SUPABASE_KEY = process.env.SUPABASE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 if (!SUPABASE_URL || !SUPABASE_KEY) {
   console.error('Faltan credenciales de Supabase. Exporta SUPABASE_URL y SUPABASE_KEY o define NEXT_PUBLIC_SUPABASE_URL/NEXT_PUBLIC_SUPABASE_ANON_KEY en .env.local')
@@ -16,6 +16,8 @@ if (!SUPABASE_URL || !SUPABASE_KEY) {
 const bucketName = 'media'
 const startPrefix = 'article-media'
 const outDir = path.join(process.cwd(), 'backup_fotos')
+const maxRetries = 5
+const retryDelayMs = 1000
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
 
@@ -23,52 +25,76 @@ async function ensureDir(filePath) {
   await fs.mkdir(path.dirname(filePath), { recursive: true })
 }
 
-async function downloadFile(filePath) {
+async function fileExists(filePath) {
   try {
-    console.log('Downloading:', filePath)
-    const { data, error } = await supabase.storage.from(bucketName).download(filePath)
-    if (error) {
-      console.error('Download error for', filePath, error.message || error)
-      return
-    }
-    const dest = path.join(outDir, filePath)
-    await ensureDir(dest)
-    const buffer = Buffer.from(await data.arrayBuffer())
-    await fs.writeFile(dest, buffer)
-  } catch (err) {
-    console.error('Failed to save', filePath, err)
+    await fs.access(filePath)
+    return true
+  } catch {
+    return false
   }
 }
 
-async function listAndProcess(prefix) {
+async function downloadFile(filePath) {
+  const dest = path.join(outDir, filePath)
+  if (await fileExists(dest)) {
+    return { ok: true, skipped: true }
+  }
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`[${attempt}/${maxRetries}] Downloading: ${filePath}`)
+      const { data, error } = await supabase.storage.from(bucketName).download(filePath)
+      if (error) {
+        throw error
+      }
+      await ensureDir(dest)
+      const buffer = Buffer.from(await data.arrayBuffer())
+      await fs.writeFile(dest, buffer)
+      return { ok: true, skipped: false }
+    } catch (err) {
+      if (attempt === maxRetries) {
+        console.error('FAILED', filePath, err.message || err)
+        return { ok: false, skipped: false }
+      }
+      await new Promise((resolve) => setTimeout(resolve, retryDelayMs * attempt))
+    }
+  }
+}
+
+async function listAndProcess(prefix, stats) {
   const limit = 1000
   let offset = 0
   while (true) {
     const { data, error } = await supabase.storage.from(bucketName).list(prefix, { limit, offset })
     if (error) throw error
     if (!data || data.length === 0) break
+
     for (const item of data) {
       const name = item.name
-      // Heurística: si tiene punto es probablemente un archivo
+      const itemPath = prefix ? `${prefix}/${name}` : name
       if (name.includes('.')) {
-        const filePath = prefix ? `${prefix}/${name}` : name
-        await downloadFile(filePath)
+        const result = await downloadFile(itemPath)
+        stats.filesProcessed += 1
+        if (result.ok && !result.skipped) {
+          stats.downloaded += 1
+        }
       } else {
-        // carpeta -> recorrer recursivamente
-        const subPrefix = prefix ? `${prefix}/${name}` : name
-        await listAndProcess(subPrefix)
+        await listAndProcess(itemPath, stats)
       }
     }
+
     if (data.length < limit) break
     offset += limit
   }
 }
 
 async function main() {
+  const stats = { filesProcessed: 0, downloaded: 0 }
   console.log('Starting backup from', `${bucketName}/${startPrefix}`, 'to', outDir)
   try {
-    await listAndProcess(startPrefix)
-    console.log('Backup completo.')
+    await fs.mkdir(outDir, { recursive: true })
+    await listAndProcess(startPrefix, stats)
+    console.log('Backup completo.', stats)
   } catch (err) {
     console.error('Error during backup:', err.message || err)
     process.exitCode = 1
