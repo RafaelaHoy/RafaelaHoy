@@ -38,9 +38,14 @@ const masDropdownItems = [
 ]
 
 const serviciosDropdownItems = [
-  { name: "Farmacias de Turno", slug: "farmacias" },
-  { name: "Necrológicas", slug: "necrologicas" },
-  { name: "Clima", slug: "clima" },
+  {
+    name: "Farmacias de Turno",
+    slug: "farmacias",
+    href: "https://circulorafaela.com.ar/farmacias",
+    external: true,
+  },
+  { name: "Necrológicas", slug: "necrologicas", href: "/servicios/necrologicas" },
+  { name: "Clima", slug: "clima", href: "/servicios/clima" },
 ]
 
 
@@ -169,9 +174,13 @@ export function Header() {
                 <DropdownMenuContent align="end" className="w-48">
                   {serviciosDropdownItems.map((item) => (
                     <DropdownMenuItem key={item.slug} asChild>
-                      <Link href={`/servicios/${item.slug}`}>
-                        {item.name}
-                      </Link>
+                      {item.external ? (
+                        <a href={item.href} target="_blank" rel="noopener noreferrer">
+                          {item.name}
+                        </a>
+                      ) : (
+                        <Link href={item.href}>{item.name}</Link>
+                      )}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
@@ -294,14 +303,27 @@ export function Header() {
               <p className="text-xs text-white/50 mb-2">Servicios</p>
               <div className="grid grid-cols-1 gap-2">
                 {serviciosDropdownItems.map((item) => (
-                  <Link
-                    key={item.slug}
-                    href={`/servicios/${item.slug}`}
-                    className="px-3 py-2 text-xs text-white/70 hover:text-white hover:bg-white/10 rounded-md transition-colors"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    {item.name}
-                  </Link>
+                  item.external ? (
+                    <a
+                      key={item.slug}
+                      href={item.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-2 text-xs text-white/70 hover:text-white hover:bg-white/10 rounded-md transition-colors"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      {item.name}
+                    </a>
+                  ) : (
+                    <Link
+                      key={item.slug}
+                      href={item.href}
+                      className="px-3 py-2 text-xs text-white/70 hover:text-white hover:bg-white/10 rounded-md transition-colors"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    >
+                      {item.name}
+                    </Link>
+                  )
                 ))}
               </div>
             </div>

@@ -9,7 +9,6 @@ import { ChevronRight } from 'lucide-react'
 import { WeatherWidget } from './widgets/weather-widget'
 import { CurrencyWidget } from './widgets/currency-widget'
 import { ObituariesWidget } from './widgets/obituaries-widget'
-import { PharmaciesOnDutyWidget } from './widgets/pharmacies-on-duty-widget'
 
 function ArticleSkeleton({ variant }: { variant?: "featured" | "secondary" }) {
   if (variant === "secondary") {
@@ -538,18 +537,20 @@ export function HomeContent() {
               <CurrencyWidget />
             </div>
             
-            {/* Pharmacies On Duty Widget */}
-            <div className="border border-red-600 rounded-lg overflow-hidden">
-              <PharmaciesOnDutyWidget />
-            </div>
-            
-            {/* Sidebar Ad 2 */}
+            {/* Kantera Publicidad */}
             <div className="w-full flex justify-center">
-              <img
-                src="/images/publicidad/Publicidad Kantera (937x781).jpeg"
-                alt="Publicidad"
-                className="w-full max-w-[300px] h-auto object-contain rounded-lg shadow-sm"
-              />
+              <a
+                href="https://www.kantera.com.ar/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full max-w-[300px] block"
+              >
+                <img
+                  src="/images/publicidad_kantera.jpg"
+                  alt="Publicidad Kantera"
+                  className="w-full h-auto object-contain rounded-lg shadow-sm"
+                />
+              </a>
             </div>
             
             {/* Obituaries Widget */}
