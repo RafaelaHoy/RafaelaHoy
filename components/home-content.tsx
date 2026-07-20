@@ -368,17 +368,6 @@ export function HomeContent() {
         </div>
       </section>
 
-      {/* Horizontal Banner - Between Featured Section and Latest News */}
-      <div className="w-full my-8 flex justify-center">
-        <div className="max-w-screen-xl w-full">
-          <img
-            src="/images/publicidad/Publicidad Kantera (1250x125).jpeg"
-            alt="Publicidad"
-            className="w-full h-auto object-cover rounded-lg"
-          />
-        </div>
-      </div>
-
       {/* Latest News Grid - 2 Columns + Sidebar */}
       <section className="mb-8">
         <div className="mb-4">
@@ -434,15 +423,6 @@ export function HomeContent() {
                   </Link>
                 ))}
 
-                {/* First Ad Banner - Full Width */}
-                <div className="col-span-full w-full flex justify-center my-2">
-                  <img
-                    src="/images/publicidad/Publicidad Kantera (825x213).jpeg"
-                    alt="Publicidad"
-                    className="w-full h-auto object-contain rounded-lg"
-                  />
-                </div>
-
                 {/* Second and third rows (2-5) */}
                 {gridArticles.slice(2, 6).map((article) => (
                   <Link key={article.id} href={`/noticia/${article.slug}`} className="group h-full">
@@ -473,15 +453,6 @@ export function HomeContent() {
                     </div>
                   </Link>
                 ))}
-
-                {/* Second Ad Banner - Full Width */}
-                <div className="col-span-full w-full flex justify-center my-2">
-                  <img
-                    src="/images/publicidad/Publicidad Kantera (825x213).jpeg"
-                    alt="Publicidad"
-                    className="w-full h-auto object-contain rounded-lg"
-                  />
-                </div>
 
                 {/* Remaining articles (6-9) */}
                 {gridArticles.slice(6, 10).map((article) => (
@@ -523,16 +494,7 @@ export function HomeContent() {
               <WeatherWidget />
             </div>
             
-            {/* Sidebar Ad 1 */}
-            <div className="w-full flex justify-center">
-              <img
-                src="/images/publicidad/Publicidad Kantera (937x781).jpeg"
-                alt="Publicidad"
-                className="w-full max-w-[300px] h-auto object-contain rounded-lg shadow-sm"
-              />
-            </div>
-            
-            {/* Currency Widget */}
+              {/* Currency Widget */}
             <div className="border border-red-600 rounded-lg overflow-hidden">
               <CurrencyWidget />
             </div>
@@ -569,19 +531,6 @@ export function HomeContent() {
         
         return (
           <div key={category.slug}>
-            {/* Horizontal Banner Before Section */}
-            {index === 0 && (
-              <div className="w-full my-6 flex justify-center">
-                <div className="max-w-screen-xl w-full">
-                  <img
-                    src="/images/publicidad/Publicidad Kantera (1250x125).jpeg"
-                    alt="Publicidad"
-                    className="w-full h-auto object-cover rounded-lg"
-                  />
-                </div>
-              </div>
-            )}
-            
             <section className={`mb-8 rounded-lg border-2 ${style.border} overflow-hidden ${style.bg}`}>
               <div className="px-6 py-4 border-b border-black/20 flex items-center justify-between">
                 <h2 className="text-xl font-bold uppercase tracking-wide">
@@ -620,68 +569,6 @@ export function HomeContent() {
               </div>
             </section>
 
-            {/* Ads Grid After Deportes Section - Instead of Banner */}
-            {index === 2 && (
-              <div className="w-full my-6 flex justify-center">
-                <div className="max-w-screen-xl w-full grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {[1, 2, 3, 4].map((item) => (
-                    <div key={item} className="flex justify-center">
-                      <img
-                        src="/images/publicidad/Publicidad Kantera (937x781).jpeg"
-                        alt="Publicidad"
-                        className="w-full h-auto object-cover rounded-lg shadow-sm"
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {/* Banner After Locales */}
-            {index === 0 && (
-              <div className="w-full my-6 flex justify-center">
-                <div className="max-w-screen-xl w-full">
-                  <img
-                    src="/images/publicidad/Publicidad Kantera (1250x125).jpeg"
-                    alt="Publicidad"
-                    className="w-full h-auto object-cover rounded-lg"
-                  />
-                </div>
-              </div>
-            )}
-            {/* Banner After Provinciales */}
-            {index === 3 && (
-              <div className="w-full my-6 flex justify-center">
-                <div className="max-w-screen-xl w-full">
-                  <img
-                    src="/images/publicidad/Publicidad Kantera (1250x125).jpeg"
-                    alt="Publicidad"
-                    className="w-full h-auto object-cover rounded-lg"
-                  />
-                </div>
-              </div>
-            )}
-            {index === 4 && (
-              <div className="w-full my-6 flex justify-center">
-                <div className="max-w-screen-xl w-full">
-                  <img
-                    src="/images/publicidad/Publicidad Kantera (1250x125).jpeg"
-                    alt="Publicidad"
-                    className="w-full h-auto object-cover rounded-lg"
-                  />
-                </div>
-              </div>
-            )}
-            {index === 5 && (
-              <div className="w-full my-6 flex justify-center">
-                <div className="max-w-screen-xl w-full">
-                  <img
-                    src="/images/publicidad/Publicidad Kantera (1250x125).jpeg"
-                    alt="Publicidad"
-                    className="w-full h-auto object-cover rounded-lg"
-                  />
-                </div>
-              </div>
-            )}
           </div>
         )
       })}

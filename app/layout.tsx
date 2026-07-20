@@ -3,7 +3,6 @@ import { Inter, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import { GoogleAnalytics } from '@next/third-parties/google'
 import { Toaster } from 'sonner'
-import { AdProvider } from '@/contexts/ad-context'
 import './globals.css'
 
 const inter = Inter({ subsets: ["latin"] })
@@ -87,9 +86,7 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={`${inter.className} antialiased`}>
-        <AdProvider>
-          {children}
-        </AdProvider>
+        {children}
         <Toaster />
         {process.env.NODE_ENV === 'production' && <Analytics />}
         {process.env.NODE_ENV === 'production' && gaId && (

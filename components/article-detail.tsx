@@ -25,7 +25,6 @@ import { Button } from "@/components/ui/button"
 import useSWR from "swr"
 import { createClient } from "@/lib/supabase/client"
 import { ArticleCard } from "./article-card"
-import { ArticleStickyAd } from "./article-sticky-ad"
 
 // Componente para procesar el contenido del artículo
 function ArticleContent({ content }: { content: string }) {
@@ -48,16 +47,6 @@ function ArticleContent({ content }: { content: string }) {
           <p className="text-foreground leading-relaxed mb-4">
             {paragraph}
           </p>
-          {/* Inyectar publicidad después del tercer párrafo */}
-          {index === 2 && (
-            <div className="w-full flex justify-center my-8">
-              <img
-                src="/images/publicidad/Publicidad Kantera (825x213).jpeg"
-                alt="Publicidad"
-                className="w-full h-auto object-contain rounded-lg"
-              />
-            </div>
-          )}
         </div>
       ))}
     </>
@@ -365,15 +354,6 @@ const formatArticleDate = (dateString: string | null, createdDateString?: string
 
         {/* Right Column - Sidebar (4 cols) */}
         <div className="lg:col-span-4 space-y-6">
-          {/* Sidebar Ad 1 */}
-          <div className="w-full flex justify-center">
-            <img
-              src="/images/publicidad/Publicidad Kantera (937x781).jpeg"
-              alt="Publicidad"
-              className="w-full max-w-[340px] xl:max-w-[380px] h-auto object-cover rounded-lg shadow-sm"
-            />
-          </div>
-
           {/* Related articles - Vertical Layout */}
           {relatedArticles && relatedArticles.length > 0 && (
             <section className="bg-card rounded-lg border border-secondary p-6">
@@ -415,30 +395,9 @@ const formatArticleDate = (dateString: string | null, createdDateString?: string
             </section>
           )}
 
-          {/* Sidebar Ad 2 */}
-          <div className="w-full flex justify-center">
-            <img
-              src="/images/publicidad/Publicidad Kantera (937x781).jpeg"
-              alt="Publicidad"
-              className="w-full max-w-[340px] xl:max-w-[380px] h-auto object-cover rounded-lg shadow-sm"
-            />
-          </div>
         </div>
       </article>
 
-      {/* Bottom Horizontal Banner Ad */}
-      <div className="w-full my-8 flex justify-center">
-        <div className="max-w-screen-xl w-full">
-          <img
-            src="/images/publicidad/Publicidad Kantera (1250x125).jpeg"
-            alt="Publicidad"
-            className="w-full h-auto object-cover rounded-lg"
-          />
-        </div>
-      </div>
-
-      {/* Sticky Bottom Ad */}
-      <ArticleStickyAd />
     </div>
   )
 }

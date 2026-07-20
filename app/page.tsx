@@ -5,8 +5,6 @@ import { LoadingScreen } from "@/components/loading-screen"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { HomeContent } from "@/components/home-content"
-import { AdModal } from "@/components/ad-modal"
-import { AdStickyBottom } from "@/components/ad-sticky-bottom"
 
 export default function HomePage() {
   const [isLoading, setIsLoading] = useState(true)
@@ -44,8 +42,6 @@ export default function HomePage() {
   return (
     <>
       {isLoading && <LoadingScreen onComplete={handleLoadingComplete} />}
-      <AdModal />
-      <AdStickyBottom />
       <div
         className={`min-h-screen transition-opacity duration-500 ${
           showContent ? "opacity-100" : "opacity-0"
