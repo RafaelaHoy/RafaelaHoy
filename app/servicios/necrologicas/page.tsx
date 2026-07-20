@@ -139,11 +139,6 @@ export default function NecrologicasPage() {
                   <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg whitespace-pre-wrap">
                     {obituary.service_info}
                   </div>
-
-                  {/* Firma */}
-                  <div className="text-xs text-gray-500 pt-2 border-t text-center">
-                    Caronte - Servicios Sociales
-                  </div>
                 </CardContent>
               </Card>
             ))}

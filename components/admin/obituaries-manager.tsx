@@ -239,9 +239,6 @@ export function ObituariesManager() {
                     })() : 'Sin fecha de fallecimiento'}
                   </div>
                   <div className="text-sm whitespace-pre-wrap">{obituary.service_info}</div>
-                  <div className="text-xs text-muted-foreground pt-2 border-t">
-                    Caronte - Servicios Sociales
-                  </div>
                 </div>
                 <div className="flex space-x-2">
                   <Button
