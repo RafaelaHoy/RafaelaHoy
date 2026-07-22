@@ -104,7 +104,7 @@ const getRadarCategoryStyle = (category: string) => {
   return radarCategoryStyles[category as RadarTab] ?? "bg-slate-100 text-slate-700"
 }
 
-function RadarCard({ article, onDiscard }: { article: RadarArticle; onDiscard: (id: string) => void }) {
+function RadarCard({ article, onDiscard, onGenerate, isGenerating }: { article: RadarArticle; onDiscard: (id: string) => void; onGenerate: (article: RadarArticle) => void; isGenerating: boolean }) {
   return (
     <article className={`overflow-hidden rounded-3xl border p-6 shadow-sm transition ${article.urgent ? "border-red-500 bg-red-50" : "border-slate-200 bg-white hover:-translate-y-0.5"}`}>
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -147,9 +147,11 @@ function RadarCard({ article, onDiscard }: { article: RadarArticle; onDiscard: (
         </a>
         <button
           type="button"
-          className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+          onClick={() => onGenerate(article)}
+          disabled={isGenerating}
+          className={`inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold text-white transition ${isGenerating ? 'bg-slate-500 cursor-not-allowed' : 'bg-slate-900 hover:bg-slate-800'}`}
         >
-          Generar borrador
+          {isGenerating ? 'Generando...' : 'Generar borrador'}
         </button>
       </div>
     </article>
@@ -251,6 +253,7 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
   const [radarActiveTab, setRadarActiveTab] = useState<RadarTab>("Todas")
   const [noticiasRadar, setNoticiasRadar] = useState<RadarArticle[]>([])
   const [loadingRadar, setLoadingRadar] = useState(false)
+  const [generatingDraftId, setGeneratingDraftId] = useState<string | null>(null)
   const router = useRouter()
 
   // Sincronizar artículos cuando las props cambian (después de router.refresh)
@@ -379,6 +382,41 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
 
     setNoticiasRadar((prev) => prev.filter((article) => article.id !== id))
     toast.success('Noticia descartada')
+  }
+
+  const handleGenerarBorrador = async (article: RadarArticle) => {
+    setGeneratingDraftId(article.id)
+
+    try {
+      const response = await fetch('/api/radar/generar-borrador', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          titulo: article.title,
+          url_original: article.url,
+          medio: article.source,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        console.error('Error generando borrador:', data)
+        toast.error(data?.error || 'Error generando borrador')
+        return
+      }
+
+      localStorage.setItem('borradorRadar', JSON.stringify(data))
+      toast.success('Borrador generado, redirigiendo al editor...')
+      router.push('/admin/noticias/crear')
+    } catch (error) {
+      console.error('Error generando borrador:', error)
+      toast.error('Error generando borrador')
+    } finally {
+      setGeneratingDraftId(null)
+    }
   }
 
   const handleLogout = async () => {
@@ -1388,7 +1426,13 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
                 </div>
               ) : visibleRadarArticles.length > 0 ? (
                 visibleRadarArticles.map((article) => (
-                  <RadarCard key={article.id} article={article} onDiscard={discardRadarNoticia} />
+                  <RadarCard
+                    key={article.id}
+                    article={article}
+                    onDiscard={discardRadarNoticia}
+                    onGenerate={handleGenerarBorrador}
+                    isGenerating={generatingDraftId === article.id}
+                  />
                 ))
               ) : (
                 <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center text-slate-600">
