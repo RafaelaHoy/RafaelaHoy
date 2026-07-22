@@ -75,7 +75,7 @@ type RadarTab =
 type RadarArticle = {
   id: string
   source: string
-  category: RadarTab
+  category: string
   publishedAt: string
   title: string
   url: string
@@ -91,34 +91,6 @@ const radarTabs: RadarTab[] = [
   "Internacionales",
 ]
 
-const radarArticles: RadarArticle[] = [
-  {
-    id: "1",
-    source: "Rafaela Noticias",
-    category: "Locales",
-    publishedAt: "Hace 8 min",
-    title: "Corte de tránsito en el centro por evento deportivo",
-    url: "https://rafaelanoticias.com/corte-transito-evento",
-  },
-  {
-    id: "2",
-    source: "La Capital",
-    category: "Regionales",
-    publishedAt: "Hace 22 min",
-    title: "Debate sobre polígono industrial y los fondos provinciales",
-    url: "https://lacapital.com.ar/region/poligono-industrial",
-  },
-  {
-    id: "3",
-    source: "Infobae",
-    category: "Nacionales",
-    publishedAt: "Hace 35 min",
-    title: "Anuncio urgente de medidas económicas para PyMEs",
-    url: "https://infobae.com/economia/medidas-economicas-pymes",
-    urgent: true,
-  },
-]
-
 const radarCategoryStyles: Record<RadarTab, string> = {
   Todas: "bg-slate-100 text-slate-700",
   Locales: "bg-blue-100 text-blue-700",
@@ -128,13 +100,17 @@ const radarCategoryStyles: Record<RadarTab, string> = {
   Internacionales: "bg-cyan-100 text-cyan-700",
 }
 
-function RadarCard({ article }: { article: RadarArticle }) {
+const getRadarCategoryStyle = (category: string) => {
+  return radarCategoryStyles[category as RadarTab] ?? "bg-slate-100 text-slate-700"
+}
+
+function RadarCard({ article, onDiscard }: { article: RadarArticle; onDiscard: (id: string) => void }) {
   return (
     <article className={`overflow-hidden rounded-3xl border p-6 shadow-sm transition ${article.urgent ? "border-red-500 bg-red-50" : "border-slate-200 bg-white hover:-translate-y-0.5"}`}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-center gap-2">
           <p className="text-sm font-semibold text-slate-900">{article.source}</p>
-          <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${radarCategoryStyles[article.category]}`}>
+          <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getRadarCategoryStyle(article.category)}`}>
             {article.category}
           </span>
         </div>
@@ -142,6 +118,7 @@ function RadarCard({ article }: { article: RadarArticle }) {
         <div className="flex flex-col items-end gap-2">
           <button
             type="button"
+            onClick={() => onDiscard(article.id)}
             className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:border-red-300 hover:text-red-700"
             aria-label="Descartar noticia"
           >
@@ -272,6 +249,8 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
   const [radarActiveTab, setRadarActiveTab] = useState<RadarTab>("Todas")
+  const [noticiasRadar, setNoticiasRadar] = useState<RadarArticle[]>([])
+  const [loadingRadar, setLoadingRadar] = useState(false)
   const router = useRouter()
 
   // Sincronizar artículos cuando las props cambian (después de router.refresh)
@@ -345,10 +324,62 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
 
   const visibleRadarArticles = useMemo(() => {
     if (radarActiveTab === "Todas") {
-      return radarArticles
+      return noticiasRadar
     }
-    return radarArticles.filter((article) => article.category === radarActiveTab)
-  }, [radarActiveTab])
+    return noticiasRadar.filter((article) => article.category === radarActiveTab)
+  }, [radarActiveTab, noticiasRadar])
+
+  const loadRadarNoticias = async () => {
+    setLoadingRadar(true)
+    const supabase = createClient()
+    const { data, error } = await supabase
+      .from('radar_noticias')
+      .select('id, titulo, url_original, medio, categoria, fecha_publicacion')
+      .eq('descartado', false)
+      .order('fecha_publicacion', { ascending: false })
+
+    if (error) {
+      console.error('Error cargando noticias radar:', error)
+      toast.error('Error cargando noticias del radar')
+      setLoadingRadar(false)
+      return
+    }
+
+    setNoticiasRadar(
+      (data as any[]).map((item) => ({
+        id: item.id,
+        title: item.titulo || 'Sin título',
+        source: item.medio || 'Desconocido',
+        category: item.categoria || 'Locales',
+        publishedAt: item.fecha_publicacion
+          ? formatAdminDate(item.fecha_publicacion)
+          : 'Fecha desconocida',
+        url: item.url_original || '#',
+      })),
+    )
+    setLoadingRadar(false)
+  }
+
+  useEffect(() => {
+    loadRadarNoticias()
+  }, [])
+
+  const discardRadarNoticia = async (id: string) => {
+    const supabase = createClient()
+    const { error } = await supabase
+      .from('radar_noticias')
+      .update({ descartado: true })
+      .eq('id', id)
+
+    if (error) {
+      console.error('Error descartando noticia radar:', error)
+      toast.error('No se pudo descartar la noticia')
+      return
+    }
+
+    setNoticiasRadar((prev) => prev.filter((article) => article.id !== id))
+    toast.success('Noticia descartada')
+  }
 
   const handleLogout = async () => {
     const supabase = createClient()
@@ -1351,8 +1382,14 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
             </div>
 
             <div className="grid gap-6">
-              {visibleRadarArticles.length > 0 ? (
-                visibleRadarArticles.map((article) => <RadarCard key={article.id} article={article} />)
+              {loadingRadar ? (
+                <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center text-slate-600">
+                  Cargando noticias del radar...
+                </div>
+              ) : visibleRadarArticles.length > 0 ? (
+                visibleRadarArticles.map((article) => (
+                  <RadarCard key={article.id} article={article} onDiscard={discardRadarNoticia} />
+                ))
               ) : (
                 <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center text-slate-600">
                   No hay noticias para esta categoría.
