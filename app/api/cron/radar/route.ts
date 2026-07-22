@@ -4,8 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 
 const FUENTES_RSS = [
   {
-    nombre: 'Rafaela Noticias',
-    url: 'https://www.rafaelanoticias.com/feed/',
+    nombre: 'Diario Castellanos',
+    url: 'https://diariocastellanos.com.ar/feed/',
     categoria: 'Locales',
   },
   {
@@ -66,9 +66,10 @@ export async function GET() {
 
         const { data, error } = await supabase
           .from('radar_noticias')
-          .insert([nuevoRegistro])
-          .onConflict('url_original')
-          .ignore()
+          .upsert([nuevoRegistro], {
+            onConflict: 'url_original',
+            ignoreDuplicates: true,
+          })
 
         if (error) {
           erroresLog.push({ medio: fuente.nombre, error: error.message })
