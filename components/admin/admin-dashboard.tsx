@@ -9,11 +9,10 @@ import { fixSortOrders } from '@/lib/sort-order-utils'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Logo } from '@/components/logo'
-import { LogOut, Plus, Edit, Trash2, Eye, EyeOff, ChevronUp, ChevronDown, Cross, MapPin, FileText, Search, Radar } from "lucide-react"
+import { LogOut, Plus, Edit, Trash2, Eye, EyeOff, ChevronUp, ChevronDown, Cross, FileText, Search, Radar, ExternalLink } from "lucide-react"
 import Link from "next/link"
 import { createClient } from '@/lib/supabase/client'
 import { ObituariesManager } from "./obituaries-manager"
-import { PharmaciesManager } from "./pharmacies-manager"
 import { toast } from 'sonner'
 
 // Función para formatear fecha con validación
@@ -63,6 +62,121 @@ interface Article {
     name: string
     slug: string
   } | null
+}
+
+type RadarTab =
+  | "Todas"
+  | "Locales"
+  | "Regionales"
+  | "Provinciales"
+  | "Nacionales"
+  | "Internacionales"
+
+type RadarArticle = {
+  id: string
+  source: string
+  category: RadarTab
+  publishedAt: string
+  title: string
+  url: string
+  urgent?: boolean
+}
+
+const radarTabs: RadarTab[] = [
+  "Todas",
+  "Locales",
+  "Regionales",
+  "Provinciales",
+  "Nacionales",
+  "Internacionales",
+]
+
+const radarArticles: RadarArticle[] = [
+  {
+    id: "1",
+    source: "Rafaela Noticias",
+    category: "Locales",
+    publishedAt: "Hace 8 min",
+    title: "Corte de tránsito en el centro por evento deportivo",
+    url: "https://rafaelanoticias.com/corte-transito-evento",
+  },
+  {
+    id: "2",
+    source: "La Capital",
+    category: "Regionales",
+    publishedAt: "Hace 22 min",
+    title: "Debate sobre polígono industrial y los fondos provinciales",
+    url: "https://lacapital.com.ar/region/poligono-industrial",
+  },
+  {
+    id: "3",
+    source: "Infobae",
+    category: "Nacionales",
+    publishedAt: "Hace 35 min",
+    title: "Anuncio urgente de medidas económicas para PyMEs",
+    url: "https://infobae.com/economia/medidas-economicas-pymes",
+    urgent: true,
+  },
+]
+
+const radarCategoryStyles: Record<RadarTab, string> = {
+  Todas: "bg-slate-100 text-slate-700",
+  Locales: "bg-blue-100 text-blue-700",
+  Regionales: "bg-orange-100 text-orange-700",
+  Provinciales: "bg-amber-100 text-amber-700",
+  Nacionales: "bg-violet-100 text-violet-700",
+  Internacionales: "bg-cyan-100 text-cyan-700",
+}
+
+function RadarCard({ article }: { article: RadarArticle }) {
+  return (
+    <article className={`overflow-hidden rounded-3xl border p-6 shadow-sm transition ${article.urgent ? "border-red-500 bg-red-50" : "border-slate-200 bg-white hover:-translate-y-0.5"}`}>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-semibold text-slate-900">{article.source}</p>
+          <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${radarCategoryStyles[article.category]}`}>
+            {article.category}
+          </span>
+        </div>
+
+        <div className="flex flex-col items-end gap-2">
+          <button
+            type="button"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:border-red-300 hover:text-red-700"
+            aria-label="Descartar noticia"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+          <p className="text-sm text-slate-500">{article.publishedAt}</p>
+        </div>
+      </div>
+
+      <h2 className="mt-6 text-xl font-semibold leading-tight text-slate-900">
+        {article.title}
+      </h2>
+      <p className="text-sm text-gray-500 mt-1">
+        Este resumen simula el copete de la noticia y muestra información relevante para el editor antes de generar el borrador.
+      </p>
+
+      <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <a
+          href={article.url}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-200"
+        >
+          <ExternalLink className="mr-2 h-4 w-4" />
+          Fuente Original
+        </a>
+        <button
+          type="button"
+          className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+        >
+          Generar borrador
+        </button>
+      </div>
+    </article>
+  )
 }
 
 interface Category {
@@ -157,6 +271,7 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
   const [articles, setArticles] = useState(initialArticles)
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
+  const [radarActiveTab, setRadarActiveTab] = useState<RadarTab>("Todas")
   const router = useRouter()
 
   // Sincronizar artículos cuando las props cambian (después de router.refresh)
@@ -227,6 +342,13 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
       return titleMatch || excerptMatch || categoryMatch
     })
   }, [articles, debouncedSearchQuery])
+
+  const visibleRadarArticles = useMemo(() => {
+    if (radarActiveTab === "Todas") {
+      return radarArticles
+    }
+    return radarArticles.filter((article) => article.category === radarActiveTab)
+  }, [radarActiveTab])
 
   const handleLogout = async () => {
     const supabase = createClient()
@@ -1200,23 +1322,43 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
             <ObituariesManager />
           </TabsContent>
 
-          <TabsContent value="radar">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg font-semibold">Radar de Noticias</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-slate-600">
-                  Accedé al Radar de Noticias para revisar eventos urgentes y tendencias por alcance.
-                </p>
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <Button asChild>
-                    <Link href="/admin/radar">Ir al Radar</Link>
-                  </Button>
-                  <span className="text-sm text-slate-500">Ver la sección completa en una página dedicada.</span>
+          <TabsContent value="radar" className="space-y-6">
+            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="space-y-4">
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-900">Radar de Noticias</h2>
+                  <p className="mt-2 text-sm leading-6 text-slate-600">
+                    Revisá eventos urgentes y tendencias de noticias directamente en el dashboard.
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="flex flex-wrap gap-2">
+                  {radarTabs.map((tab) => (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => setRadarActiveTab(tab)}
+                      className={`inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition ${
+                        radarActiveTab === tab
+                          ? "bg-slate-900 text-white shadow"
+                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                      }`}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-6">
+              {visibleRadarArticles.length > 0 ? (
+                visibleRadarArticles.map((article) => <RadarCard key={article.id} article={article} />)
+              ) : (
+                <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center text-slate-600">
+                  No hay noticias para esta categoría.
+                </div>
+              )}
+            </div>
           </TabsContent>
         </Tabs>
       </main>
