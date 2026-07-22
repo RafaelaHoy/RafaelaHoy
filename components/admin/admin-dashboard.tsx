@@ -700,12 +700,6 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
             <span className="font-medium">Panel de Administración</span>
           </div>
           <div className="flex items-center gap-4">
-            <Button asChild variant="outline" size="sm" className="text-white/80 hover:bg-white/10">
-              <Link href="/admin/radar" className="inline-flex items-center gap-2">
-                <Radar className="h-4 w-4" />
-                Radar
-              </Link>
-            </Button>
             <Button
               variant="ghost"
               size="sm"
@@ -731,9 +725,9 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
               <Cross className="h-3 w-3 sm:h-4 sm:w-4" />
               Necrológicas
             </TabsTrigger>
-            <TabsTrigger value="farmacias" className="flex items-center gap-2">
-              <MapPin className="h-3 w-3 sm:h-4 sm:w-4" />
-              Farmacias
+            <TabsTrigger value="radar" className="flex items-center gap-2">
+              <Radar className="h-3 w-3 sm:h-4 sm:w-4" />
+              Radar
             </TabsTrigger>
           </TabsList>
 
@@ -1206,9 +1200,23 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
             <ObituariesManager />
           </TabsContent>
 
-          {/* Farmacias Tab */}
-          <TabsContent value="farmacias">
-            <PharmaciesManager />
+          <TabsContent value="radar">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-semibold">Radar de Noticias</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-slate-600">
+                  Accedé al Radar de Noticias para revisar eventos urgentes y tendencias por alcance.
+                </p>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <Button asChild>
+                    <Link href="/admin/radar">Ir al Radar</Link>
+                  </Button>
+                  <span className="text-sm text-slate-500">Ver la sección completa en una página dedicada.</span>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </main>

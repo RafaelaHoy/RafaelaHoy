@@ -64,28 +64,33 @@ const categoryStyles: Record<Tab, string> = {
 
 function RadarCard({ article }: { article: RadarArticle }) {
   return (
-    <article className={`relative overflow-hidden rounded-3xl border p-6 shadow-sm transition ${article.urgent ? "border-red-500 bg-red-50" : "border-slate-200 bg-white hover:-translate-y-0.5"}`}>
-      <button
-        type="button"
-        className="absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:border-red-300 hover:text-red-700"
-        aria-label="Descartar noticia"
-      >
-        <Trash2 className="h-4 w-4" />
-      </button>
-
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div>
+    <article className={`overflow-hidden rounded-3xl border p-6 shadow-sm transition ${article.urgent ? "border-red-500 bg-red-50" : "border-slate-200 bg-white hover:-translate-y-0.5"}`}>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex items-center gap-2">
           <p className="text-sm font-semibold text-slate-900">{article.source}</p>
           <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${categoryStyles[article.category]}`}>
             {article.category}
           </span>
         </div>
-        <p className="text-sm text-slate-500">{article.publishedAt}</p>
+
+        <div className="flex flex-col items-end gap-2">
+          <button
+            type="button"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:border-red-300 hover:text-red-700"
+            aria-label="Descartar noticia"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+          <p className="text-sm text-slate-500">{article.publishedAt}</p>
+        </div>
       </div>
 
       <h2 className="mt-6 text-xl font-semibold leading-tight text-slate-900">
         {article.title}
       </h2>
+      <p className="text-sm text-gray-500 mt-1">
+        Este resumen simula el copete de la noticia y muestra información relevante para el editor antes de generar el borrador.
+      </p>
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
         <a
