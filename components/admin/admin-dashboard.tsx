@@ -9,7 +9,7 @@ import { fixSortOrders } from '@/lib/sort-order-utils'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Logo } from '@/components/logo'
-import { LogOut, Plus, Edit, Trash2, Eye, EyeOff, ChevronUp, ChevronDown, Cross, MapPin, FileText, Search } from "lucide-react"
+import { LogOut, Plus, Edit, Trash2, Eye, EyeOff, ChevronUp, ChevronDown, Cross, MapPin, FileText, Search, Radar } from "lucide-react"
 import Link from "next/link"
 import { createClient } from '@/lib/supabase/client'
 import { ObituariesManager } from "./obituaries-manager"
@@ -700,6 +700,12 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
             <span className="font-medium">Panel de Administración</span>
           </div>
           <div className="flex items-center gap-4">
+            <Button asChild variant="outline" size="sm" className="text-white/80 hover:bg-white/10">
+              <Link href="/admin/radar" className="inline-flex items-center gap-2">
+                <Radar className="h-4 w-4" />
+                Radar
+              </Link>
+            </Button>
             <Button
               variant="ghost"
               size="sm"
