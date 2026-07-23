@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import Parser from 'rss-parser'
+import * as cheerio from 'cheerio'
 import { createClient } from '@/lib/supabase/server'
 import { RSS_FEEDS } from '@/rssFeeds'
 
@@ -90,40 +91,104 @@ export async function GET(req: Request) {
     }
 
     let xmlText = ''
-    const primaryResponse = await fetchWithTimeout(url)
+    let feedItems: ProxyItem[] = []
 
-    if (!primaryResponse.ok) {
-      const fallbackUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
-      const fallbackResponse = await fetchWithTimeout(fallbackUrl)
+    try {
+      const primaryResponse = await fetchWithTimeout(url)
 
-      if (!fallbackResponse.ok) {
-        throw new Error(
-          `Primary fetch failed with ${primaryResponse.status} ${primaryResponse.statusText}; fallback failed with ${fallbackResponse.status} ${fallbackResponse.statusText}`,
-        )
+      if (!primaryResponse.ok) {
+        const fallbackUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
+        const fallbackResponse = await fetchWithTimeout(fallbackUrl)
+
+        if (!fallbackResponse.ok) {
+          throw new Error(
+            `Primary fetch failed with ${primaryResponse.status} ${primaryResponse.statusText}; fallback failed with ${fallbackResponse.status} ${fallbackResponse.statusText}`,
+          )
+        }
+
+        xmlText = await fallbackResponse.text()
+      } else {
+        xmlText = await primaryResponse.text()
       }
 
-      xmlText = await fallbackResponse.text()
-    } else {
-      xmlText = await primaryResponse.text()
+      const cleanXml = xmlText
+        .trimStart()
+        .replace(/&(?!#?[a-zA-Z0-9]+;)/g, '&amp;')
+
+      const feed = await parser.parseString(cleanXml)
+      const scrapedAt = new Date().toISOString()
+      feedItems = (feed.items || []).map((item) => ({
+        title: item.title || '',
+        link: item.link || item.guid || '',
+        pubDate: item.pubDate || item.isoDate || null,
+        contentSnippet: item.contentSnippet || item.content?.slice(0, 280) || '',
+        sourceId: source.id,
+        sourceName: source.name,
+        sourceUrl: source.url,
+        category: source.category,
+        scrapedAt,
+      }))
+    } catch (parserError) {
+      console.warn(`RSS parser failed for ${source.name}, using fallback scraping:`, parserError)
+
+      try {
+        const homeResponse = await fetchWithTimeout(source.url)
+
+        if (!homeResponse.ok) {
+          throw new Error(`Fallback scraping failed with ${homeResponse.status} ${homeResponse.statusText}`)
+        }
+
+        const html = await homeResponse.text()
+        const $ = cheerio.load(html)
+        const uniqueLinks = new Set<string>()
+
+        const fallbackItems = $('article a, h2 a, h3 a, .nota a, .title a')
+          .toArray()
+          .map((element) => {
+            const href = $(element).attr('href')?.trim()
+            const title = $(element).text().trim()
+
+            if (!href || !title) {
+              return null
+            }
+
+            const absoluteLink = href.startsWith('http') ? href : new URL(href, source.url).toString()
+
+            if (!absoluteLink || uniqueLinks.has(absoluteLink)) {
+              return null
+            }
+
+            uniqueLinks.add(absoluteLink)
+
+            return {
+              title,
+              link: absoluteLink,
+              pubDate: new Date().toISOString(),
+              contentSnippet: 'Noticia extraída de la portada.',
+            }
+          })
+          .filter((item): item is { title: string; link: string; pubDate: string; contentSnippet: string } => Boolean(item))
+          .slice(0, 10)
+
+        const scrapedAt = new Date().toISOString()
+        feedItems = fallbackItems.map((item) => ({
+          title: item.title,
+          link: item.link,
+          pubDate: item.pubDate,
+          contentSnippet: item.contentSnippet,
+          sourceId: source.id,
+          sourceName: source.name,
+          sourceUrl: source.url,
+          category: source.category,
+          scrapedAt,
+        }))
+      } catch (fallbackError) {
+        console.error('Error en fallback de scraping de portada:', fallbackError)
+        throw fallbackError
+      }
     }
 
-    const cleanXml = xmlText
-      .trimStart()
-      .replace(/&(?!#?[a-zA-Z0-9]+;)/g, '&amp;')
-
-    const feed = await parser.parseString(cleanXml)
-    const scrapedAt = new Date().toISOString()
-    const items = (feed.items || []).map((item) => ({
-      title: item.title || '',
-      link: item.link || item.guid || '',
-      pubDate: item.pubDate || item.isoDate || null,
-      contentSnippet: item.contentSnippet || item.content?.slice(0, 280) || '',
-      sourceId: source.id,
-      sourceName: source.name,
-      sourceUrl: source.url,
-      category: source.category,
-      scrapedAt,
-    }))
+    const items = feedItems
 
     if (items.length > 0) {
       const { error: insertError } = await supabase
