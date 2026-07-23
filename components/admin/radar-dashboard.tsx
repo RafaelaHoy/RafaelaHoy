@@ -91,11 +91,22 @@ export function RadarDashboard() {
     try {
       const requests = RSS_FEEDS.map((source) =>
         fetch(`/api/radar?url=${encodeURIComponent(source.feedUrl)}${forceRefresh ? '&refresh=1' : ''}`).then(async (response) => {
-          if (!response.ok) {
-            const payload = await response.json().catch(() => ({}))
-            throw new Error(payload?.error || response.statusText)
+          const data = await response.json().catch(() => ({})) as {
+            source?: string
+            items?: RadarFeedItem[]
+            error?: string
+            details?: string
           }
-          return response.json() as Promise<{ source: string; items: RadarFeedItem[] }>
+
+          if (!response.ok || !Array.isArray(data.items)) {
+            const errorMessage = data.error || data.details || response.statusText || 'Error desconocido'
+            throw new Error(errorMessage)
+          }
+
+          return {
+            source: data.source || source.name,
+            items: data.items,
+          } as { source: string; items: RadarFeedItem[] }
         }),
       )
 
@@ -256,7 +267,7 @@ export function RadarDashboard() {
                   Estado de sitios web
                 </button>
               </DialogTrigger>
-              <DialogContent className="max-w-[95vw] h-[95vh] overflow-y-auto rounded-3xl border border-slate-200 bg-white p-0">
+              <DialogContent className="sm:max-w-[95vw] md:max-w-[90vw] lg:max-w-[1200px] w-full max-h-[90vh] overflow-y-auto rounded-3xl border border-slate-200 bg-white p-0">
                 <DialogHeader className="border-b border-slate-200 px-6 py-5">
                   <DialogTitle className="text-2xl font-semibold text-slate-900">Estado de sitios web</DialogTitle>
                   <DialogDescription className="text-sm text-slate-600">
