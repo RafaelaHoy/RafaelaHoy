@@ -26,6 +26,11 @@ export type RadarFeedItem = {
   scrapedAt: string
 }
 
+type FeedSourceStatus = {
+  status: 'ok' | 'error'
+  errorMessage?: string
+}
+
 const categoryStyles: Record<string, string> = {
   Locales: 'bg-blue-100 text-blue-700',
   Regionales: 'bg-emerald-100 text-emerald-700',
@@ -77,7 +82,7 @@ export function RadarDashboard() {
   const [generatingDraftId, setGeneratingDraftId] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
   const [activeCategory, setActiveCategory] = useState('Todas')
-  const [sourceStatuses, setSourceStatuses] = useState<Record<string, 'ok' | 'error'>>({})
+  const [sourceStatuses, setSourceStatuses] = useState<Record<string, FeedSourceStatus>>({})
 
   const loadFeeds = async (forceRefresh = false) => {
     setLoading(true)
@@ -96,17 +101,21 @@ export function RadarDashboard() {
 
       const results = await Promise.allSettled(requests)
       const allItems: RadarFeedItem[] = []
-      const nextSourceStatuses: Record<string, 'ok' | 'error'> = {}
+      const nextSourceStatuses: Record<string, FeedSourceStatus> = {}
 
       results.forEach((result, index) => {
         const source = RSS_FEEDS[index]
         if (result.status === 'fulfilled') {
           const feedResult = result.value
           allItems.push(...feedResult.items)
-          nextSourceStatuses[source.id] = 'ok'
+          nextSourceStatuses[source.id] = { status: 'ok' }
         } else {
-          console.warn(`Error cargando fuente ${source.name}:`, result.reason)
-          nextSourceStatuses[source.id] = 'error'
+          const errorMessage = result.reason instanceof Error ? result.reason.message : String(result.reason)
+          console.warn(`Error cargando fuente ${source.name}:`, errorMessage)
+          nextSourceStatuses[source.id] = {
+            status: 'error',
+            errorMessage,
+          }
         }
       })
 
@@ -247,39 +256,64 @@ export function RadarDashboard() {
                   Estado de sitios web
                 </button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
-                <DialogHeader>
-                  <DialogTitle>Estado de sitios web</DialogTitle>
-                  <DialogDescription>
-                    Estado del último scrape de cada fuente RSS autorizada.
+              <DialogContent className="max-w-[95vw] h-[95vh] overflow-y-auto rounded-3xl border border-slate-200 bg-white p-0">
+                <DialogHeader className="border-b border-slate-200 px-6 py-5">
+                  <DialogTitle className="text-2xl font-semibold text-slate-900">Estado de sitios web</DialogTitle>
+                  <DialogDescription className="text-sm text-slate-600">
+                    Panel de monitoreo del último scrape de cada fuente RSS autorizada.
                   </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-3">
-                  {RSS_FEEDS.map((source) => {
-                    const status = sourceStatuses[source.id] || 'error'
-                    const isOk = status === 'ok'
+                <div className="px-6 py-5">
+                  <div className="overflow-hidden rounded-2xl border border-slate-200">
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+                        <thead className="bg-slate-50">
+                          <tr>
+                            <th className="px-4 py-3 font-semibold text-slate-700">Medio y Categoría</th>
+                            <th className="px-4 py-3 font-semibold text-slate-700">Feed URL</th>
+                            <th className="px-4 py-3 font-semibold text-slate-700">Estado</th>
+                            <th className="px-4 py-3 font-semibold text-slate-700">Detalle del Error</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-200 bg-white">
+                          {RSS_FEEDS.map((source) => {
+                            const status = sourceStatuses[source.id] || { status: 'error', errorMessage: 'Sin datos de monitoreo' }
+                            const isOk = status.status === 'ok'
 
-                    return (
-                      <div
-                        key={source.id}
-                        className="flex items-center justify-between rounded-2xl border border-slate-200 px-4 py-3"
-                      >
-                        <div>
-                          <p className="text-sm font-semibold text-slate-900">{source.name}</p>
-                          <p className="text-xs text-slate-500">{source.feedUrl}</p>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`inline-block h-2.5 w-2.5 rounded-full ${isOk ? 'bg-emerald-500' : 'bg-rose-500'}`}
-                          />
-                          <span className={`text-xs font-semibold ${isOk ? 'text-emerald-700' : 'text-rose-700'}`}>
-                            {isOk ? 'OK' : 'Error'}
-                          </span>
-                        </div>
-                      </div>
-                    )
-                  })}
+                            return (
+                              <tr key={source.id} className="align-top">
+                                <td className="px-4 py-4">
+                                  <div className="space-y-2">
+                                    <p className="font-semibold text-slate-900">{source.name}</p>
+                                    <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${categoryStyles[source.category] || 'bg-slate-100 text-slate-700'}`}>
+                                      {source.category}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-4 text-slate-600">
+                                  <span className="break-all text-xs md:text-sm">{source.feedUrl}</span>
+                                </td>
+                                <td className="px-4 py-4">
+                                  <div className="flex items-center gap-2">
+                                    <span className={`inline-block h-2.5 w-2.5 rounded-full ${isOk ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                                    <span className={`text-xs font-semibold ${isOk ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                      {isOk ? 'OK' : 'Error'}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-4">
+                                  <p className={`break-all rounded-xl border px-3 py-2 text-xs font-mono ${isOk ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'}`}>
+                                    {isOk ? 'Operativo' : status.errorMessage || 'Error sin detalle'}
+                                  </p>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
               </DialogContent>
             </Dialog>
