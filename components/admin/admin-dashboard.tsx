@@ -13,6 +13,7 @@ import { LogOut, Plus, Edit, Trash2, Eye, EyeOff, ChevronUp, ChevronDown, Cross,
 import Link from "next/link"
 import { createClient } from '@/lib/supabase/client'
 import { ObituariesManager } from "./obituaries-manager"
+import { RadarDashboard } from './radar-dashboard'
 import { toast } from 'sonner'
 
 // Función para formatear fecha con validación
@@ -1392,54 +1393,7 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
           </TabsContent>
 
           <TabsContent value="radar" className="space-y-6">
-            <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-              <div className="space-y-4">
-                <div>
-                  <h2 className="text-xl font-semibold text-slate-900">Radar de Noticias</h2>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
-                    Revisá eventos urgentes y tendencias de noticias directamente en el dashboard.
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {radarTabs.map((tab) => (
-                    <button
-                      key={tab}
-                      type="button"
-                      onClick={() => setRadarActiveTab(tab)}
-                      className={`inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition ${
-                        radarActiveTab === tab
-                          ? "bg-slate-900 text-white shadow"
-                          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                      }`}
-                    >
-                      {tab}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="grid gap-6">
-              {loadingRadar ? (
-                <div className="rounded-3xl border border-slate-200 bg-white p-10 text-center text-slate-600">
-                  Cargando noticias del radar...
-                </div>
-              ) : visibleRadarArticles.length > 0 ? (
-                visibleRadarArticles.map((article) => (
-                  <RadarCard
-                    key={article.id}
-                    article={article}
-                    onDiscard={discardRadarNoticia}
-                    onGenerate={handleGenerarBorrador}
-                    isGenerating={generatingDraftId === article.id}
-                  />
-                ))
-              ) : (
-                <div className="rounded-3xl border border-dashed border-slate-300 bg-white p-10 text-center text-slate-600">
-                  No hay noticias para esta categoría.
-                </div>
-              )}
-            </div>
+            <RadarDashboard />
           </TabsContent>
         </Tabs>
       </main>
