@@ -3,20 +3,22 @@ import Parser from 'rss-parser'
 import { createClient } from '@/lib/supabase/server'
 import { RSS_FEEDS } from '@/rssFeeds'
 
+const parserHeaders = {
+  'User-Agent':
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+  'Accept-Language': 'es-AR,es;q=0.8,en-US;q=0.5,en;q=0.3',
+  Connection: 'keep-alive',
+  'Upgrade-Insecure-Requests': '1',
+  'Cache-Control': 'max-age=0',
+}
+
 const parser = new Parser({
   customFields: {
     item: ['contentSnippet'],
   },
   timeout: 8000,
-  headers: {
-    'User-Agent':
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-    'Accept-Language': 'es-AR,es;q=0.8,en-US;q=0.5,en;q=0.3',
-    Connection: 'keep-alive',
-    'Upgrade-Insecure-Requests': '1',
-    'Cache-Control': 'max-age=0',
-  },
+  headers: parserHeaders,
 })
 
 type ProxyItem = {
@@ -36,6 +38,21 @@ type CachedFeed = {
   source_id: string
   data: ProxyItem[]
   fetched_at: string
+}
+
+const fetchWithTimeout = async (requestUrl: string) => {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 8000)
+
+  try {
+    return await fetch(requestUrl, {
+      headers: parserHeaders,
+      signal: controller.signal,
+      redirect: 'follow',
+    })
+  } finally {
+    clearTimeout(timeoutId)
+  }
 }
 
 export async function GET(req: Request) {
@@ -72,12 +89,29 @@ export async function GET(req: Request) {
       return NextResponse.json({ source: source.name, items: cached.data })
     }
 
-    const feed = await Promise.race([
-      parser.parseURL(url),
-      new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Timeout al obtener el feed RSS')), 8000)
-      }),
-    ])
+    let xmlText = ''
+    const primaryResponse = await fetchWithTimeout(url)
+
+    if (!primaryResponse.ok) {
+      const fallbackUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
+      const fallbackResponse = await fetchWithTimeout(fallbackUrl)
+
+      if (!fallbackResponse.ok) {
+        throw new Error(
+          `Primary fetch failed with ${primaryResponse.status} ${primaryResponse.statusText}; fallback failed with ${fallbackResponse.status} ${fallbackResponse.statusText}`,
+        )
+      }
+
+      xmlText = await fallbackResponse.text()
+    } else {
+      xmlText = await primaryResponse.text()
+    }
+
+    const cleanXml = xmlText
+      .trimStart()
+      .replace(/&(?!#?[a-zA-Z0-9]+;)/g, '&amp;')
+
+    const feed = await parser.parseString(cleanXml)
     const scrapedAt = new Date().toISOString()
     const items = (feed.items || []).map((item) => ({
       title: item.title || '',
