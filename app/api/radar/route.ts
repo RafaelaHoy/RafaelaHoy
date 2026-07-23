@@ -7,10 +7,11 @@ const parser = new Parser({
   customFields: {
     item: ['contentSnippet'],
   },
+  timeout: 8000,
   headers: {
     'User-Agent':
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    Accept: 'application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.8',
+    Accept: 'application/rss+xml, application/xml, text/xml; q=0.9, */*; q=0.8',
   },
 })
 
@@ -67,7 +68,12 @@ export async function GET(req: Request) {
       return NextResponse.json({ source: source.name, items: cached.data })
     }
 
-    const feed = await parser.parseURL(url)
+    const feed = await Promise.race([
+      parser.parseURL(url),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout al obtener el feed RSS')), 8000)
+      }),
+    ])
     const scrapedAt = new Date().toISOString()
     const items = (feed.items || []).map((item) => ({
       title: item.title || '',
@@ -104,7 +110,7 @@ export async function GET(req: Request) {
   } catch (error) {
     console.error('Error proxy RSS:', error)
     return NextResponse.json(
-      { error: 'No se pudo procesar el feed RSS', details: error instanceof Error ? error.message : String(error) },
+      { error: error instanceof Error ? error.message : 'Error al obtener el feed' },
       { status: 500 },
     )
   }
