@@ -141,37 +141,49 @@ export async function GET(req: Request) {
         const html = await homeResponse.text()
         const $ = cheerio.load(html)
         const uniqueLinks = new Set<string>()
+        const fallbackItems: { title: string; link: string; pubDate: string; contentSnippet: string }[] = []
+        const blacklist = ['clima', 'contacto', 'ingresar', 'leer más', 'ver más', 'whatsapp']
 
-        const fallbackItems = $('article a, h2 a, h3 a, .nota a, .title a')
-          .toArray()
-          .map((element) => {
-            const href = $(element).attr('href')?.trim()
-            const title = $(element).text().trim()
+        $('a').not('nav a, header a, footer a, .menu a, .navbar a').each((_, element) => {
+          const href = $(element).attr('href')?.trim()
+          const text = $(element).text().replace(/\s+/g, ' ').trim()
 
-            if (!href || !title) {
-              return null
-            }
+          if (!href || href === '#' || href === '/' || href.includes('javascript:')) {
+            return
+          }
 
-            const absoluteLink = href.startsWith('http') ? href : new URL(href, source.url).toString()
+          const title = text.replace(/\s+/g, ' ').trim()
 
-            if (!absoluteLink || uniqueLinks.has(absoluteLink)) {
-              return null
-            }
+          if (title.length < 25) {
+            return
+          }
 
-            uniqueLinks.add(absoluteLink)
+          if (blacklist.some((word) => title.toLowerCase().includes(word))) {
+            return
+          }
 
-            return {
-              title,
-              link: absoluteLink,
-              pubDate: new Date().toISOString(),
-              contentSnippet: 'Noticia extraída de la portada.',
-            }
+          const absoluteLink = href.startsWith('http') ? href : new URL(href, source.url).toString()
+
+          if (!absoluteLink || absoluteLink === source.url || absoluteLink.includes('#') || uniqueLinks.has(absoluteLink)) {
+            return
+          }
+
+          uniqueLinks.add(absoluteLink)
+
+          fallbackItems.push({
+            title,
+            link: absoluteLink,
+            pubDate: new Date().toISOString(),
+            contentSnippet: 'Noticia extraída de la portada.',
           })
-          .filter((item): item is { title: string; link: string; pubDate: string; contentSnippet: string } => Boolean(item))
-          .slice(0, 10)
+
+          if (fallbackItems.length >= 10) {
+            return false
+          }
+        })
 
         const scrapedAt = new Date().toISOString()
-        feedItems = fallbackItems.map((item) => ({
+        feedItems = fallbackItems.slice(0, 10).map((item) => ({
           title: item.title,
           link: item.link,
           pubDate: item.pubDate,
