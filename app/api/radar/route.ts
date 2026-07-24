@@ -177,7 +177,7 @@ export async function GET(req: Request) {
 
             const title = text.replace(/\s+/g, ' ').trim()
 
-            if (title.length < 25) {
+            if (title.length < 30) {
               return
             }
 

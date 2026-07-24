@@ -84,9 +84,7 @@ function RadarCard({ item, generatingDraftId, onGenerateDraft, onDiscard }: Rada
         </div>
 
         <div className="flex flex-col items-start gap-1 sm:items-end">
-          {item.contentSnippet !== 'Noticia extraída de la portada.' ? (
-            <p className="text-sm text-slate-500">{formatRadarDate(item.pubDate)}</p>
-          ) : null}
+          <p className="text-sm text-slate-500">{formatRadarDate(item.pubDate)}</p>
           <p className="text-xs text-slate-400">Scrape: {formatRadarDate(item.scrapedAt)}</p>
         </div>
       </div>
