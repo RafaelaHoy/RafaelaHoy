@@ -31,20 +31,12 @@ type FeedSourceStatus = {
   errorMessage?: string
 }
 
-const categoryStyles: Record<string, string> = {
-  Locales: 'bg-blue-100 text-blue-700',
-  Regionales: 'bg-emerald-100 text-emerald-700',
-  Provinciales: 'bg-amber-100 text-amber-700',
-  Nacionales: 'bg-violet-100 text-violet-700',
-  Internacionales: 'bg-cyan-100 text-cyan-700',
-}
-
-const categoryBorderStyles: Record<string, string> = {
-  Locales: 'border-blue-500',
-  Regionales: 'border-emerald-500',
-  Provinciales: 'border-amber-500',
-  Nacionales: 'border-violet-500',
-  Internacionales: 'border-cyan-500',
+const categoryStyles: Record<string, { badge: string; border: string }> = {
+  locales: { badge: 'bg-blue-100 text-blue-700', border: 'border-blue-500' },
+  regionales: { badge: 'bg-green-100 text-green-700', border: 'border-green-500' },
+  provinciales: { badge: 'bg-orange-100 text-orange-700', border: 'border-orange-500' },
+  nacionales: { badge: 'bg-purple-100 text-purple-700', border: 'border-purple-500' },
+  internacionales: { badge: 'bg-teal-100 text-teal-700', border: 'border-teal-500' },
 }
 
 const radarCategoryOptions = [
@@ -56,8 +48,79 @@ const radarCategoryOptions = [
   'Internacionales',
 ]
 
+const getCategoryBadgeClass = (category: string) => {
+  return categoryStyles[category.toLowerCase()]?.badge || 'bg-slate-100 text-slate-700'
+}
+
 const getCategoryBorderClass = (category: string) => {
-  return categoryBorderStyles[category] || 'border-slate-400'
+  return categoryStyles[category.toLowerCase()]?.border || 'border-slate-400'
+}
+
+type RadarCardProps = {
+  item: RadarFeedItem
+  generatingDraftId: string | null
+  onGenerateDraft: (item: RadarFeedItem) => void
+  onDiscard: (link: string) => void
+}
+
+function RadarCard({ item, generatingDraftId, onGenerateDraft, onDiscard }: RadarCardProps) {
+  return (
+    <article
+      className={`rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 border-l-4 ${getCategoryBorderClass(item.category)}`}
+    >
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getCategoryBadgeClass(item.category)}`}>
+              {item.category}
+            </span>
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{item.sourceName}</p>
+          </div>
+          <h3 className="mt-3 text-lg font-semibold leading-tight text-slate-900 break-words">{item.title}</h3>
+        </div>
+
+        <div className="flex flex-col items-start gap-1 sm:items-end">
+          <p className="text-sm text-slate-500">{formatRadarDate(item.pubDate)}</p>
+          <p className="text-xs text-slate-400">Scrape: {formatRadarDate(item.scrapedAt)}</p>
+        </div>
+      </div>
+
+      <p className="mt-4 text-sm leading-6 text-slate-600 break-words">{item.contentSnippet || 'Sin resumen disponible.'}</p>
+
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm sm:text-base">
+        <a
+          href={item.link}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-slate-100 px-4 py-2 font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-200"
+        >
+          <ExternalLink className="mr-2 h-4 w-4" />
+          Leer original
+        </a>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => onGenerateDraft(item)}
+            disabled={generatingDraftId === item.link}
+            className={`inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 font-semibold text-white transition ${generatingDraftId === item.link ? 'cursor-not-allowed bg-slate-500' : 'bg-slate-900 hover:bg-slate-800'}`}
+          >
+            <Sparkles className="h-4 w-4" />
+            {generatingDraftId === item.link ? 'Generando...' : 'Generar borrador'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onDiscard(item.link)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:border-red-300 hover:text-red-700"
+            aria-label="Descartar noticia"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </article>
+  )
 }
 
 const formatRadarDate = (value: string | null) => {
@@ -157,6 +220,13 @@ export function RadarDashboard() {
   useEffect(() => {
     loadFeeds(false)
   }, [refreshKey])
+
+  const urgentKeywords = ['urgente', 'último momento', 'ultimo momento', 'ahora', 'en vivo', 'alerta', 'impactante', 'exclusivo', 'único medio en el lugar', 'unico medio en el lugar', 'en desarrollo']
+  const urgentRegex = new RegExp(`(^|\\s|\\W)(${urgentKeywords.join('|')})(\\s|\\W|$)`, 'i')
+
+  const urgentNews = useMemo(() => {
+    return items.filter((news) => urgentRegex.test(news.title))
+  }, [items, urgentRegex])
 
   const visibleItems = useMemo(() => {
     return items.filter((item) => {
@@ -297,7 +367,7 @@ export function RadarDashboard() {
                                 <td className="px-4 py-4">
                                   <div className="space-y-2">
                                     <p className="font-semibold text-slate-900">{source.name}</p>
-                                    <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${categoryStyles[source.category] || 'bg-slate-100 text-slate-700'}`}>
+                                    <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${getCategoryBadgeClass(source.category)}`}>
                                       {source.category}
                                     </span>
                                   </div>
@@ -367,65 +437,38 @@ export function RadarDashboard() {
           {error}
         </div>
       ) : (
-        <div className="grid gap-4">
-          {visibleItems.map((item) => (
-            <article
-              key={item.link}
-              className={`rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 border-l-4 ${getCategoryBorderClass(item.category)}`}
-            >
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${categoryStyles[item.category] || 'bg-slate-100 text-slate-700'}`}>
-                      {item.category}
-                    </span>
-                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{item.sourceName}</p>
-                  </div>
-                  <h3 className="mt-3 text-lg font-semibold leading-tight text-slate-900 break-words">{item.title}</h3>
-                </div>
+        <div className="grid grid-cols-1 gap-6 items-start lg:grid-cols-4">
+          <div className="space-y-4 lg:col-span-3">
+            {visibleItems.map((item) => (
+              <RadarCard
+                key={item.link}
+                item={item}
+                generatingDraftId={generatingDraftId}
+                onGenerateDraft={handleGenerateDraft}
+                onDiscard={handleDiscardItem}
+              />
+            ))}
+          </div>
 
-                <div className="flex flex-col items-start gap-1 sm:items-end">
-                  <p className="text-sm text-slate-500">{formatRadarDate(item.pubDate)}</p>
-                  <p className="text-xs text-slate-400">Scrape: {formatRadarDate(item.scrapedAt)}</p>
-                </div>
+          <aside className="sticky top-4 rounded-xl border-t-4 border-red-500 bg-red-50/50 p-4 lg:col-span-1">
+            <h3 className="mb-4 flex items-center gap-2 text-lg font-black text-red-700">🚨 URGENTE</h3>
+
+            {urgentNews.length > 0 ? (
+              <div className="space-y-3">
+                {urgentNews.map((item) => (
+                  <RadarCard
+                    key={item.link}
+                    item={item}
+                    generatingDraftId={generatingDraftId}
+                    onGenerateDraft={handleGenerateDraft}
+                    onDiscard={handleDiscardItem}
+                  />
+                ))}
               </div>
-
-              <p className="mt-4 text-sm leading-6 text-slate-600 break-words">{item.contentSnippet || 'Sin resumen disponible.'}</p>
-
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm sm:text-base">
-                <a
-                  href={item.link}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-slate-100 px-4 py-2 font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-200"
-                >
-                  <ExternalLink className="mr-2 h-4 w-4" />
-                  Leer original
-                </a>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleGenerateDraft(item)}
-                    disabled={generatingDraftId === item.link}
-                    className={`inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 font-semibold text-white transition ${generatingDraftId === item.link ? 'cursor-not-allowed bg-slate-500' : 'bg-slate-900 hover:bg-slate-800'}`}
-                  >
-                    <Sparkles className="h-4 w-4" />
-                    {generatingDraftId === item.link ? 'Generando...' : 'Generar borrador'}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleDiscardItem(item.link)}
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:border-red-300 hover:text-red-700"
-                    aria-label="Descartar noticia"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            </article>
-          ))}
+            ) : (
+              <p className="text-sm text-red-700/80">No hay noticias de último momento.</p>
+            )}
+          </aside>
         </div>
       )}
     </section>
