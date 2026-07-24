@@ -142,45 +142,61 @@ export async function GET(req: Request) {
         const $ = cheerio.load(html)
         const uniqueLinks = new Set<string>()
         const fallbackItems: { title: string; link: string; pubDate: string; contentSnippet: string }[] = []
-        const blacklist = ['clima', 'contacto', 'ingresar', 'leer más', 'ver más', 'whatsapp']
+        const blacklist = [
+          'clima',
+          'contacto',
+          'ingresar',
+          'leer más',
+          'ver más',
+          'whatsapp',
+          'getty images',
+          'afp',
+          'reuters',
+          'bloomberg',
+          'crédito',
+          'foto:',
+          'fotografía:',
+        ]
 
-        $('a').not('nav a, header a, footer a, .menu a, .navbar a').each((_, element) => {
-          const href = $(element).attr('href')?.trim()
-          const text = $(element).text().replace(/\s+/g, ' ').trim()
+        $('main a, article a, h2 a, h3 a, .entry-title a, .noticia a')
+          .not('nav a, header a, footer a, .menu a, .navbar a')
+          .each((_, element) => {
+            const href = $(element).attr('href')?.trim()
+            const text = $(element).text().replace(/\s+/g, ' ').trim()
 
-          if (!href || href === '#' || href === '/' || href.includes('javascript:')) {
-            return
-          }
+            if (!href || href === '#' || href === '/' || href.includes('javascript:')) {
+              return
+            }
 
-          const title = text.replace(/\s+/g, ' ').trim()
+            const title = text.replace(/\s+/g, ' ').trim()
 
-          if (title.length < 25) {
-            return
-          }
+            if (title.length < 25) {
+              return
+            }
 
-          if (blacklist.some((word) => title.toLowerCase().includes(word))) {
-            return
-          }
+            if (blacklist.some((word) => title.toLowerCase().includes(word))) {
+              return
+            }
 
-          const absoluteLink = href.startsWith('http') ? href : new URL(href, source.url).toString()
+            const absoluteLink = href.startsWith('http') ? href : new URL(href, source.url).toString()
 
-          if (!absoluteLink || absoluteLink === source.url || absoluteLink.includes('#') || uniqueLinks.has(absoluteLink)) {
-            return
-          }
+            if (!absoluteLink || absoluteLink === source.url || absoluteLink.includes('#') || uniqueLinks.has(absoluteLink)) {
+              return
+            }
 
-          uniqueLinks.add(absoluteLink)
+            uniqueLinks.add(absoluteLink)
 
-          fallbackItems.push({
-            title,
-            link: absoluteLink,
-            pubDate: new Date().toISOString(),
-            contentSnippet: 'Noticia extraída de la portada.',
+            fallbackItems.push({
+              title,
+              link: absoluteLink,
+              pubDate: new Date().toISOString(),
+              contentSnippet: 'Noticia extraída de la portada.',
+            })
+
+            if (fallbackItems.length >= 10) {
+              return false
+            }
           })
-
-          if (fallbackItems.length >= 10) {
-            return false
-          }
-        })
 
         const scrapedAt = new Date().toISOString()
         feedItems = fallbackItems.slice(0, 10).map((item) => ({
