@@ -31,12 +31,12 @@ type FeedSourceStatus = {
   errorMessage?: string
 }
 
-const categoryStyles: Record<string, { badge: string; border: string }> = {
-  locales: { badge: 'bg-blue-100 text-blue-700', border: 'border-blue-500' },
-  regionales: { badge: 'bg-green-100 text-green-700', border: 'border-green-500' },
-  provinciales: { badge: 'bg-orange-100 text-orange-700', border: 'border-orange-500' },
-  nacionales: { badge: 'bg-purple-100 text-purple-700', border: 'border-purple-500' },
-  internacionales: { badge: 'bg-teal-100 text-teal-700', border: 'border-teal-500' },
+const categoryStyles: Record<string, { badge: string; border: string; textColor: string }> = {
+  locales: { badge: 'bg-blue-100 text-blue-700', border: 'border-blue-500', textColor: 'text-blue-600' },
+  regionales: { badge: 'bg-green-100 text-green-700', border: 'border-green-500', textColor: 'text-green-600' },
+  provinciales: { badge: 'bg-orange-100 text-orange-700', border: 'border-orange-500', textColor: 'text-orange-600' },
+  nacionales: { badge: 'bg-purple-100 text-purple-700', border: 'border-purple-500', textColor: 'text-purple-600' },
+  internacionales: { badge: 'bg-teal-100 text-teal-700', border: 'border-teal-500', textColor: 'text-teal-600' },
 }
 
 const radarCategoryOptions = [
@@ -54,6 +54,10 @@ const getCategoryBadgeClass = (category: string) => {
 
 const getCategoryBorderClass = (category: string) => {
   return categoryStyles[category.toLowerCase()]?.border || 'border-slate-400'
+}
+
+const getCategoryTextColor = (category: string) => {
+  return categoryStyles[category.toLowerCase()]?.textColor || 'text-slate-600'
 }
 
 type RadarCardProps = {
@@ -80,7 +84,9 @@ function RadarCard({ item, generatingDraftId, onGenerateDraft, onDiscard }: Rada
         </div>
 
         <div className="flex flex-col items-start gap-1 sm:items-end">
-          <p className="text-sm text-slate-500">{formatRadarDate(item.pubDate)}</p>
+          {item.contentSnippet !== 'Noticia extraída de la portada.' ? (
+            <p className="text-sm text-slate-500">{formatRadarDate(item.pubDate)}</p>
+          ) : null}
           <p className="text-xs text-slate-400">Scrape: {formatRadarDate(item.scrapedAt)}</p>
         </div>
       </div>
@@ -221,12 +227,15 @@ export function RadarDashboard() {
     loadFeeds(false)
   }, [refreshKey])
 
-  const urgentKeywords = ['urgente', 'último momento', 'ultimo momento', 'ahora', 'en vivo', 'alerta', 'impactante', 'exclusivo', 'único medio en el lugar', 'unico medio en el lugar', 'en desarrollo']
-  const urgentRegex = new RegExp(`(^|\\s|\\W)(${urgentKeywords.join('|')})(\\s|\\W|$)`, 'i')
+  const urgentKeywords = ['urgente', 'último momento', 'ultimo momento', 'ahora', 'en vivo', 'alerta', 'impactante', 'exclusivo', 'único medio', 'unico medio', 'en desarrollo']
+  const isUrgent = (title: string) => {
+    const normalizedTitle = ' ' + title.toLowerCase().replace(/[^\wáéíóúüñ]/gi, ' ') + ' '
+    return urgentKeywords.some((kw) => normalizedTitle.includes(' ' + kw + ' '))
+  }
 
   const urgentNews = useMemo(() => {
-    return items.filter((news) => urgentRegex.test(news.title))
-  }, [items, urgentRegex])
+    return items.filter((news) => isUrgent(news.title))
+  }, [items])
 
   const visibleItems = useMemo(() => {
     return items.filter((item) => {
@@ -459,11 +468,11 @@ export function RadarDashboard() {
                   <div key={news.link} className="mb-3 flex flex-col gap-2 rounded-lg border border-red-100 bg-white p-3 shadow-sm">
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex flex-col">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-red-600">{news.category}</span>
+                        <span className={`text-[10px] font-bold uppercase tracking-wider ${getCategoryTextColor(news.category)}`}>{news.category}</span>
                         <span className="truncate text-xs text-gray-500">{news.sourceName}</span>
                       </div>
                       <span className="whitespace-nowrap text-[10px] text-gray-400">
-                        {news.pubDate ? new Date(news.pubDate).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                        {news.pubDate ? new Date(news.pubDate).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false }) : '—'}
                       </span>
                     </div>
 
