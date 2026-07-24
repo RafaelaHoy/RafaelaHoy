@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import Groq from 'groq-sdk'
 import * as cheerio from 'cheerio'
 
 type GenerarBorradorRequest = {
@@ -9,7 +9,8 @@ type GenerarBorradorRequest = {
 }
 
 type GenerarBorradorResponse = {
-  tituloNuevo: string
+  titulo: string
+  extracto: string
   contenido: string
 }
 
@@ -49,46 +50,70 @@ export async function POST(req: Request) {
       textoExtraido = ''
     }
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' })
+    const groq = new Groq()
 
-    const prompt = `Sos un periodista de RafaelaHoy. Reescribí esta noticia del medio ${medio}. Título: ${titulo}. Texto extraído: ${textoExtraido || 'No disponible. Usá tu conocimiento sobre este tema.'}. Escribí un nuevo título atractivo y un borrador de 3 a 4 párrafos con tono objetivo, periodístico y local. Respondé ÚNICAMENTE en formato JSON válido con las claves "tituloNuevo" y "contenido".`
+    const prompt = `
+Sos un redactor periodístico profesional para el portal de noticias digital "RafaelaHoy" (Rafaela, Santa Fe y la región).
+Tu objetivo es reescribir noticias a partir de textos de otros medios, adaptándolas a un formato ágil y claro, garantizando que el texto sea 100% original para evitar el plagio.
 
-    const result = await model.generateContent({
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: prompt }],
-        },
-      ],
+REGLAS ESTRICTAS DE REDACCIÓN:
+1. Cero Plagio: Reescribí completamente el texto fuente. Cambiá la estructura gramatical, usá sinónimos y reformulá frases sin perder la precisión de los datos (nombres, fechas, lugares, cifras).
+2. Tono y Estilo: Claro, noticioso, dinámico y neutro-local (lenguaje periodístico argentino).
+3. Concisión: Párrafos cortos de 2 a 3 oraciones como máximo. Ve directo al punto.
+4. TEXTO LIMPIO (SIN HTML NI MARKDOWN): Entregá texto puro. NO uses etiquetas HTML. Para separar párrafos, usá estrictamente los caracteres literales '\\n\\n' (barra invertida y letra n). Si necesitás poner un subtítulo, escribilo en MAYÚSCULAS.
+
+TEXTO FUENTE:
+Título original: \${news.title}
+Información: \${news.contentSnippet || news.link}
+
+INSTRUCCIONES DE SALIDA:
+Devolvé ÚNICAMENTE un objeto JSON válido con esta estructura exacta (sin texto adicional, ni bloques de código markdown alrededor):
+{
+  "titulo": "Título informativo, directo y ganchero (sin punto final)",
+  "extracto": "Breve síntesis (2 a 3 oraciones) que amplíe la información clave del título.",
+  "contenido": "Acá va el desarrollo completo de la noticia, con párrafos cortos separados por saltos de línea (\\n\\n). Texto 100% limpio, sin HTML."
+}
+`;
+
+    const chatCompletion = await groq.chat.completions.create({
+      messages: [{ role: 'user', content: prompt }],
+      model: 'llama-3.3-70b-versatile',
+      temperature: 0.7,
+      response_format: { type: 'json_object' }, // <-- Agregar para forzar JSON
     })
 
-    const rawText = result.response?.candidates?.[0]?.content?.parts
-      ?.map((part) => ('text' in part ? part.text : ''))
-      .join('')
-      .trim()
+    const generatedText = chatCompletion.choices?.[0]?.message?.content?.trim()
 
-    if (!rawText) {
-      return NextResponse.json({ error: 'No se recibió respuesta de Gemini' }, { status: 500 })
+    if (!generatedText) {
+      return NextResponse.json({ error: 'No se recibió respuesta del modelo' }, { status: 500 })
     }
 
-    const cleanText = rawText.replace(/```json\s*/gi, '').replace(/```/g, '').trim()
+    // Limpieza robusta antes de parsear
+    let cleanText = generatedText
+    // Remover posibles bloques de markdown ```json y ```
+    cleanText = cleanText.replace(/```json/gi, '').replace(/```/g, '').trim()
+
+    // Extraer solo la parte que parece un JSON (entre llaves) por si la IA agregó texto antes o después
+    const jsonMatch = cleanText.match(/\{[\s\S]*\}/)
+    if (jsonMatch) {
+      cleanText = jsonMatch[0]
+    }
 
     let parsed: GenerarBorradorResponse
 
     try {
       parsed = JSON.parse(cleanText) as GenerarBorradorResponse
     } catch (error) {
-      console.error('Error parseando respuesta de Gemini:', error)
+      console.error('Error parseando respuesta del modelo:', error)
       return NextResponse.json(
-        { error: 'Respuesta de Gemini no es JSON válido', raw: cleanText },
+        { error: 'Respuesta del modelo no es JSON válido', raw: cleanText },
         { status: 500 },
       )
     }
 
-    if (!parsed.tituloNuevo || !parsed.contenido) {
+    if (!parsed.titulo || !parsed.contenido || !parsed.extracto) {
       return NextResponse.json(
-        { error: 'La respuesta de Gemini no contiene el título o el contenido esperado', raw: parsed },
+        { error: 'La respuesta del modelo no contiene las claves esperadas (titulo, extracto, contenido)', raw: parsed },
         { status: 500 },
       )
     }
