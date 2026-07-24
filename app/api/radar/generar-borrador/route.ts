@@ -50,7 +50,7 @@ export async function POST(req: Request) {
     }
 
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' })
 
     const prompt = `Sos un periodista de RafaelaHoy. Reescribí esta noticia del medio ${medio}. Título: ${titulo}. Texto extraído: ${textoExtraido || 'No disponible. Usá tu conocimiento sobre este tema.'}. Escribí un nuevo título atractivo y un borrador de 3 a 4 párrafos con tono objetivo, periodístico y local. Respondé ÚNICAMENTE en formato JSON válido con las claves "tituloNuevo" y "contenido".`
 
