@@ -39,6 +39,14 @@ const categoryStyles: Record<string, { badge: string; border: string; textColor:
   internacionales: { badge: 'bg-teal-100 text-teal-700', border: 'border-teal-500', textColor: 'text-teal-600' },
 }
 
+const categoryBorderColors: Record<string, string> = {
+  locales: 'border-l-blue-500',
+  regionales: 'border-l-green-500',
+  provinciales: 'border-l-orange-500',
+  nacionales: 'border-l-purple-500',
+  internacionales: 'border-l-teal-500',
+}
+
 const radarCategoryOptions = [
   'Todas',
   'Locales',
@@ -68,9 +76,11 @@ type RadarCardProps = {
 }
 
 function RadarCard({ item, generatingDraftId, onGenerateDraft, onDiscard }: RadarCardProps) {
+  const borderColorClass = categoryBorderColors[item.category.toLowerCase()] || 'border-l-gray-300'
+
   return (
     <article
-      className={`rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 border-l-4 ${getCategoryBorderClass(item.category)}`}
+      className={`rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 border-l-4 ${borderColorClass}`}
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
