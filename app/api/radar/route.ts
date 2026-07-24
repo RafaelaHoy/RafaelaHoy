@@ -156,12 +156,19 @@ export async function GET(req: Request) {
           'crédito',
           'foto:',
           'fotografía:',
+          'ver todas',
+          'últimas noticias',
+          'youtube',
+          'foto /',
+          '/ ap',
+          'imágenes',
         ]
 
         $('main a, article a, h2 a, h3 a, .entry-title a, .noticia a')
           .not('nav a, header a, footer a, .menu a, .navbar a')
           .each((_, element) => {
             const href = $(element).attr('href')?.trim()
+            $(element).find('svg, style, script').remove()
             const text = $(element).text().replace(/\s+/g, ' ').trim()
 
             if (!href || href === '#' || href === '/' || href.includes('javascript:')) {
@@ -171,6 +178,10 @@ export async function GET(req: Request) {
             const title = text.replace(/\s+/g, ' ').trim()
 
             if (title.length < 25) {
+              return
+            }
+
+            if (title.includes('{') || title.includes('}')) {
               return
             }
 
