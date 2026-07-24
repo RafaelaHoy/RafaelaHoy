@@ -385,6 +385,24 @@ export default function CreateNewsPage() {
   // Categories
   const [categories, setCategories] = useState<Category[]>([])
 
+  // Recuperar borrador generado por el radar (localStorage)
+  useEffect(() => {
+    try {
+      const saved = typeof window !== 'undefined' ? localStorage.getItem('radar_draft') : null
+      if (saved) {
+        const draftData = JSON.parse(saved)
+        if (draftData.tituloNuevo) setTitle(draftData.tituloNuevo)
+        if (draftData.contenido) setContent(draftData.contenido)
+        if (draftData.excerpt) setExcerpt(draftData.excerpt)
+        if (draftData.category) setCategoryId(draftData.category)
+        // Limpiar para evitar reuso accidental
+        localStorage.removeItem('radar_draft')
+      }
+    } catch (error) {
+      console.error('Error al recuperar el borrador:', error)
+    }
+  }, [])
+
   // Función para generar slug a partir del título
   const generateSlug = (title: string) => {
     return title

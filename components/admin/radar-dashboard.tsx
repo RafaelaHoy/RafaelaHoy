@@ -305,7 +305,8 @@ export function RadarDashboard() {
         return
       }
 
-      localStorage.setItem('borradorRadar', JSON.stringify(data))
+      // Guardar borrador para que el formulario de creación lo recupere
+      localStorage.setItem('radar_draft', JSON.stringify(data))
       toast.success('Borrador generado. Redirigiendo al editor...')
       router.push('/admin/noticias/crear')
     } catch (err) {
