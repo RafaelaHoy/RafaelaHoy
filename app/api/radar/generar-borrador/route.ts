@@ -60,8 +60,7 @@ REGLAS ESTRICTAS DE REDACCIÓN:
 1. Cero Plagio: Reescribí completamente el texto fuente. Cambiá la estructura gramatical, usá sinónimos y reformulá frases sin perder la precisión de los datos (nombres, fechas, lugares, cifras).
 2. Tono y Estilo: Claro, noticioso, dinámico y neutro-local (lenguaje periodístico argentino).
 3. Concisión: Párrafos cortos de 2 a 3 oraciones como máximo. Ve directo al punto.
-4. TEXTO LIMPIO (SIN HTML NI MARKDOWN): Entregá texto puro. NO uses etiquetas HTML. Para separar párrafos, usá estrictamente los caracteres literales '\\n\\n' (barra invertida y letra n). Si necesitás poner un subtítulo, escribilo en MAYÚSCULAS.
-
+4. TEXTO LIMPIO (SIN HTML NI MARKDOWN): Entregá texto puro. NO uses etiquetas HTML. Para separar párrafos, usá estrictamente los caracteres literales '\\n\\n' (barra invertida y letra n). Si necesitás poner un subtítulo, escribilo en MAYÚSCULAS.5. ANTI-ALUCINACIÓN (DATOS MÍNIMOS): Si la 'Información' provista es nula, genérica (ej: 'Noticia extraída de la portada') o es solo un enlace, tenés estrictamente PROHIBIDO inventar detalles, testimonios, contexto o redactar textos corporativos sobre 'RafaelaHoy'. En este caso, basate EXCLUSIVAMENTE en el 'Título original' para armar una noticia brevísima de un solo párrafo. Nunca asumas información que no te fue dada.
 TEXTO FUENTE:
 Título original: \${news.title}
 Información: \${news.contentSnippet || news.link}
