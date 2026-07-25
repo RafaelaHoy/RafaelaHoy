@@ -3,9 +3,14 @@ import Groq from 'groq-sdk'
 import * as cheerio from 'cheerio'
 
 type GenerarBorradorRequest = {
-  titulo: string
-  url_original: string
-  medio: string
+  news?: {
+    title?: string
+    contentSnippet?: string
+    link?: string
+  }
+  titulo?: string
+  url_original?: string
+  medio?: string
 }
 
 type GenerarBorradorResponse = {
@@ -17,12 +22,24 @@ type GenerarBorradorResponse = {
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as GenerarBorradorRequest
-    const { titulo, url_original, medio } = body
-
-    if (!titulo || !url_original || !medio) {
-      return NextResponse.json({ error: 'Faltan datos requeridos' }, { status: 400 })
+    const news = body.news || {
+      title: body.titulo,
+      contentSnippet: (body as any).contentSnippet,
+      link: body.url_original,
     }
 
+    console.log('📝 Datos recibidos en el backend:', news?.title)
+
+    if (!news || !news.title) {
+      return NextResponse.json({ error: 'No se recibió el título de la noticia' }, { status: 400 })
+    }
+
+    const detalles =
+      news.contentSnippet && news.contentSnippet !== 'Noticia extraída de la portada.'
+        ? news.contentSnippet
+        : 'No hay detalles extra. Basate ÚNICAMENTE en el título provisto para armar la nota.'
+
+    const { url_original, medio } = body
     let textoExtraido = ''
 
     try {
@@ -60,10 +77,14 @@ REGLAS ESTRICTAS DE REDACCIÓN:
 1. Cero Plagio: Reescribí completamente el texto fuente. Cambiá la estructura gramatical, usá sinónimos y reformulá frases sin perder la precisión de los datos (nombres, fechas, lugares, cifras).
 2. Tono y Estilo: Claro, noticioso, dinámico y neutro-local (lenguaje periodístico argentino).
 3. Concisión: Párrafos cortos de 2 a 3 oraciones como máximo. Ve directo al punto.
-4. TEXTO LIMPIO (SIN HTML NI MARKDOWN): Entregá texto puro. NO uses etiquetas HTML. Para separar párrafos, usá estrictamente los caracteres literales '\\n\\n' (barra invertida y letra n). Si necesitás poner un subtítulo, escribilo en MAYÚSCULAS.5. ANTI-ALUCINACIÓN (DATOS MÍNIMOS): Si la 'Información' provista es nula, genérica (ej: 'Noticia extraída de la portada') o es solo un enlace, tenés estrictamente PROHIBIDO inventar detalles, testimonios, contexto o redactar textos corporativos sobre 'RafaelaHoy'. En este caso, basate EXCLUSIVAMENTE en el 'Título original' para armar una noticia brevísima de un solo párrafo. Nunca asumas información que no te fue dada.
-TEXTO FUENTE:
-Título original: \${news.title}
-Información: \${news.contentSnippet || news.link}
+4. TEXTO LIMPIO (SIN HTML NI MARKDOWN): Entregá texto puro. NO uses etiquetas HTML. Para separar párrafos, usá estrictamente los caracteres literales '\n\n' (barra invertida y letra n). Si necesitás poner un subtítulo, escribilo en MAYÚSCULAS.
+5. ANTI-ALUCINACIÓN (DATOS MÍNIMOS): Si la 'Información' provista es nula, genérica (ej: 'Noticia extraída de la portada') o es solo un enlace, tenés estrictamente PROHIBIDO inventar detalles, testimonios, contexto o redactar textos corporativos sobre 'RafaelaHoy'. En este caso, basate EXCLUSIVAMENTE en el 'Título original' para armar una noticia brevísima de un solo párrafo. Nunca asumas información que no te fue dada.
+
+TEXTO FUENTE (ESTA ES LA ÚNICA INFORMACIÓN QUE TENÉS PERMITIDO USAR):
+- TEMA OBLIGATORIO: ${news.title}
+- DETALLES EXTRA: ${detalles}
+
+REGLA DE ORO: El artículo DEBE tratar pura y exclusivamente sobre el TEMA OBLIGATORIO. Si el título habla del campo, la nota tiene que ser sobre el campo. Tenés terminantemente PROHIBIDO inventar alertas de emergencia, eventos ficticios o hablar genéricamente de "RafaelaHoy".
 
 INSTRUCCIONES DE SALIDA:
 Devolvé ÚNICAMENTE un objeto JSON válido con esta estructura exacta (sin texto adicional, ni bloques de código markdown alrededor):
