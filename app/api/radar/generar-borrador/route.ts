@@ -40,27 +40,33 @@ export async function POST(req: Request) {
         : 'No hay detalles extra. Basate ÚNICAMENTE en el título provisto para armar la nota.'
 
     let fullContent = detalles
+    let scraperExitoso = false
 
     if (news.link) {
       try {
-        const linkResponse = await fetch(news.link, {
-          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
-        })
+        // Armamos la URL para pasar a través de ScraperAPI
+        const apiKey = process.env.SCRAPER_API_KEY
+        const targetUrl = encodeURIComponent(news.link)
+        const scraperUrl = `https://api.scraperapi.com/?api_key=${apiKey}&url=${targetUrl}`
+
+        // ScraperAPI se encarga de los headers, proxies y de sortear los bloqueos
+        const linkResponse = await fetch(scraperUrl)
 
         if (linkResponse.ok) {
           const html = await linkResponse.text()
           const $ = cheerio.load(html)
 
-          // Extraer texto de todos los párrafos de la noticia original
-          const paragraphs = $('p').map((i, el) => $(el).text().trim()).get().filter((p) => p.length > 20)
+          // Extraemos los párrafos
+          const paragraphs = $('p').map((i, el) => $(el).text().trim()).get().filter((p) => p.length > 40)
+          const extractedText = paragraphs.join(' ')
 
-          if (paragraphs.length > 0) {
-            // Unimos el texto limitando la cantidad de caracteres para no saturar el token limit
-            fullContent = paragraphs.join(' ').substring(0, 3500)
+          if (extractedText.length > 200) {
+            fullContent = extractedText.substring(0, 3500)
+            scraperExitoso = true
           }
         }
       } catch (error) {
-        console.error('Error al scrapear el link original:', error)
+        console.error('Error al scrapear el link con ScraperAPI:', error)
       }
     }
 
