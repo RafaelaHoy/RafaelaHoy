@@ -94,7 +94,10 @@ export async function GET(req: Request) {
     let feedItems: ProxyItem[] = []
 
     try {
-      const primaryResponse = await fetchWithTimeout(url)
+      const apiKey = process.env.SCRAPER_API_KEY
+      const targetUrl = encodeURIComponent(url)
+      const fetchUrl = apiKey ? `https://api.scraperapi.com/?api_key=${apiKey}&url=${targetUrl}` : url
+      const primaryResponse = await fetchWithTimeout(fetchUrl)
 
       if (!primaryResponse.ok) {
         const fallbackUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
