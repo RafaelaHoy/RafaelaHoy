@@ -70,6 +70,10 @@ export async function POST(req: Request) {
       }
     }
 
+    console.log('📊 Estado del Scraper:', scraperExitoso ? 'Éxito' : 'Falló o no se usó')
+    console.log('📝 Longitud del texto enviado a la IA:', fullContent.length, 'caracteres')
+    console.log('🔍 Muestra del texto:', fullContent.substring(0, 150) + '...')
+
     const { url_original, medio } = body
     let textoExtraido = ''
 
@@ -107,7 +111,7 @@ Tu objetivo es reescribir noticias a partir de textos de otros medios, adaptánd
 REGLAS ESTRICTAS DE REDACCIÓN:
 1. Cero Plagio: Reescribí completamente el texto fuente. Cambiá la estructura gramatical, usá sinónimos y reformulá frases sin perder la precisión de los datos (nombres, fechas, lugares, cifras).
 2. Tono y Estilo: Claro, noticioso, dinámico y neutro-local (lenguaje periodístico argentino).
-3. Concisión: Párrafos cortos de 2 a 3 oraciones como máximo. Ve directo al punto.
+3. EXTENSIÓN Y PROFUNDIDAD: Desarrollá la noticia de forma completa y exhaustiva. Utilizá TODOS los datos, citas, nombres y detalles provistos en el TEXTO FUENTE para armar un artículo robusto. La nota debe tener al menos 4 o 5 párrafos bien nutridos. (Mantené la separación con \n\n).
 4. TEXTO LIMPIO (SIN HTML NI MARKDOWN): Entregá texto puro. NO uses etiquetas HTML. Para separar párrafos, usá estrictamente los caracteres literales '\n\n' (barra invertida y letra n). Si necesitás poner un subtítulo, escribilo en MAYÚSCULAS.
 5. ANTI-ALUCINACIÓN (DATOS MÍNIMOS): Si la 'Información' provista es nula, genérica (ej: 'Noticia extraída de la portada') o es solo un enlace, tenés estrictamente PROHIBIDO inventar detalles, testimonios, contexto o redactar textos corporativos sobre 'RafaelaHoy'. En este caso, basate EXCLUSIVAMENTE en el 'Título original' para armar una noticia brevísima de un solo párrafo. Nunca asumas información que no te fue dada.
 
