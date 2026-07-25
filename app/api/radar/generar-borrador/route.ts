@@ -74,6 +74,13 @@ export async function POST(req: Request) {
     console.log('📝 Longitud del texto enviado a la IA:', fullContent.length, 'caracteres')
     console.log('🔍 Muestra del texto:', fullContent.substring(0, 150) + '...')
 
+    // Si el scraper falló y el contenido incluye nuestra frase por defecto, abortamos
+    if (!scraperExitoso && fullContent.includes('No hay detalles extra')) {
+       return NextResponse.json({ 
+         error: 'Scraper bloqueado. No se pudo leer el texto original de la noticia para generar un borrador seguro.' 
+       }, { status: 400 });
+    }
+
     const { url_original, medio } = body
     let textoExtraido = ''
 
