@@ -39,6 +39,31 @@ export async function POST(req: Request) {
         ? news.contentSnippet
         : 'No hay detalles extra. Basate ÚNICAMENTE en el título provisto para armar la nota.'
 
+    let fullContent = detalles
+
+    if (news.link) {
+      try {
+        const linkResponse = await fetch(news.link, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+        })
+
+        if (linkResponse.ok) {
+          const html = await linkResponse.text()
+          const $ = cheerio.load(html)
+
+          // Extraer texto de todos los párrafos de la noticia original
+          const paragraphs = $('p').map((i, el) => $(el).text().trim()).get().filter((p) => p.length > 20)
+
+          if (paragraphs.length > 0) {
+            // Unimos el texto limitando la cantidad de caracteres para no saturar el token limit
+            fullContent = paragraphs.join(' ').substring(0, 3500)
+          }
+        }
+      } catch (error) {
+        console.error('Error al scrapear el link original:', error)
+      }
+    }
+
     const { url_original, medio } = body
     let textoExtraido = ''
 
@@ -82,7 +107,7 @@ REGLAS ESTRICTAS DE REDACCIÓN:
 
 TEXTO FUENTE (ESTA ES LA ÚNICA INFORMACIÓN QUE TENÉS PERMITIDO USAR):
 - TEMA OBLIGATORIO: ${news.title}
-- DETALLES EXTRA: ${detalles}
+- DETALLES EXTRA: ${fullContent}
 
 REGLA DE ORO: El artículo DEBE tratar pura y exclusivamente sobre el TEMA OBLIGATORIO. Si el título habla del campo, la nota tiene que ser sobre el campo. Tenés terminantemente PROHIBIDO inventar alertas de emergencia, eventos ficticios o hablar genéricamente de "RafaelaHoy".
 
