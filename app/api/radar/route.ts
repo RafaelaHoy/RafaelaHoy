@@ -117,17 +117,24 @@ export async function GET(req: Request) {
 
       const feed = await parser.parseString(cleanXml)
       const scrapedAt = new Date().toISOString()
-      feedItems = (feed.items || []).map((item) => ({
-        title: item.title || '',
-        link: item.link || item.guid || '',
-        pubDate: item.pubDate || item.isoDate || null,
-        contentSnippet: item.contentSnippet || item.content?.slice(0, 280) || '',
-        sourceId: source.id,
-        sourceName: source.name,
-        sourceUrl: source.url,
-        category: source.category,
-        scrapedAt,
-      }))
+      feedItems = (feed.items || [])
+        .map((item) => ({
+          title: item.title || '',
+          link: item.link || item.guid || '',
+          pubDate: item.pubDate || item.isoDate || null,
+          contentSnippet: item.contentSnippet || item.content?.slice(0, 280) || '',
+          sourceId: source.id,
+          sourceName: source.name,
+          sourceUrl: source.url,
+          category: source.category,
+          scrapedAt,
+        }))
+        .sort((a, b) => {
+          const dateA = new Date(a.pubDate || 0).getTime()
+          const dateB = new Date(b.pubDate || 0).getTime()
+          return dateB - dateA
+        })
+        .slice(0, 10)
     } catch (parserError) {
       console.warn(`RSS parser failed for ${source.name}, using fallback scraping:`, parserError)
 
@@ -210,24 +217,30 @@ export async function GET(req: Request) {
           })
 
         const scrapedAt = new Date().toISOString()
-        feedItems = fallbackItems.slice(0, 10).map((item) => ({
-          title: item.title,
-          link: item.link,
-          pubDate: item.pubDate,
-          contentSnippet: item.contentSnippet,
-          sourceId: source.id,
-          sourceName: source.name,
-          sourceUrl: source.url,
-          category: source.category,
-          scrapedAt,
-        }))
+        feedItems = fallbackItems
+          .slice(0, 10)
+          .map((item) => ({
+            title: item.title,
+            link: item.link,
+            pubDate: item.pubDate,
+            contentSnippet: item.contentSnippet,
+            sourceId: source.id,
+            sourceName: source.name,
+            sourceUrl: source.url,
+            category: source.category,
+            scrapedAt,
+          }))
       } catch (fallbackError) {
         console.error('Error en fallback de scraping de portada:', fallbackError)
         throw fallbackError
       }
     }
 
-    const items = feedItems
+    const items = feedItems.slice().sort((a, b) => {
+      const dateA = new Date(a.pubDate || a.date || 0).getTime()
+      const dateB = new Date(b.pubDate || b.date || 0).getTime()
+      return dateB - dateA
+    })
 
     if (items.length > 0) {
       const { error: insertError } = await supabase
