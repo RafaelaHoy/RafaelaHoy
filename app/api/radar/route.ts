@@ -75,19 +75,19 @@ export async function GET(req: Request) {
 
     const oneHourAgo = new Date(Date.now() - 1000 * 60 * 60).toISOString()
     const { data: cached, error: cacheError } = await supabase
-      .from('rss_cache')
-      .select('id, source_id, data, fetched_at')
-      .eq('source_id', source.id)
-      .gte('fetched_at', oneHourAgo)
-      .limit(1)
-      .maybeSingle()
+      .from('radar_noticias')
+      .select('*')
+      .eq('medio', source.name)
+      .gte('created_at', oneHourAgo)
+      .order('fecha_publicacion', { ascending: false })
+      .order('created_at', { ascending: false })
 
     if (cacheError) {
-      console.error('Error leyendo cache RSS:', cacheError)
+      console.error('Error leyendo cache radar_noticias:', cacheError)
     }
 
-    if (cached && !refreshCache) {
-      return NextResponse.json({ source: source.name, items: cached.data })
+    if (cached && cached.length > 0 && !refreshCache) {
+      return NextResponse.json({ source: source.name, items: cached })
     }
 
     let xmlText = ''
@@ -245,26 +245,48 @@ export async function GET(req: Request) {
       return dateB - dateA
     })
 
-    if (items.length > 0) {
-      const { error: insertError } = await supabase
-        .from('rss_cache')
-        .upsert(
-          [
-            {
-              source_id: source.id,
-              data: items,
-              fetched_at: new Date().toISOString(),
-            },
-          ],
-          { onConflict: 'source_id' },
-        )
+    const hace48Horas = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
+    const { error: purgeError } = await supabase
+      .from('radar_noticias')
+      .delete()
+      .lt('created_at', hace48Horas)
 
-      if (insertError) {
-        console.error('Error guardando cache RSS:', insertError)
+    if (purgeError) {
+      console.error('Error purgando radar_noticias antiguas:', purgeError)
+    }
+
+    const radarRows = feedItems.map((item) => ({
+      titulo: item.title,
+      url_original: item.link,
+      medio: item.sourceName,
+      categoria: item.category,
+      copete: item.contentSnippet,
+      fecha_publicacion: item.pubDate,
+    }))
+
+    if (radarRows.length > 0) {
+      const { error: upsertError } = await supabase
+        .from('radar_noticias')
+        .upsert(radarRows, { onConflict: 'url_original', ignoreDuplicates: true })
+
+      if (upsertError) {
+        console.error('Error guardando radar_noticias:', upsertError)
       }
     }
 
-    return NextResponse.json({ source: source.name, items })
+    const { data: savedItems, error: selectError } = await supabase
+      .from('radar_noticias')
+      .select('*')
+      .eq('medio', source.name)
+      .order('fecha_publicacion', { ascending: false })
+      .order('created_at', { ascending: false })
+
+    if (selectError) {
+      console.error('Error consultando radar_noticias:', selectError)
+      throw selectError
+    }
+
+    return NextResponse.json({ source: source.name, items: savedItems ?? [] })
   } catch (error) {
     console.error('Error proxy RSS:', error)
     return NextResponse.json(
