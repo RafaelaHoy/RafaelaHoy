@@ -115,7 +115,7 @@ export async function scrapeHtmlFeed(feedUrl: string, medio: string) {
 
     return fallback.slice(0, 10)
   } catch (error) {
-    console.warn(`Fallback HTML scraping failed for ${medio} (${url}):`, error)
+    console.warn(`Fallback HTML scraping failed for ${medio} (${targetUrl}):`, error)
     return []
   }
 }
