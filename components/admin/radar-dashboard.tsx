@@ -80,7 +80,8 @@ type RadarCardProps = {
 }
 
 function RadarCard({ item, generatingDraftId, onGenerateDraft, onDiscard }: RadarCardProps) {
-  const borderColorClass = categoryBorderColors[item.category.toLowerCase()] || 'border-l-gray-300'
+  const categoryString = (item.category as string) || (item as any).categoria || ''
+  const borderColorClass = categoryBorderColors[categoryString.toLowerCase()] || 'border-l-gray-300'
 
   return (
     <article
@@ -89,8 +90,8 @@ function RadarCard({ item, generatingDraftId, onGenerateDraft, onDiscard }: Rada
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getCategoryBadgeClass(item.category)}`}>
-              {item.category}
+            <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${getCategoryBadgeClass(categoryString)}`}>
+              {item.category || (item as any).categoria || 'Sin categoría'}
             </span>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{item.sourceName}</p>
           </div>
