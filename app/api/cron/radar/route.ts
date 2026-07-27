@@ -14,11 +14,13 @@ type RadarNoticiaInsert = {
 
 export async function GET() {
   const parser = new Parser({
-    customFields: {},
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'application/rss+xml, application/xml, text/xml;q=0.9, */*;q=0.8',
+    requestOptions: {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        Accept: 'application/rss+xml, application/xml, text/xml, */*',
+      },
     },
+    customFields: {},
   })
   const supabase = await createClient()
   let nuevasNoticiasCount = 0

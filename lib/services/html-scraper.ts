@@ -69,9 +69,29 @@ const buildItems = ($: cheerio.CheerioAPI, baseUrl: string, elements: cheerio.Ch
   return items
 }
 
-export async function scrapeHtmlFeed(url: string, medio: string) {
+export async function scrapeHtmlFeed(feedUrl: string, medio: string) {
   try {
-    const html = await fetchHtml(url)
+    const homeUrls: Record<string, string> = {
+      'Rafaela Noticias': 'https://www.rafaelanoticias.com/',
+      'Diario La Opinión': 'https://www.diariolaopinion.com.ar/',
+    }
+    const targetUrl = homeUrls[medio] || feedUrl
+
+    const response = await fetch(targetUrl, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'es-AR,es;q=0.9',
+      },
+      redirect: 'follow',
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status} ${response.statusText}`)
+    }
+
+    const html = await response.text()
     const $ = cheerio.load(html)
 
     let candidates: cheerio.Cheerio<cheerio.Element> = $('article a, h2 a, h3 a, .entry-title a, .post-title a, .noticia a, .td-module-thumb a')
@@ -82,13 +102,13 @@ export async function scrapeHtmlFeed(url: string, medio: string) {
       candidates = $('article a, .entry-title a, .post-title a, h2 a, h3 a, .td-module-thumb a')
     }
 
-    const items = buildItems($, url, candidates)
+    const items = buildItems($, targetUrl, candidates)
 
     if (items.length > 0) {
       return items.slice(0, 10)
     }
 
-    const fallback = buildItems($, url, $('a').filter((_, el) => {
+    const fallback = buildItems($, targetUrl, $('a').filter((_, el) => {
       const text = $(el).text().replace(/\s+/g, ' ').trim()
       return text.length >= 30
     }))
