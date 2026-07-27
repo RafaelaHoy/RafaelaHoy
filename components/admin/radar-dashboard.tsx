@@ -15,10 +15,14 @@ import { ExternalLink, RefreshCw, Trash2, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 
 export type RadarFeedItem = {
-  title: string
-  link: string
+  id: string
+  title?: string
+  titulo?: string
+  link?: string
+  url_original?: string
   pubDate: string | null
-  contentSnippet: string
+  contentSnippet?: string
+  copete?: string
   sourceId: string
   sourceName: string
   sourceUrl: string
@@ -72,7 +76,7 @@ type RadarCardProps = {
   item: RadarFeedItem
   generatingDraftId: string | null
   onGenerateDraft: (item: RadarFeedItem) => void
-  onDiscard: (link: string) => void
+  onDiscard: (item: RadarFeedItem) => void
 }
 
 function RadarCard({ item, generatingDraftId, onGenerateDraft, onDiscard }: RadarCardProps) {
@@ -90,7 +94,7 @@ function RadarCard({ item, generatingDraftId, onGenerateDraft, onDiscard }: Rada
             </span>
             <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{item.sourceName}</p>
           </div>
-          <h3 className="mt-3 text-lg font-semibold leading-tight text-slate-900 break-words">{item.title}</h3>
+          <h3 className="mt-3 text-lg font-semibold leading-tight text-slate-900 break-words">{item.title || item.titulo}</h3>
         </div>
 
         <div className="flex flex-col items-start gap-1 sm:items-end">
@@ -99,11 +103,11 @@ function RadarCard({ item, generatingDraftId, onGenerateDraft, onDiscard }: Rada
         </div>
       </div>
 
-      <p className="mt-4 text-sm leading-6 text-slate-600 break-words">{item.contentSnippet || 'Sin resumen disponible.'}</p>
+      <p className="mt-4 text-sm leading-6 text-slate-600 break-words">{item.contentSnippet || item.copete || 'Sin resumen disponible.'}</p>
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm sm:text-base">
         <a
-          href={item.link}
+          href={item.link || item.url_original}
           target="_blank"
           rel="noreferrer"
           className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-slate-100 px-4 py-2 font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-200"
@@ -116,16 +120,16 @@ function RadarCard({ item, generatingDraftId, onGenerateDraft, onDiscard }: Rada
           <button
             type="button"
             onClick={() => onGenerateDraft(item)}
-            disabled={generatingDraftId === item.link}
-            className={`inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 font-semibold text-white transition ${generatingDraftId === item.link ? 'cursor-not-allowed bg-slate-500' : 'bg-slate-900 hover:bg-slate-800'}`}
+            disabled={generatingDraftId === (item.link || item.url_original)}
+            className={`inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 font-semibold text-white transition ${generatingDraftId === (item.link || item.url_original) ? 'cursor-not-allowed bg-slate-500' : 'bg-slate-900 hover:bg-slate-800'}`}
           >
             <Sparkles className="h-4 w-4" />
-            {generatingDraftId === item.link ? 'Generando...' : 'Generar borrador'}
+            {generatingDraftId === (item.link || item.url_original) ? 'Generando...' : 'Generar borrador'}
           </button>
 
           <button
             type="button"
-            onClick={() => onDiscard(item.link)}
+            onClick={() => onDiscard(item)}
             className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition hover:border-red-300 hover:text-red-700"
             aria-label="Descartar noticia"
           >
@@ -236,25 +240,26 @@ export function RadarDashboard() {
   }, [refreshKey])
 
   const urgentKeywords = ['urgente', 'último momento', 'ultimo momento', 'ahora', 'en vivo', 'alerta', 'impactante', 'exclusivo', 'único medio', 'unico medio', 'en desarrollo']
-  const isUrgent = (title: string) => {
+  const isUrgent = (title?: string) => {
+    if (!title) return false
     const normalizedTitle = ' ' + title.toLowerCase().replace(/[^\wáéíóúüñ]/gi, ' ') + ' '
     return urgentKeywords.some((kw) => normalizedTitle.includes(' ' + kw + ' '))
   }
 
   const urgentNews = useMemo(() => {
-    return items.filter((news) => isUrgent(news.title))
+    return items.filter((news) => isUrgent(news.title || (news as any).titulo || ''))
   }, [items])
 
   const visibleItems = useMemo(() => {
     return items.filter((item) => {
       const matchCategory = activeCategory === 'Todas' || item.category === activeCategory
-      const isVisible = !hiddenIds.includes(item.link)
+      const isVisible = !hiddenIds.includes(item.link || item.url_original)
       return matchCategory && isVisible
     })
   }, [items, hiddenIds, activeCategory])
 
   const handleGenerateDraft = async (item: RadarFeedItem) => {
-    setGeneratingDraftId(item.link)
+    setGeneratingDraftId(item.link || item.url_original || null)
 
     try {
       const response = await fetch('/api/radar/generar-borrador', {
@@ -263,8 +268,8 @@ export function RadarDashboard() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          titulo: item.title,
-          url_original: item.link,
+          titulo: item.title || (item as any).titulo,
+          url_original: item.link || item.url_original,
           medio: item.sourceName,
         }),
       })
@@ -291,16 +296,16 @@ export function RadarDashboard() {
         return
       }
 
-      let data: { tituloNuevo?: string; contenido?: string }
+      let data: { titulo?: string; extracto?: string; contenido?: string }
 
       try {
-        data = JSON.parse(text) as { tituloNuevo?: string; contenido?: string }
+        data = JSON.parse(text) as { titulo?: string; extracto?: string; contenido?: string }
       } catch {
         toast.error('La respuesta del servidor no es JSON válido')
         return
       }
 
-      if (!data.tituloNuevo || !data.contenido) {
+      if (!data.titulo || !data.contenido || !data.extracto) {
         toast.error('La respuesta del servidor no contiene un borrador válido')
         return
       }
@@ -317,9 +322,31 @@ export function RadarDashboard() {
     }
   }
 
-  const handleDiscardItem = (link: string) => {
+  const handleDiscardItem = async (item: RadarFeedItem) => {
+    const link = item.link || item.url_original
     setHiddenIds((prev) => [...prev, link])
-    toast.success('Noticia descartada de la vista')
+
+    try {
+      const response = await fetch('/api/radar', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id: item.id }),
+      })
+
+      const data = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Error descartando noticia')
+      }
+
+      toast.success('Noticia descartada')
+    } catch (error) {
+      console.error('Error descartando noticia:', error)
+      setHiddenIds((prev) => prev.filter((hiddenLink) => hiddenLink !== link))
+      toast.error('No se pudo descartar la noticia')
+    }
   }
 
   return (
@@ -459,7 +486,7 @@ export function RadarDashboard() {
           <div className="space-y-4 lg:col-span-3">
             {visibleItems.map((item) => (
               <RadarCard
-                key={item.link}
+                key={item.id}
                 item={item}
                 generatingDraftId={generatingDraftId}
                 onGenerateDraft={handleGenerateDraft}
@@ -485,15 +512,15 @@ export function RadarDashboard() {
                       </span>
                     </div>
 
-                    <h4 className="line-clamp-3 text-sm font-bold leading-snug text-gray-900">{news.title}</h4>
+                    <h4 className="line-clamp-3 text-sm font-bold leading-snug text-gray-900">{news.title || (news as any).titulo}</h4>
 
                     <button
                       type="button"
                       onClick={() => handleGenerateDraft(news)}
-                      disabled={generatingDraftId === news.link}
+                      disabled={generatingDraftId === (news.link || news.url_original)}
                       className="mt-1 flex w-full items-center justify-center gap-2 rounded-md bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-slate-800 disabled:opacity-50"
                     >
-                      {generatingDraftId === news.link ? (
+                      {generatingDraftId === (news.link || news.url_original) ? (
                         <span>Generando...</span>
                       ) : (
                         <>

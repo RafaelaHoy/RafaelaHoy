@@ -64,16 +64,16 @@ export async function GET() {
           fecha_publicacion,
         }
 
-        const { data, error } = await supabase
+        const { data, error } = (await supabase
           .from('radar_noticias')
           .upsert([nuevoRegistro], {
             onConflict: 'url_original',
             ignoreDuplicates: true,
-          })
+          })) as { data: RadarNoticiaInsert[] | null; error: { message: string } | null }
 
         if (error) {
           erroresLog.push({ medio: fuente.nombre, error: error.message })
-        } else if (data && data.length > 0) {
+        } else if (Array.isArray(data) && data.length > 0) {
           nuevasNoticiasCount += 1
         }
       }

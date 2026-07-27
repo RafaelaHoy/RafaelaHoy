@@ -85,22 +85,26 @@ export async function POST(req: Request) {
     let textoExtraido = ''
 
     try {
-      const response = await fetch(url_original, {
-        headers: {
-          'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        },
-      })
+      if (body.url_original) {
+        const response = await fetch(body.url_original, {
+          headers: {
+            'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          },
+        })
 
-      if (response.ok) {
-        const html = await response.text()
-        const $ = cheerio.load(html)
-        const paragraphs = $('p')
-          .toArray()
-          .map((node) => $(node).text().trim())
-          .filter(Boolean)
-        textoExtraido = paragraphs.join('\n\n').slice(0, 12000)
+        if (response.ok) {
+          const html = await response.text()
+          const $ = cheerio.load(html)
+          const paragraphs = $('p')
+            .toArray()
+            .map((node) => $(node).text().trim())
+            .filter(Boolean)
+          textoExtraido = paragraphs.join('\n\n').slice(0, 12000)
+        } else {
+          textoExtraido = ''
+        }
       } else {
         textoExtraido = ''
       }

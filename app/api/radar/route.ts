@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
 import Parser from 'rss-parser'
 import * as cheerio from 'cheerio'
 import { createClient } from '@/lib/supabase/server'
@@ -56,7 +56,7 @@ const fetchWithTimeout = async (requestUrl: string) => {
   }
 }
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   const url = req.nextUrl.searchParams.get('url')
   const refreshCache = req.nextUrl.searchParams.get('refresh') === '1'
 
@@ -78,6 +78,7 @@ export async function GET(req: Request) {
       .from('radar_noticias')
       .select('*')
       .eq('medio', source.name)
+      .eq('descartado', false)
       .gte('created_at', oneHourAgo)
       .order('fecha_publicacion', { ascending: false })
       .order('created_at', { ascending: false })
@@ -240,8 +241,8 @@ export async function GET(req: Request) {
     }
 
     const items = feedItems.slice().sort((a, b) => {
-      const dateA = new Date(a.pubDate || a.date || 0).getTime()
-      const dateB = new Date(b.pubDate || b.date || 0).getTime()
+      const dateA = new Date(a.pubDate || 0).getTime()
+      const dateB = new Date(b.pubDate || 0).getTime()
       return dateB - dateA
     })
 
@@ -278,6 +279,7 @@ export async function GET(req: Request) {
       .from('radar_noticias')
       .select('*')
       .eq('medio', source.name)
+      .eq('descartado', false)
       .order('fecha_publicacion', { ascending: false })
       .order('created_at', { ascending: false })
 
@@ -286,11 +288,59 @@ export async function GET(req: Request) {
       throw selectError
     }
 
-    return NextResponse.json({ source: source.name, items: savedItems ?? [] })
+    const mappedItems = (savedItems ?? []).map((item) => ({
+      id: item.id,
+      title: item.titulo || 'Sin título',
+      link: item.url_original || '',
+      pubDate: item.fecha_publicacion || null,
+      contentSnippet: item.copete || '',
+      sourceId: source.id,
+      sourceName: item.medio || source.name,
+      sourceUrl: item.sourceUrl || source.url,
+      category: item.categoria || source.category,
+      scrapedAt: item.created_at || new Date().toISOString(),
+    }))
+
+    return NextResponse.json({ source: source.name, items: mappedItems })
   } catch (error) {
     console.error('Error proxy RSS:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Error al obtener el feed' },
+      { status: 500 },
+    )
+  }
+}
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const body = await req.json().catch(() => null)
+    const id = body?.id || req.nextUrl.searchParams.get('id')
+
+    if (!id) {
+      return NextResponse.json({ error: 'ID de noticia requerido' }, { status: 400 })
+    }
+
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('radar_noticias')
+      .update({ descartado: true })
+      .eq('id', id)
+      .select('id')
+
+    if (error) {
+      console.error('Error actualizando noticia descartada:', error)
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    if (!data || data.length === 0) {
+      return NextResponse.json({ error: 'Noticia no encontrada' }, { status: 404 })
+    }
+
+    return NextResponse.json({ success: true, id })
+  } catch (error) {
+    console.error('Error en PATCH radar:', error)
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Error al descartar la noticia' },
       { status: 500 },
     )
   }

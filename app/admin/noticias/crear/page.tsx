@@ -391,9 +391,9 @@ export default function CreateNewsPage() {
       const saved = typeof window !== 'undefined' ? localStorage.getItem('radar_draft') : null
       if (saved) {
         const draftData = JSON.parse(saved)
-        if (draftData.tituloNuevo) setTitle(draftData.tituloNuevo)
+        if (draftData.titulo) setTitle(draftData.titulo)
         if (draftData.contenido) setContent(draftData.contenido)
-        if (draftData.excerpt) setExcerpt(draftData.excerpt)
+        if (draftData.extracto) setExcerpt(draftData.extracto)
         if (draftData.category) setCategoryId(draftData.category)
         // Limpiar para evitar reuso accidental
         localStorage.removeItem('radar_draft')
