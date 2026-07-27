@@ -87,8 +87,28 @@ export async function GET(req: NextRequest) {
       console.error('Error leyendo cache radar_noticias:', cacheError)
     }
 
+    const normalizeRadarRow = (row: any) => ({
+      id: row.id,
+      title: row.titulo || 'Sin título',
+      link: row.url_original || '',
+      pubDate: row.fecha_publicacion || null,
+      isoDate: row.fecha_publicacion || null,
+      contentSnippet: row.copete || '',
+      sourceId: source.id,
+      sourceName: row.medio || source.name,
+      sourceUrl: source.url,
+      category: row.categoria || source.category || 'Locales',
+      scrapedAt: row.created_at || new Date().toISOString(),
+      titulo: row.titulo,
+      url_original: row.url_original,
+      medio: row.medio,
+      copete: row.copete,
+      fecha_publicacion: row.fecha_publicacion,
+    })
+
     if (cached && cached.length > 0 && !refreshCache) {
-      return NextResponse.json({ source: source.name, items: cached })
+      const mappedCached = cached.map(normalizeRadarRow)
+      return NextResponse.json({ source: source.name, items: mappedCached })
     }
 
     let xmlText = ''
@@ -288,17 +308,23 @@ export async function GET(req: NextRequest) {
       throw selectError
     }
 
-    const mappedItems = (savedItems ?? []).map((item) => ({
+    const mappedItems = (savedItems ?? []).map((item: any) => ({
       id: item.id,
       title: item.titulo || 'Sin título',
       link: item.url_original || '',
       pubDate: item.fecha_publicacion || null,
+      isoDate: item.fecha_publicacion || null,
       contentSnippet: item.copete || '',
       sourceId: source.id,
       sourceName: item.medio || source.name,
-      sourceUrl: item.sourceUrl || source.url,
-      category: item.categoria || source.category,
+      sourceUrl: source.url,
+      category: item.categoria || source.category || 'Locales',
       scrapedAt: item.created_at || new Date().toISOString(),
+      titulo: item.titulo,
+      url_original: item.url_original,
+      medio: item.medio,
+      copete: item.copete,
+      fecha_publicacion: item.fecha_publicacion,
     }))
 
     return NextResponse.json({ source: source.name, items: mappedItems })
