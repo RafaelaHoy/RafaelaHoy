@@ -29,24 +29,51 @@ export async function GET() {
   const auditoriaMedios: Record<string, number> = {}
 
   for (const fuente of RSS_FEEDS) {
-    try {
-      let feed = await parser.parseURL(fuente.feedUrl)
-      let items = feed.items || []
+    let items: Array<{ title?: string; link?: string; pubDate?: string | null; isoDate?: string | null }> = []
+    let errorMensaje: string | null = null
 
-      if (items.length === 0) {
-        const scrapedItems = await scrapeHtmlFeed(fuente.url, fuente.name)
-        items = scrapedItems.map((scraped) => ({
-          title: scraped.title,
-          link: scraped.link,
-          pubDate: scraped.pubDate,
+    try {
+      try {
+        const feed = await parser.parseURL(fuente.feedUrl)
+        const feedItems = feed.items || []
+
+        if (feedItems.length === 0) {
+          throw new Error('RSS vacío')
+        }
+
+        items = feedItems.map((item) => ({
+          title: item.title,
+          link: item.link || item.guid,
+          pubDate: item.isoDate || item.pubDate || null,
+          isoDate: item.isoDate || item.pubDate || null,
         }))
+      } catch (rssError) {
+        try {
+          const scrapedItems = await scrapeHtmlFeed(fuente.feedUrl, fuente.name)
+          if (!scrapedItems || scrapedItems.length === 0) {
+            errorMensaje = `Scraper HTML no devolvió resultados (${rssError instanceof Error ? rssError.message : String(rssError)})`
+          } else {
+            items = scrapedItems.map((scraped) => ({
+              title: scraped.title,
+              link: scraped.link,
+              pubDate: scraped.pubDate,
+              isoDate: scraped.pubDate,
+            }))
+          }
+        } catch (htmlError) {
+          errorMensaje = `${rssError instanceof Error ? rssError.message : String(rssError)} | Fallback error: ${htmlError instanceof Error ? htmlError.message : String(htmlError)}`
+        }
+      }
+
+      if (errorMensaje) {
+        throw new Error(errorMensaje)
       }
 
       auditoriaMedios[fuente.name] = items.length
 
       for (const item of items) {
         const titulo = item.title?.trim() || 'Sin título'
-        const url_original = item.link?.trim() || item.guid?.trim() || ''
+        const url_original = item.link?.trim() || ''
         if (!url_original) continue
 
         procesadasCount += 1
