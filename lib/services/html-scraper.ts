@@ -70,12 +70,16 @@ const buildItems = ($: cheerio.CheerioAPI, baseUrl: string, elements: cheerio.Ch
 }
 
 export async function scrapeHtmlFeed(feedUrl: string, medio: string) {
+  let targetUrl = feedUrl
+
   try {
     const homeUrls: Record<string, string> = {
       'Rafaela Noticias': 'https://www.rafaelanoticias.com/',
       'Diario La Opinión': 'https://www.diariolaopinion.com.ar/',
     }
-    const targetUrl = homeUrls[medio] || feedUrl
+
+    const urlObj = new URL(feedUrl)
+    targetUrl = homeUrls[medio] || urlObj.origin
 
     const response = await fetch(targetUrl, {
       headers: {
@@ -88,7 +92,7 @@ export async function scrapeHtmlFeed(feedUrl: string, medio: string) {
     })
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status} ${response.statusText}`)
+      throw new Error(`Status code ${response.status}`)
     }
 
     const html = await response.text()
@@ -115,7 +119,6 @@ export async function scrapeHtmlFeed(feedUrl: string, medio: string) {
 
     return fallback.slice(0, 10)
   } catch (error) {
-    console.warn(`Fallback HTML scraping failed for ${medio} (${targetUrl}):`, error)
-    return []
+    throw new Error(`Fallo en scraper HTML para ${targetUrl} - ${(error as Error).message}`)
   }
 }
