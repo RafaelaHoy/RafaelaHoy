@@ -1,26 +1,8 @@
 import { NextResponse } from 'next/server'
 import Parser from 'rss-parser'
 import { createClient } from '@/lib/supabase/server'
-
-const FUENTES_RSS = [
-  {
-    nombre: 'Diario Castellanos',
-    url: 'https://diariocastellanos.com.ar/feed/',
-    categoria: 'Locales',
-  },
-  {
-    nombre: 'Clarín',
-    url: 'https://www.clarin.com/rss/lo-ultimo/',
-    categoria: 'Nacionales',
-  },
-  {
-    nombre: 'Perfil',
-    url: 'https://www.perfil.com/feed',
-    categoria: 'Nacionales',
-  },
-]
-
-type FuenteRss = (typeof FUENTES_RSS)[number]
+import { RSS_FEEDS } from '@/rssFeeds'
+import { scrapeHtmlFeed } from '@/lib/services/html-scraper'
 
 type RadarNoticiaInsert = {
   titulo: string
@@ -42,11 +24,23 @@ export async function GET() {
   let nuevasNoticiasCount = 0
   let procesadasCount = 0
   const erroresLog: Array<{ medio: string; error: string }> = []
+  const auditoriaMedios: Record<string, number> = {}
 
-  for (const fuente of FUENTES_RSS) {
+  for (const fuente of RSS_FEEDS) {
     try {
-      const feed = await parser.parseURL(fuente.url)
-      const items = feed.items || []
+      let feed = await parser.parseURL(fuente.feedUrl)
+      let items = feed.items || []
+
+      if (items.length === 0) {
+        const scrapedItems = await scrapeHtmlFeed(fuente.url, fuente.name)
+        items = scrapedItems.map((scraped) => ({
+          title: scraped.title,
+          link: scraped.link,
+          pubDate: scraped.pubDate,
+        }))
+      }
+
+      auditoriaMedios[fuente.name] = items.length
 
       for (const item of items) {
         const titulo = item.title?.trim() || 'Sin título'
@@ -59,8 +53,8 @@ export async function GET() {
         const nuevoRegistro: RadarNoticiaInsert = {
           titulo,
           url_original,
-          medio: fuente.nombre,
-          categoria: fuente.categoria,
+          medio: fuente.name,
+          categoria: fuente.category,
           fecha_publicacion,
         }
 
@@ -72,14 +66,14 @@ export async function GET() {
           })) as { data: RadarNoticiaInsert[] | null; error: { message: string } | null }
 
         if (error) {
-          erroresLog.push({ medio: fuente.nombre, error: error.message })
+          erroresLog.push({ medio: fuente.name, error: error.message })
         } else if (Array.isArray(data) && data.length > 0) {
           nuevasNoticiasCount += 1
         }
       }
     } catch (error) {
       erroresLog.push({
-        medio: fuente.nombre,
+        medio: fuente.name,
         error: error instanceof Error ? error.message : String(error),
       })
     }
@@ -90,5 +84,6 @@ export async function GET() {
     procesadas: procesadasCount,
     nuevas: nuevasNoticiasCount,
     errores: erroresLog,
+    auditoria: auditoriaMedios,
   })
 }
