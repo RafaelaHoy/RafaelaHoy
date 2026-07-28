@@ -117,6 +117,29 @@ const RichTextEditor = ({ value, onChange, placeholder }: {
     onChange(newValue)
   }
 
+  const uploadFileToCloudflare = async (file: File) => {
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      const res = await fetch('/api/media/upload', {
+        method: 'POST',
+        body: form,
+      })
+      const json = await res.json()
+      if (json?.url) return json.url
+      throw new Error(json?.error || 'Upload failed')
+    } catch (err) {
+      console.error('Upload error:', err)
+      throw err
+    }
+  }
+
+  const extractYouTubeId = (url: string) => {
+    const regex = /(?:v=|\/embed\/|\.be\/)([A-Za-z0-9_-]{11})/
+    const m = url.match(regex)
+    return m ? m[1] : null
+  }
+
   const execCommand = (command: string, commandValue?: string) => {
     const textarea = document.querySelector('#rich-editor') as HTMLTextAreaElement
     if (!textarea) return
@@ -160,15 +183,52 @@ const RichTextEditor = ({ value, onChange, placeholder }: {
         }
         break
       case 'insertImage':
-        const imageUrl = prompt('Ingrese la URL de la imagen:', 'https://')
-        if (imageUrl) {
-          newValue = `![${selectedText || 'Imagen'}](${imageUrl})`
+        // Preguntar si subir archivo o pegar URL
+        const useFile = confirm('¿Desea seleccionar un archivo desde su equipo? Presione Aceptar para seleccionar archivo, Cancelar para pegar una URL.')
+        const startPos = start
+        const endPos = end
+
+        if (useFile) {
+          const input = document.createElement('input')
+          input.type = 'file'
+          input.accept = 'image/*'
+          input.style.display = 'none'
+          document.body.appendChild(input)
+          input.click()
+          input.onchange = async () => {
+            const file = input.files?.[0]
+            document.body.removeChild(input)
+            if (!file) return
+            try {
+              const url = await uploadFileToCloudflare(file)
+              const markup = `<figure class="w-full my-6 flex flex-col items-center">\n  <img src="${url}" alt="Imagen adjunta" class="w-full h-auto max-w-full rounded-md shadow-sm" />\n</figure>\n`;
+              const before = (document.querySelector('#rich-editor') as HTMLTextAreaElement).value
+              const newContent = before.substring(0, startPos) + markup + before.substring(endPos)
+              setContent(newContent)
+              onChange(newContent)
+              setTimeout(() => {
+                const ta = document.querySelector('#rich-editor') as HTMLTextAreaElement
+                ta.focus()
+                const pos = startPos + markup.length
+                ta.setSelectionRange(pos, pos)
+              }, 0)
+            } catch (err) {
+              alert('Error al subir la imagen')
+            }
+          }
+        } else {
+          const imageUrl = prompt('Ingrese la URL de la imagen:','https://')
+          if (imageUrl) {
+            newValue = `<figure class="w-full my-6 flex flex-col items-center">\n  <img src="${imageUrl}" alt="Imagen adjunta" class="w-full h-auto max-w-full rounded-md shadow-sm" />\n</figure>\n`
+          }
         }
         break
       case 'insertVideo':
-        const videoUrl = prompt('Ingrese la URL del video:', 'https://')
+        const videoUrl = prompt('Ingrese la URL del video (YouTube):', 'https://')
         if (videoUrl) {
-          newValue = `[${selectedText || 'Video'}](${videoUrl})`
+          const id = extractYouTubeId(videoUrl)
+          if (!id) return alert('No se pudo extraer el ID de YouTube. Pegue una URL válida.')
+          newValue = `<div class="w-full my-6">\n  <div class="relative w-full aspect-video rounded-md overflow-hidden shadow-sm">\n    <iframe src="https://www.youtube.com/embed/${id}" class="absolute top-0 left-0 w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>\n  </div>\n</div>\n`
         }
         break
       default:
