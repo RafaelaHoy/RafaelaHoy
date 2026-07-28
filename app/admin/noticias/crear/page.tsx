@@ -126,8 +126,31 @@ const RichTextEditor = ({ value, onChange, placeholder }: {
         body: form,
       })
       const json = await res.json()
-      if (json?.url) return json.url
-      throw new Error(json?.error || 'Upload failed')
+      if (!json?.url) throw new Error(json?.error || 'Upload failed')
+
+      // Registrar en tabla 'media' de Supabase para que aparezca en la galería
+      try {
+        const supabase = createClient()
+        const fileType = file.type.startsWith('video/') ? 'video' : 'image'
+        const { data: mediaRow, error: insertError } = await supabase
+          .from('media')
+          .insert({
+            type: fileType,
+            url: json.url,
+            alt_text: file.name,
+            caption: null,
+          })
+          .select()
+          .single()
+
+        if (insertError) {
+          console.warn('No se pudo insertar referencia en tabla media:', insertError)
+        }
+      } catch (err) {
+        console.error('Error registrando media en BD:', err)
+      }
+
+      return json.url
     } catch (err) {
       console.error('Upload error:', err)
       throw err
