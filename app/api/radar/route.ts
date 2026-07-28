@@ -266,11 +266,12 @@ export async function GET(req: NextRequest) {
       return dateB - dateA
     })
 
-    const hace48Horas = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString()
+    // Reducir ventana de retención a 24 horas
+    const hace24Horas = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
     const { error: purgeError } = await supabase
       .from('radar_noticias')
       .delete()
-      .lt('created_at', hace48Horas)
+      .lt('created_at', hace24Horas)
 
     if (purgeError) {
       console.error('Error purgando radar_noticias antiguas:', purgeError)
