@@ -129,7 +129,7 @@ REGLAS ESTRICTAS:
 - DATOS DUROS: NO OMITAS NINGÚN DATO. Si el texto original menciona cifras, precios, nombres, fechas o listas, DEBES incluirlos todos con precisión.
 - TÍTULO: Debe ser ganchero, directo y usar puntuación periodística correcta (incluyendo dos puntos ':' o comillas si es necesario).
 - FORMATO: Devuelve la respuesta en formato JSON con la siguiente estructura exacta:
-  { "titulo": "TÍTULO AQUÍ", "extracto": "Resumen de 2 oraciones (copete)", "desarrollo": "Cuerpo completo de la noticia, separado en párrafos claros. Usa etiquetas HTML como <br> o <h3> si la nota es larga." }
+  { "titulo": "TÍTULO AQUÍ", "extracto": "Resumen de 2 oraciones (copete)", "desarrollo": "Cuerpo completo de la noticia. Para el 'desarrollo', usa saltos de línea dobles (\\n\\n) para separar los párrafos y listas. Si usas subtítulos, ponelos en MAYÚSCULAS para destacarlos. BAJO NINGÚN CONCEPTO uses etiquetas HTML (no uses <br>, ni <h3>, ni <p>)." }
 
 INSTRUCCIONES IMPORTANTES:
 - Devuelve SOLO el JSON válido, sin texto adicional ni bloques de código.
