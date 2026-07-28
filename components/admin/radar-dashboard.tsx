@@ -31,8 +31,9 @@ export type RadarFeedItem = {
 }
 
 type FeedSourceStatus = {
-  status: 'ok' | 'error'
-  errorMessage?: string
+  estado: 'Operativo' | 'Sin noticias' | 'Error'
+  cantidad?: number | null
+  mensajeError?: string | null
 }
 
 const categoryStyles: Record<string, { badge: string; border: string; textColor: string }> = {
@@ -162,7 +163,6 @@ export function RadarDashboard() {
   const [error, setError] = useState<string | null>(null)
   const [hiddenIds, setHiddenIds] = useState<string[]>([])
   const [generatingDraftId, setGeneratingDraftId] = useState<string | null>(null)
-  const [refreshKey, setRefreshKey] = useState(0)
   const [activeCategory, setActiveCategory] = useState('Todas')
   const [sourceStatuses, setSourceStatuses] = useState<Record<string, FeedSourceStatus>>({})
 
@@ -201,13 +201,18 @@ export function RadarDashboard() {
         if (result.status === 'fulfilled') {
           const feedResult = result.value
           allItems.push(...feedResult.items)
-          nextSourceStatuses[source.id] = { status: 'ok' }
+          nextSourceStatuses[source.id] = {
+            estado: 'Operativo',
+            cantidad: feedResult.items.length,
+            mensajeError: null,
+          }
         } else {
           const errorMessage = result.reason instanceof Error ? result.reason.message : String(result.reason)
           console.warn(`Error cargando fuente ${source.name}:`, errorMessage)
           nextSourceStatuses[source.id] = {
-            status: 'error',
-            errorMessage,
+            estado: 'Error',
+            cantidad: null,
+            mensajeError: errorMessage,
           }
         }
       })
@@ -236,9 +241,54 @@ export function RadarDashboard() {
     }
   }
 
+  const loadSourceStatuses = async () => {
+    try {
+      const response = await fetch('/api/radar/status')
+      const data = await response.json().catch(() => null) as {
+        sources?: Array<{
+          id: string
+          nombre: string
+          url: string
+          estado: 'Operativo' | 'Sin noticias' | 'Error'
+          cantidad: number | null
+          mensajeError: string | null
+        }>
+        error?: string
+      }
+
+      if (!response.ok || !Array.isArray(data.sources)) {
+        throw new Error(data.error || 'No se pudieron obtener los estados de los feeds')
+      }
+
+      const nextSourceStatuses = data.sources.reduce<Record<string, FeedSourceStatus>>((acc, source) => {
+        acc[source.id] = {
+          estado: source.estado,
+          cantidad: source.cantidad,
+          mensajeError: source.mensajeError,
+        }
+        return acc
+      }, {})
+
+      setSourceStatuses(nextSourceStatuses)
+    } catch (err) {
+      console.error('Error cargando estados de fuentes:', err)
+      setSourceStatuses(
+        RSS_FEEDS.reduce<Record<string, FeedSourceStatus>>((acc, source) => {
+          acc[source.id] = {
+            estado: 'Error',
+            cantidad: null,
+            mensajeError: err instanceof Error ? err.message : String(err),
+          }
+          return acc
+        }, {}),
+      )
+    }
+  }
+
   useEffect(() => {
     loadFeeds(false)
-  }, [refreshKey])
+    loadSourceStatuses()
+  }, [])
 
   const urgentKeywords = ['urgente', 'último momento', 'ultimo momento', 'ahora', 'en vivo', 'alerta', 'impactante', 'exclusivo', 'único medio', 'unico medio', 'en desarrollo']
   const isUrgent = (title?: string) => {
@@ -365,8 +415,8 @@ export function RadarDashboard() {
             <button
               type="button"
               onClick={() => {
-                setRefreshKey((prev) => prev + 1)
                 loadFeeds(true)
+                loadSourceStatuses()
               }}
               className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-100"
             >
@@ -399,14 +449,20 @@ export function RadarDashboard() {
                           <tr>
                             <th className="px-4 py-3 font-semibold text-slate-700">Medio y Categoría</th>
                             <th className="px-4 py-3 font-semibold text-slate-700">Feed URL</th>
+                            <th className="px-4 py-3 font-semibold text-slate-700">Cantidad</th>
                             <th className="px-4 py-3 font-semibold text-slate-700">Estado</th>
-                            <th className="px-4 py-3 font-semibold text-slate-700">Detalle del Error</th>
+                            <th className="px-4 py-3 font-semibold text-slate-700">Detalle</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200 bg-white">
                           {RSS_FEEDS.map((source) => {
-                            const status = sourceStatuses[source.id] || { status: 'error', errorMessage: 'Sin datos de monitoreo' }
-                            const isOk = status.status === 'ok'
+                            const status = sourceStatuses[source.id] || {
+                              estado: 'Error',
+                              cantidad: null,
+                              mensajeError: 'Sin datos de monitoreo',
+                            }
+                            const isOperativo = status.estado === 'Operativo'
+                            const isSinNoticias = status.estado === 'Sin noticias'
 
                             return (
                               <tr key={source.id} className="align-top">
@@ -421,17 +477,22 @@ export function RadarDashboard() {
                                 <td className="px-4 py-4 text-slate-600">
                                   <span className="break-all text-xs md:text-sm">{source.feedUrl}</span>
                                 </td>
+                                <td className="px-4 py-4 text-slate-700">{status.cantidad ?? '—'}</td>
                                 <td className="px-4 py-4">
                                   <div className="flex items-center gap-2">
-                                    <span className={`inline-block h-2.5 w-2.5 rounded-full ${isOk ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                                    <span className={`text-xs font-semibold ${isOk ? 'text-emerald-700' : 'text-rose-700'}`}>
-                                      {isOk ? 'OK' : 'Error'}
+                                    <span className={`inline-block h-2.5 w-2.5 rounded-full ${isOperativo ? 'bg-emerald-500' : isSinNoticias ? 'bg-amber-500' : 'bg-rose-500'}`} />
+                                    <span className={`text-xs font-semibold ${isOperativo ? 'text-emerald-700' : isSinNoticias ? 'text-amber-700' : 'text-rose-700'}`}>
+                                      {isOperativo ? 'Operativo' : isSinNoticias ? 'Sin noticias' : 'Error'}
                                     </span>
                                   </div>
                                 </td>
                                 <td className="px-4 py-4">
-                                  <p className={`break-all rounded-xl border px-3 py-2 text-xs font-mono ${isOk ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'}`}>
-                                    {isOk ? 'Operativo' : status.errorMessage || 'Error sin detalle'}
+                                  <p className={`break-all rounded-xl border px-3 py-2 text-xs font-mono ${isOperativo ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : isSinNoticias ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-rose-200 bg-rose-50 text-rose-700'}`}>
+                                    {isOperativo
+                                      ? `Operativo · ${status.cantidad ?? 0} items`
+                                      : isSinNoticias
+                                      ? 'Feed parseado sin items'
+                                      : status.mensajeError || 'Error sin detalle'}
                                   </p>
                                 </td>
                               </tr>

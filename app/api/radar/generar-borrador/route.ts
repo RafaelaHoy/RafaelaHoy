@@ -16,7 +16,9 @@ type GenerarBorradorRequest = {
 type GenerarBorradorResponse = {
   titulo: string
   extracto: string
-  contenido: string
+  // 'desarrollo' is the new field returned by the model. Keep 'contenido' for compatibility.
+  desarrollo?: string
+  contenido?: string
 }
 
 export async function POST(req: Request) {
@@ -56,9 +58,12 @@ export async function POST(req: Request) {
           const html = await linkResponse.text()
           const $ = cheerio.load(html)
 
-          // Extraemos los párrafos
-          const paragraphs = $('p').map((i, el) => $(el).text().trim()).get().filter((p) => p.length > 40)
-          const extractedText = paragraphs.join(' ')
+          // Extraemos párrafos, listas y subtítulos para no perder datos duros
+          const paragraphs = $('p, li, h2, h3')
+            .map((i, el) => $(el).text().trim())
+            .get()
+            .filter((p) => p && p.length > 20)
+          const extractedText = paragraphs.join('\n')
 
           if (extractedText.length > 200) {
             fullContent = extractedText.substring(0, 3500)
@@ -97,10 +102,11 @@ export async function POST(req: Request) {
         if (response.ok) {
           const html = await response.text()
           const $ = cheerio.load(html)
-          const paragraphs = $('p')
+          const paragraphs = $('p, li, h2, h3')
             .toArray()
             .map((node) => $(node).text().trim())
             .filter(Boolean)
+          // Mantener párrafos separados por doble salto de línea para compatibilidad con el frontend
           textoExtraido = paragraphs.join('\n\n').slice(0, 12000)
         } else {
           textoExtraido = ''
@@ -115,37 +121,35 @@ export async function POST(req: Request) {
 
     const groq = new Groq()
 
-    const prompt = `
-Sos un redactor periodístico profesional para el portal de noticias digital "RafaelaHoy" (Rafaela, Santa Fe y la región).
-Tu objetivo es reescribir noticias a partir de textos de otros medios, adaptándolas a un formato ágil y claro, garantizando que el texto sea 100% original para evitar el plagio.
+    // System prompt estricto: periodista experto y reglas de estilo.
+    const systemPrompt = `Eres un periodista experto y redactor principal del diario digital RafaelaHoy. Tu tarea es recibir el texto en bruto de una noticia de otro medio y REESCRIBIRLA por completo para nuestro portal.
 
-REGLAS ESTRICTAS DE REDACCIÓN:
-1. Cero Plagio: Reescribí completamente el texto fuente. Cambiá la estructura gramatical, usá sinónimos y reformulá frases sin perder la precisión de los datos (nombres, fechas, lugares, cifras).
-2. Tono y Estilo: Claro, noticioso, dinámico y neutro-local (lenguaje periodístico argentino).
-3. EXTENSIÓN Y PROFUNDIDAD: Desarrollá la noticia de forma completa y exhaustiva. Utilizá TODOS los datos, citas, nombres y detalles provistos en el TEXTO FUENTE para armar un artículo robusto. La nota debe tener al menos 4 o 5 párrafos bien nutridos. (Mantené la separación con \n\n).
-4. TEXTO LIMPIO (SIN HTML NI MARKDOWN): Entregá texto puro. NO uses etiquetas HTML. Para separar párrafos, usá estrictamente los caracteres literales '\n\n' (barra invertida y letra n). Si necesitás poner un subtítulo, escribilo en MAYÚSCULAS.
-5. ANTI-ALUCINACIÓN (DATOS MÍNIMOS): Si la 'Información' provista es nula, genérica (ej: 'Noticia extraída de la portada') o es solo un enlace, tenés estrictamente PROHIBIDO inventar detalles, testimonios, contexto o redactar textos corporativos sobre 'RafaelaHoy'. En este caso, basate EXCLUSIVAMENTE en el 'Título original' para armar una noticia brevísima de un solo párrafo. Nunca asumas información que no te fue dada.
+REGLAS ESTRICTAS:
+- CERO PLAGIO: Cambia la estructura narrativa. No uses las mismas frases que el texto original. Dale un enfoque dinámico y moderno.
+- DATOS DUROS: NO OMITAS NINGÚN DATO. Si el texto original menciona cifras, precios, nombres, fechas o listas, DEBES incluirlos todos con precisión.
+- TÍTULO: Debe ser ganchero, directo y usar puntuación periodística correcta (incluyendo dos puntos ':' o comillas si es necesario).
+- FORMATO: Devuelve la respuesta en formato JSON con la siguiente estructura exacta:
+  { "titulo": "TÍTULO AQUÍ", "extracto": "Resumen de 2 oraciones (copete)", "desarrollo": "Cuerpo completo de la noticia, separado en párrafos claros. Usa etiquetas HTML como <br> o <h3> si la nota es larga." }
 
-TEXTO FUENTE (ESTA ES LA ÚNICA INFORMACIÓN QUE TENÉS PERMITIDO USAR):
-- TEMA OBLIGATORIO: ${news.title}
-- DETALLES EXTRA: ${fullContent}
+INSTRUCCIONES IMPORTANTES:
+- Devuelve SOLO el JSON válido, sin texto adicional ni bloques de código.
+- Mantén todos los caracteres y signos de puntuación tal como corresponda (no elimines ':' u otros signos importantes en títulos o listas).
 
-REGLA DE ORO: El artículo DEBE tratar pura y exclusivamente sobre el TEMA OBLIGATORIO. Si el título habla del campo, la nota tiene que ser sobre el campo. Tenés terminantemente PROHIBIDO inventar alertas de emergencia, eventos ficticios o hablar genéricamente de "RafaelaHoy".
+TEXTO FUENTE:
+TEMA OBLIGATORIO: ${news.title}
+DETALLES EXTRA: ${fullContent}
+`
 
-INSTRUCCIONES DE SALIDA:
-Devolvé ÚNICAMENTE un objeto JSON válido con esta estructura exacta (sin texto adicional, ni bloques de código markdown alrededor):
-{
-  "titulo": "Título informativo, directo y ganchero (sin punto final)",
-  "extracto": "Breve síntesis (2 a 3 oraciones) que amplíe la información clave del título.",
-  "contenido": "Acá va el desarrollo completo de la noticia, con párrafos cortos separados por saltos de línea (\\n\\n). Texto 100% limpio, sin HTML."
-}
-`;
+    const userMessage = `Toma el TEXTO FUENTE provisto en el system prompt y genera el JSON con las claves: titulo, extracto y desarrollo. Usa los datos del TEXTO FUENTE exclusivamente.`
 
     const chatCompletion = await groq.chat.completions.create({
-      messages: [{ role: 'user', content: prompt }],
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage },
+      ],
       model: 'llama-3.3-70b-versatile',
-      temperature: 0.7,
-      response_format: { type: 'json_object' }, // <-- Agregar para forzar JSON
+      temperature: 0.3,
+      response_format: { type: 'json_object' },
     })
 
     const generatedText = chatCompletion.choices?.[0]?.message?.content?.trim()
@@ -177,14 +181,25 @@ Devolvé ÚNICAMENTE un objeto JSON válido con esta estructura exacta (sin text
       )
     }
 
-    if (!parsed.titulo || !parsed.contenido || !parsed.extracto) {
+    // Aceptar tanto 'desarrollo' (nuevo) como 'contenido' (compatibilidad)
+    const desarrollo = parsed.desarrollo ?? parsed.contenido
+
+    if (!parsed.titulo || !desarrollo || !parsed.extracto) {
       return NextResponse.json(
-        { error: 'La respuesta del modelo no contiene las claves esperadas (titulo, extracto, contenido)', raw: parsed },
+        { error: 'La respuesta del modelo no contiene las claves esperadas (titulo, extracto, desarrollo/contenido)', raw: parsed },
         { status: 500 },
       )
     }
 
-    return NextResponse.json(parsed)
+    const output = {
+      titulo: parsed.titulo,
+      extracto: parsed.extracto,
+      desarrollo,
+      // Mantener 'contenido' para compatibilidad con frontend existente
+      contenido: desarrollo,
+    }
+
+    return NextResponse.json(output)
   } catch (error) {
     console.error('Error global en generar borrador:', error)
     return NextResponse.json(
