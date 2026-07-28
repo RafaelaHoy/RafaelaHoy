@@ -3,7 +3,7 @@ import * as cheerio from 'cheerio'
 export type ScrapedFeedItem = {
   title: string
   link: string
-  pubDate: string | null
+  pubDate: string
 }
 
 const fetchHtml = async (url: string) => {
@@ -59,10 +59,50 @@ const buildItems = ($: cheerio.CheerioAPI, baseUrl: string, elements: cheerio.Ch
     }
 
     uniqueLinks.add(href)
+
+    // Intentar extraer fecha desde <time> (atributo datetime) o desde clases comunes
+    const findDateText = () => {
+      const timeEl = anchor.find('time').first()
+      if (timeEl && timeEl.attr('datetime')) return timeEl.attr('datetime')
+      if (timeEl && timeEl.text()) return timeEl.text()
+
+      const dateSelectors = ['.fecha', '.date', '.time', '.post-date', '.published', '.meta-date']
+      for (const sel of dateSelectors) {
+        const node = $(el).find(sel).first()
+        if (node && node.text()) return node.text().trim()
+      }
+
+      // Buscar en el artículo contenedor
+      const article = $(el).closest('article')
+      if (article.length) {
+        const t = article.find('time').first()
+        if (t && t.attr('datetime')) return t.attr('datetime')
+        for (const sel of dateSelectors) {
+          const node = article.find(sel).first()
+          if (node && node.text()) return node.text().trim()
+        }
+      }
+
+      return null
+    }
+
+    let pubDateStr = findDateText()
+    let pubDate = new Date().toISOString()
+    if (pubDateStr) {
+      try {
+        const parsed = new Date(pubDateStr.trim())
+        if (!isNaN(parsed.getTime())) {
+          pubDate = parsed.toISOString()
+        }
+      } catch {
+        // ignore and fallback
+      }
+    }
+
     items.push({
       title: text,
       link: href,
-      pubDate: null,
+      pubDate,
     })
   })
 
