@@ -8,7 +8,7 @@ export type ScrapedFeedItem = {
 
 const fetchHtml = async (url: string) => {
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 10000)
+  const timeoutId = setTimeout(() => controller.abort(), 30000)
 
   try {
     const response = await fetch(url, {
@@ -149,7 +149,7 @@ export async function scrapeHtmlFeed(feedUrl: string, medio: string) {
     const items = buildItems($, targetUrl, candidates)
 
     if (items.length > 0) {
-      return items.slice(0, 10)
+      return items
     }
 
     const fallback = buildItems($, targetUrl, $('a').filter((_, el) => {
@@ -157,7 +157,7 @@ export async function scrapeHtmlFeed(feedUrl: string, medio: string) {
       return text.length >= 30
     }))
 
-    return fallback.slice(0, 10)
+    return fallback
   } catch (error) {
     throw new Error(`Fallo en scraper HTML para ${targetUrl} - ${(error as Error).message}`)
   }

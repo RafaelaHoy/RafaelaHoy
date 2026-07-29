@@ -172,7 +172,9 @@ export function RadarDashboard() {
 
     try {
       const requests = RSS_FEEDS.map((source) =>
-        fetch(`/api/radar?url=${encodeURIComponent(source.feedUrl)}${forceRefresh ? '&refresh=1' : ''}`).then(async (response) => {
+        fetch(`/api/radar?url=${encodeURIComponent(source.feedUrl)}${forceRefresh ? '&refresh=1' : ''}`, {
+          cache: 'no-store',
+        }).then(async (response) => {
           const data = await response.json().catch(() => ({})) as {
             source?: string
             items?: RadarFeedItem[]

@@ -18,7 +18,7 @@ const parser = new Parser({
   customFields: {
     item: ['contentSnippet'],
   },
-  timeout: 8000,
+  timeout: 30000,
   headers: parserHeaders,
 })
 
@@ -43,17 +43,35 @@ type CachedFeed = {
 
 const fetchWithTimeout = async (requestUrl: string) => {
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 8000)
+  const timeoutId = setTimeout(() => controller.abort(), 30000)
 
   try {
     return await fetch(requestUrl, {
-      headers: parserHeaders,
+      headers: {
+        ...parserHeaders,
+        'Cache-Control': 'no-cache',
+        Pragma: 'no-cache',
+      },
+      cache: 'no-store',
       signal: controller.signal,
       redirect: 'follow',
     })
   } finally {
     clearTimeout(timeoutId)
   }
+}
+
+const normalizeFeedDate = (dateString: string | null | undefined): string | null => {
+  if (!dateString) {
+    return null
+  }
+
+  const parsed = new Date(dateString.trim())
+  if (Number.isNaN(parsed.getTime())) {
+    return null
+  }
+
+  return parsed.toISOString()
 }
 
 export async function GET(req: NextRequest) {
@@ -116,12 +134,13 @@ export async function GET(req: NextRequest) {
 
     try {
       const apiKey = process.env.SCRAPER_API_KEY
-      const targetUrl = encodeURIComponent(url)
-      const fetchUrl = apiKey ? `https://api.scraperapi.com/?api_key=${apiKey}&url=${targetUrl}` : url
+      const cacheBustedUrl = url.includes('?') ? `${url}&nocache=${Date.now()}` : `${url}?nocache=${Date.now()}`
+      const targetUrl = encodeURIComponent(cacheBustedUrl)
+      const fetchUrl = apiKey ? `https://api.scraperapi.com/?api_key=${apiKey}&url=${targetUrl}` : cacheBustedUrl
       const primaryResponse = await fetchWithTimeout(fetchUrl)
 
       if (!primaryResponse.ok) {
-        const fallbackUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
+        const fallbackUrl = `https://api.allorigins.win/raw?url=${targetUrl}`
         const fallbackResponse = await fetchWithTimeout(fallbackUrl)
 
         if (!fallbackResponse.ok) {
@@ -141,11 +160,27 @@ export async function GET(req: NextRequest) {
 
       const feed = await parser.parseString(cleanXml)
       const scrapedAt = new Date().toISOString()
+
+      console.log(`[RADAR RAW] ${url} -> Items extraídos: ${feed.items?.length || 0}`)
+      if (feed.items?.length > 0) {
+        console.log(
+          `[RADAR RAW] ${url} -> Primer noticia: ${feed.items[0].title} | Fecha original: ${feed.items[0].pubDate}`,
+        )
+      }
+
+      const firstItemDate = feed.items?.[0]?.pubDate || feed.items?.[0]?.isoDate || null
+      console.log(
+        `[radar] ${source.name} fetch ${refreshCache ? 'refresh' : 'cached'} - first raw item date:`,
+        firstItemDate,
+        'normalized:',
+        normalizeFeedDate(firstItemDate),
+      )
+
       feedItems = (feed.items || [])
         .map((item) => ({
           title: item.title || '',
           link: item.link || item.guid || '',
-          pubDate: item.pubDate || item.isoDate || null,
+          pubDate: normalizeFeedDate(item.pubDate || item.isoDate),
           contentSnippet: item.contentSnippet || item.content?.slice(0, 280) || '',
           sourceId: source.id,
           sourceName: source.name,
@@ -158,7 +193,6 @@ export async function GET(req: NextRequest) {
           const dateB = new Date(b.pubDate || 0).getTime()
           return dateB - dateA
         })
-        .slice(0, 10)
     } catch (parserError) {
       console.warn(`RSS parser failed for ${source.name}, using fallback scraping:`, parserError)
 
@@ -234,16 +268,10 @@ export async function GET(req: NextRequest) {
               pubDate: new Date().toISOString(),
               contentSnippet: 'Noticia extraída de la portada.',
             })
-
-            if (fallbackItems.length >= 10) {
-              return false
-            }
           })
 
         const scrapedAt = new Date().toISOString()
-        feedItems = fallbackItems
-          .slice(0, 10)
-          .map((item) => ({
+        feedItems = fallbackItems.map((item) => ({
             title: item.title,
             link: item.link,
             pubDate: item.pubDate,
@@ -260,7 +288,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const items = feedItems.slice().sort((a, b) => {
+    const sortedItems = feedItems.slice().sort((a, b) => {
       const dateA = new Date(a.pubDate || 0).getTime()
       const dateB = new Date(b.pubDate || 0).getTime()
       return dateB - dateA
@@ -277,7 +305,7 @@ export async function GET(req: NextRequest) {
       console.error('Error purgando radar_noticias antiguas:', purgeError)
     }
 
-    const radarRows = feedItems.map((item) => ({
+    const radarRows = sortedItems.map((item) => ({
       titulo: item.title,
       url_original: item.link,
       medio: item.sourceName,
@@ -287,13 +315,17 @@ export async function GET(req: NextRequest) {
     }))
 
     if (radarRows.length > 0) {
-      const { error: upsertError } = await supabase
+      const { data: upsertData, error: upsertError } = await supabase
         .from('radar_noticias')
         .upsert(radarRows, { onConflict: 'url_original', ignoreDuplicates: true })
 
       if (upsertError) {
         console.error('Error guardando radar_noticias:', upsertError)
       }
+
+      const nuevas = Array.isArray(upsertData) ? upsertData.length : 0
+      const omitidas = radarRows.length - nuevas
+      console.log(`[RADAR DB] ${url} -> Nuevas: ${nuevas}, Omitidas/Repetidas: ${omitidas}`)
     }
 
     const { data: savedItems, error: selectError } = await supabase
