@@ -47,13 +47,31 @@ const fetchWithTimeout = async (requestUrl: string) => {
 
   try {
     return await fetch(requestUrl, {
-      headers: parserHeaders,
+      headers: {
+        ...parserHeaders,
+        'Cache-Control': 'no-cache',
+        Pragma: 'no-cache',
+      },
+      cache: 'no-store',
       signal: controller.signal,
       redirect: 'follow',
     })
   } finally {
     clearTimeout(timeoutId)
   }
+}
+
+const normalizeFeedDate = (dateString: string | null | undefined): string | null => {
+  if (!dateString) {
+    return null
+  }
+
+  const parsed = new Date(dateString.trim())
+  if (Number.isNaN(parsed.getTime())) {
+    return null
+  }
+
+  return parsed.toISOString()
 }
 
 export async function GET(req: NextRequest) {
@@ -141,11 +159,20 @@ export async function GET(req: NextRequest) {
 
       const feed = await parser.parseString(cleanXml)
       const scrapedAt = new Date().toISOString()
+
+      const firstItemDate = feed.items?.[0]?.pubDate || feed.items?.[0]?.isoDate || null
+      console.log(
+        `[radar] ${source.name} fetch ${refreshCache ? 'refresh' : 'cached'} - first raw item date:`,
+        firstItemDate,
+        'normalized:',
+        normalizeFeedDate(firstItemDate),
+      )
+
       feedItems = (feed.items || [])
         .map((item) => ({
           title: item.title || '',
           link: item.link || item.guid || '',
-          pubDate: item.pubDate || item.isoDate || null,
+          pubDate: normalizeFeedDate(item.pubDate || item.isoDate),
           contentSnippet: item.contentSnippet || item.content?.slice(0, 280) || '',
           sourceId: source.id,
           sourceName: source.name,
