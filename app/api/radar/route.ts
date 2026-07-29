@@ -134,12 +134,13 @@ export async function GET(req: NextRequest) {
 
     try {
       const apiKey = process.env.SCRAPER_API_KEY
-      const targetUrl = encodeURIComponent(url)
-      const fetchUrl = apiKey ? `https://api.scraperapi.com/?api_key=${apiKey}&url=${targetUrl}` : url
+      const cacheBustedUrl = url.includes('?') ? `${url}&nocache=${Date.now()}` : `${url}?nocache=${Date.now()}`
+      const targetUrl = encodeURIComponent(cacheBustedUrl)
+      const fetchUrl = apiKey ? `https://api.scraperapi.com/?api_key=${apiKey}&url=${targetUrl}` : cacheBustedUrl
       const primaryResponse = await fetchWithTimeout(fetchUrl)
 
       if (!primaryResponse.ok) {
-        const fallbackUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
+        const fallbackUrl = `https://api.allorigins.win/raw?url=${targetUrl}`
         const fallbackResponse = await fetchWithTimeout(fallbackUrl)
 
         if (!fallbackResponse.ok) {
