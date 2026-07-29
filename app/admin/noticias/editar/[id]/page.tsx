@@ -346,8 +346,9 @@ const RichTextEditor = ({ value, onChange, placeholder }: {
         const videoUrl = prompt('Ingrese la URL del video (YouTube o Vimeo):', 'https://')
         if (videoUrl) {
           const safeUrl = normalizeVideoUrl(videoUrl)
+          console.log('[DEBUG VIDEO] URL Original:', videoUrl, '-> URL Normalizada:', safeUrl)
           if (!safeUrl) return alert('No se pudo procesar la URL del video. Pegue una URL válida.')
-          newValue = `<div class="w-full my-6">\n  <div class="relative w-full aspect-video rounded-md overflow-hidden shadow-sm">\n    <iframe src="${safeUrl}" class="absolute top-0 left-0 w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>\n  </div>\n</div>\n`
+          newValue = `<div class="w-full my-6">\n  <div class="relative w-full aspect-video rounded-md overflow-hidden shadow-sm">\n    <iframe src="${safeUrl}" class="absolute top-0 left-0 w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen></iframe>\n  </div>\n</div>\n`
         }
         break
       default:
