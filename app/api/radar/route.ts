@@ -18,7 +18,7 @@ const parser = new Parser({
   customFields: {
     item: ['contentSnippet'],
   },
-  timeout: 8000,
+  timeout: 30000,
   headers: parserHeaders,
 })
 
@@ -43,7 +43,7 @@ type CachedFeed = {
 
 const fetchWithTimeout = async (requestUrl: string) => {
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 8000)
+  const timeoutId = setTimeout(() => controller.abort(), 30000)
 
   try {
     return await fetch(requestUrl, {
@@ -268,16 +268,10 @@ export async function GET(req: NextRequest) {
               pubDate: new Date().toISOString(),
               contentSnippet: 'Noticia extraída de la portada.',
             })
-
-            if (fallbackItems.length >= 10) {
-              return false
-            }
           })
 
         const scrapedAt = new Date().toISOString()
-        feedItems = fallbackItems
-          .slice(0, 10)
-          .map((item) => ({
+        feedItems = fallbackItems.map((item) => ({
             title: item.title,
             link: item.link,
             pubDate: item.pubDate,
