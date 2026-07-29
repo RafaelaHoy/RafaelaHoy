@@ -158,7 +158,6 @@ export async function GET(req: NextRequest) {
           const dateB = new Date(b.pubDate || 0).getTime()
           return dateB - dateA
         })
-        .slice(0, 10)
     } catch (parserError) {
       console.warn(`RSS parser failed for ${source.name}, using fallback scraping:`, parserError)
 
@@ -260,7 +259,7 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const items = feedItems.slice().sort((a, b) => {
+    const sortedItems = feedItems.slice().sort((a, b) => {
       const dateA = new Date(a.pubDate || 0).getTime()
       const dateB = new Date(b.pubDate || 0).getTime()
       return dateB - dateA
@@ -277,7 +276,7 @@ export async function GET(req: NextRequest) {
       console.error('Error purgando radar_noticias antiguas:', purgeError)
     }
 
-    const radarRows = feedItems.map((item) => ({
+    const radarRows = sortedItems.map((item) => ({
       titulo: item.title,
       url_original: item.link,
       medio: item.sourceName,
