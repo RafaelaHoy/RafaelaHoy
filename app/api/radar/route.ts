@@ -161,6 +161,13 @@ export async function GET(req: NextRequest) {
       const feed = await parser.parseString(cleanXml)
       const scrapedAt = new Date().toISOString()
 
+      console.log(`[RADAR RAW] ${url} -> Items extraídos: ${feed.items?.length || 0}`)
+      if (feed.items?.length > 0) {
+        console.log(
+          `[RADAR RAW] ${url} -> Primer noticia: ${feed.items[0].title} | Fecha original: ${feed.items[0].pubDate}`,
+        )
+      }
+
       const firstItemDate = feed.items?.[0]?.pubDate || feed.items?.[0]?.isoDate || null
       console.log(
         `[radar] ${source.name} fetch ${refreshCache ? 'refresh' : 'cached'} - first raw item date:`,
@@ -314,13 +321,17 @@ export async function GET(req: NextRequest) {
     }))
 
     if (radarRows.length > 0) {
-      const { error: upsertError } = await supabase
+      const { data: upsertData, error: upsertError } = await supabase
         .from('radar_noticias')
         .upsert(radarRows, { onConflict: 'url_original', ignoreDuplicates: true })
 
       if (upsertError) {
         console.error('Error guardando radar_noticias:', upsertError)
       }
+
+      const nuevas = Array.isArray(upsertData) ? upsertData.length : 0
+      const omitidas = radarRows.length - nuevas
+      console.log(`[RADAR DB] ${url} -> Nuevas: ${nuevas}, Omitidas/Repetidas: ${omitidas}`)
     }
 
     const { data: savedItems, error: selectError } = await supabase
