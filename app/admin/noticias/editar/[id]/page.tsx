@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select"
 import { ArrowLeft, Save, X, Bold, Italic, Underline, List, ListOrdered, Quote, LinkIcon, Image, Video, Type, Heading3, Heading4 } from "lucide-react"
 import Link from "next/link"
+import { normalizeVideoUrl } from '@/lib/utils'
 import { MediaManager } from "@/components/admin/media-manager-enhanced"
 
 interface Category {
@@ -342,11 +343,11 @@ const RichTextEditor = ({ value, onChange, placeholder }: {
         }
         break
       case 'insertVideo':
-        const videoUrl = prompt('Ingrese la URL del video (YouTube):', 'https://')
+        const videoUrl = prompt('Ingrese la URL del video (YouTube o Vimeo):', 'https://')
         if (videoUrl) {
-          const id = extractYouTubeId(videoUrl)
-          if (!id) return alert('No se pudo extraer el ID de YouTube. Pegue una URL válida.')
-          newValue = `<div class="w-full my-6">\n  <div class="relative w-full aspect-video rounded-md overflow-hidden shadow-sm">\n    <iframe src="https://www.youtube.com/embed/${id}" class="absolute top-0 left-0 w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>\n  </div>\n</div>\n`
+          const safeUrl = normalizeVideoUrl(videoUrl)
+          if (!safeUrl) return alert('No se pudo procesar la URL del video. Pegue una URL válida.')
+          newValue = `<div class="w-full my-6">\n  <div class="relative w-full aspect-video rounded-md overflow-hidden shadow-sm">\n    <iframe src="${safeUrl}" class="absolute top-0 left-0 w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>\n  </div>\n</div>\n`
         }
         break
       default:
