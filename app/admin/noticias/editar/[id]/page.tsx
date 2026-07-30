@@ -630,15 +630,15 @@ export default function EditNewsPage() {
 
       setTitle(data.title || "")
       setExcerpt(data.excerpt || "")
-      // Convertir HTML a Markdown para la edición
       console.log('=== DEBUG HTML LIMPIEZA ===')
       console.log('HTML original:', data.content || "")
       const cleanedHTML = cleanEscapedHTML(data.content || "")
       console.log('HTML limpiado:', cleanedHTML)
-      const markdownContent = htmlToMarkdown(data.content || "")
-      console.log('Markdown resultante:', markdownContent)
       console.log('==========================')
-      setContent(markdownContent)
+
+      // Mantener el HTML original de la noticia en el editor para preservar
+      // etiquetas de multimedia como <img> e <iframe> al volver a editar.
+      setContent(cleanedHTML)
       setCategoryId(data.category_id || "")
       setHomeLocation(data.home_location || "repositorio")
       setOriginalHomeLocation(data.home_location || "repositorio")
@@ -818,7 +818,8 @@ export default function EditNewsPage() {
       
       // Procesar Markdown a HTML
       const processedContent = processMarkdownToHTML(content.trim())
-      
+      console.log('=== DEBUG SAVE HTML ===')
+      console.log('HTML a guardar:', processedContent)
       console.log('=== EDICIÓN CON GESTIÓN MANUAL DE ORDEN ===')
       console.log('Título:', title.trim())
       console.log('Ubicación actual:', originalHomeLocation)
