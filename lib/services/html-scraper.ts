@@ -6,18 +6,21 @@ export type ScrapedFeedItem = {
   pubDate: string
 }
 
+const browserHeaders = {
+  'User-Agent':
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'Accept-Language': 'es-AR,es;q=0.9,en-US;q=0.7,en;q=0.5',
+  'Upgrade-Insecure-Requests': '1',
+}
+
 const fetchHtml = async (url: string) => {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 30000)
 
   try {
     const response = await fetch(url, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'es-AR,es;q=0.9,en-US;q=0.7,en;q=0.5',
-      },
+      headers: browserHeaders,
       redirect: 'follow',
       signal: controller.signal,
     })
@@ -41,7 +44,7 @@ const normalizeLink = (href: string | undefined, baseUrl: string) => {
   }
 }
 
-const buildItems = ($: cheerio.CheerioAPI, baseUrl: string, elements: cheerio.Cheerio<cheerio.Element>) => {
+const buildItems = ($: cheerio.CheerioAPI, baseUrl: string, elements: cheerio.Cheerio<any>) => {
   const uniqueLinks = new Set<string>()
   const items: ScrapedFeedItem[] = []
 
@@ -121,24 +124,10 @@ export async function scrapeHtmlFeed(feedUrl: string, medio: string) {
     const urlObj = new URL(feedUrl)
     targetUrl = homeUrls[medio] || urlObj.origin
 
-    const response = await fetch(targetUrl, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'es-AR,es;q=0.9',
-      },
-      redirect: 'follow',
-    })
-
-    if (!response.ok) {
-      throw new Error(`Status code ${response.status}`)
-    }
-
-    const html = await response.text()
+    const html = await fetchHtml(targetUrl)
     const $ = cheerio.load(html)
 
-    let candidates: cheerio.Cheerio<cheerio.Element> = $('article a, h2 a, h3 a, .entry-title a, .post-title a, .noticia a, .td-module-thumb a')
+    let candidates: cheerio.Cheerio<any> = $('article a, h2 a, h3 a, .entry-title a, .post-title a, .noticia a, .td-module-thumb a')
 
     if (medio === 'Rafaela Noticias') {
       candidates = $('article a, h2 a, h3 a, .entry-title a, .noticia a')

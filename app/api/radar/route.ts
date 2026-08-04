@@ -133,26 +133,14 @@ export async function GET(req: NextRequest) {
     let feedItems: ProxyItem[] = []
 
     try {
-      const apiKey = process.env.SCRAPER_API_KEY
       const cacheBustedUrl = url.includes('?') ? `${url}&nocache=${Date.now()}` : `${url}?nocache=${Date.now()}`
-      const targetUrl = encodeURIComponent(cacheBustedUrl)
-      const fetchUrl = apiKey ? `https://api.scraperapi.com/?api_key=${apiKey}&url=${targetUrl}` : cacheBustedUrl
-      const primaryResponse = await fetchWithTimeout(fetchUrl)
+      const primaryResponse = await fetchWithTimeout(cacheBustedUrl)
 
       if (!primaryResponse.ok) {
-        const fallbackUrl = `https://api.allorigins.win/raw?url=${targetUrl}`
-        const fallbackResponse = await fetchWithTimeout(fallbackUrl)
-
-        if (!fallbackResponse.ok) {
-          throw new Error(
-            `Primary fetch failed with ${primaryResponse.status} ${primaryResponse.statusText}; fallback failed with ${fallbackResponse.status} ${fallbackResponse.statusText}`,
-          )
-        }
-
-        xmlText = await fallbackResponse.text()
-      } else {
-        xmlText = await primaryResponse.text()
+        throw new Error(`Primary fetch failed with ${primaryResponse.status} ${primaryResponse.statusText}`)
       }
+
+      xmlText = await primaryResponse.text()
 
       const cleanXml = xmlText
         .trimStart()

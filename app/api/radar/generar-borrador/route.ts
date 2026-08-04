@@ -21,6 +21,51 @@ type GenerarBorradorResponse = {
   contenido?: string
 }
 
+const normalizeText = (value: string) =>
+  value
+    .replace(/\u00a0/g, ' ')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/\s*\n\s*/g, '\n')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+
+const isNoiseText = (value: string) => {
+  const clean = value.trim().toLowerCase()
+  return (
+    clean.length < 3 ||
+    /^(publicidad|advertencia|suscribite|seguinos|compartí|compartir|comentarios|leer más|sigue leyendo|más noticias|cargando|ver más)$/i.test(
+      clean,
+    )
+  )
+}
+
+const extractRobustArticleText = (html: string) => {
+  const $ = cheerio.load(html)
+
+  $('script, style, noscript, iframe, svg, form, button, nav, footer, header, aside, .ad, .advertisement, [class*="share"], [class*="comment"], [class*="related"]').remove()
+
+  const root = $('article, main, .article-body, .entry-content, .news-content, .post-content, .content, .body').first()
+  const source = root.length ? root : $('body')
+
+  source.find('br').replaceWith('\n')
+
+  const extractedBlocks = source
+    .find('p, li, h2, h3, div, span')
+    .toArray()
+    .map((el) => normalizeText($(el).text()))
+    .filter((text) => !isNoiseText(text) && text.length > 2)
+
+  const dedupedBlocks = extractedBlocks.filter((text, index, arr) => arr.indexOf(text) === index)
+
+  const joined = dedupedBlocks.join('\n\n')
+  if (joined.length > 120) {
+    return joined.slice(0, 3500)
+  }
+
+  const bodyText = normalizeText(source.text()).replace(/\n{3,}/g, '\n\n')
+  return bodyText.slice(0, 3500)
+}
+
 export async function POST(req: Request) {
   try {
     const body = (await req.json()) as GenerarBorradorRequest
@@ -46,32 +91,27 @@ export async function POST(req: Request) {
 
     if (news.link) {
       try {
-        // Armamos la URL para pasar a través de ScraperAPI
-        const apiKey = process.env.SCRAPER_API_KEY
-        const targetUrl = encodeURIComponent(news.link)
-        const scraperUrl = `https://api.scraperapi.com/?api_key=${apiKey}&url=${targetUrl}`
-
-        // ScraperAPI se encarga de los headers, proxies y de sortear los bloqueos
-        const linkResponse = await fetch(scraperUrl)
+        const linkResponse = await fetch(news.link, {
+          headers: {
+            'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'es-AR,es;q=0.9,en-US;q=0.7,en;q=0.5',
+          },
+          redirect: 'follow',
+        })
 
         if (linkResponse.ok) {
           const html = await linkResponse.text()
-          const $ = cheerio.load(html)
-
-          // Extraemos párrafos, listas y subtítulos para no perder datos duros
-          const paragraphs = $('p, li, h2, h3')
-            .map((i, el) => $(el).text().trim())
-            .get()
-            .filter((p) => p && p.length > 20)
-          const extractedText = paragraphs.join('\n')
+          const extractedText = extractRobustArticleText(html)
 
           if (extractedText.length > 200) {
-            fullContent = extractedText.substring(0, 3500)
+            fullContent = extractedText
             scraperExitoso = true
           }
         }
       } catch (error) {
-        console.error('Error al scrapear el link con ScraperAPI:', error)
+        console.error('Error al scrapear el link nativamente con cheerio:', error)
       }
     }
 
@@ -101,13 +141,7 @@ export async function POST(req: Request) {
 
         if (response.ok) {
           const html = await response.text()
-          const $ = cheerio.load(html)
-          const paragraphs = $('p, li, h2, h3')
-            .toArray()
-            .map((node) => $(node).text().trim())
-            .filter(Boolean)
-          // Mantener párrafos separados por doble salto de línea para compatibilidad con el frontend
-          textoExtraido = paragraphs.join('\n\n').slice(0, 12000)
+          textoExtraido = extractRobustArticleText(html).slice(0, 12000)
         } else {
           textoExtraido = ''
         }
@@ -121,19 +155,26 @@ export async function POST(req: Request) {
 
     const groq = new Groq()
 
-    // System prompt estricto: periodista experto y reglas de estilo.
-    const systemPrompt = `Eres un periodista experto y redactor principal del diario digital RafaelaHoy. Tu tarea es recibir el texto en bruto de una noticia de otro medio y REESCRIBIRLA por completo para nuestro portal.
+    // Prompt orientado a un tono periodístico natural y fluido, con flexibilidad para subtítulos.
+    const systemPrompt = `Eres el periodista principal de RafaelaHoy y tu trabajo es reescribir una noticia ajena con un estilo ágil, claro, directo y con voz periodística propia de nuestro medio.
 
-REGLAS ESTRICTAS:
-- CERO PLAGIO: Cambia la estructura narrativa. No uses las mismas frases que el texto original. Dale un enfoque dinámico y moderno.
-- DATOS DUROS: NO OMITAS NINGÚN DATO. Si el texto original menciona cifras, precios, nombres, fechas o listas, DEBES incluirlos todos con precisión.
-- TÍTULO: Debe ser ganchero, directo y usar puntuación periodística correcta (incluyendo dos puntos ':' o comillas si es necesario).
-- FORMATO: Devuelve la respuesta en formato JSON con la siguiente estructura exacta:
-  { "titulo": "TÍTULO AQUÍ", "extracto": "Resumen de 2 oraciones (copete)", "desarrollo": "Cuerpo completo de la noticia. Para el 'desarrollo', usa saltos de línea dobles (\\n\\n) para separar los párrafos y listas. Si usas subtítulos, ponelos en MAYÚSCULAS para destacarlos. BAJO NINGÚN CONCEPTO uses etiquetas HTML (no uses <br>, ni <h3>, ni <p>)." }
+Objetivo:
+- Tomar el texto fuente y convertirlo en una nota natural para nuestro portal, manteniendo la información esencial y la densidad factual.
+- Priorizar una lectura fluida, con ritmo de diario, sin sonar mecánico ni robótico.
+- Si el texto original incluye listas de personas (por ejemplo, jugadores convocados), fechas, montos, valores, datos duros o nombres de referencia, es OBLIGATORIO integrarlos completos en el desarrollo sin omitir ningún nombre ni dato clave.
 
-INSTRUCCIONES IMPORTANTES:
-- Devuelve SOLO el JSON válido, sin texto adicional ni bloques de código.
-- Mantén todos los caracteres y signos de puntuación tal como corresponda (no elimines ':' u otros signos importantes en títulos o listas).
+Reglas de estilo:
+1. Mantén el 100% de la información relevante. No cortes listas ni nombres. Si aparece una nómina, la versión final debe reflejarla completa.
+2. Usá subtítulos solo cuando realmente ordenen la lectura o ayuden a guiar al lector. No los fuerces a cada tramo ni conviertas la nota en un esquema artificial.
+3. Reescribí con una voz periodística natural, con buena cadencia, una entrada sólida, y un desarrollo que suene a RafaelaHoy: claro, vivo, sin enunciados rígidos.
+4. Si hay citas textuales, fechas, datos concretos o nombres propios, mantenelos íntegros y evitá deformarlos.
+5. No menciones periodistas, medios o fuentes competidores.
+6. Devuelve JSON con esta estructura exacta:
+  {
+    "titulo": "Título aquí",
+    "extracto": "Resumen de 2 oraciones (copete)",
+    "desarrollo": "Cuerpo completo de la noticia. Usá dobles saltos de línea (\n\n) entre párrafos, listas y subtítulos cuando corresponda. No uses etiquetas HTML ni <br> ni <p>."
+  }
 
 TEXTO FUENTE:
 TEMA OBLIGATORIO: ${news.title}
