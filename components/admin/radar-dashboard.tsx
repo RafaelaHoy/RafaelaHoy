@@ -306,7 +306,8 @@ export function RadarDashboard() {
   const visibleItems = useMemo(() => {
     return items.filter((item) => {
       const matchCategory = activeCategory === 'Todas' || item.category === activeCategory
-      const isVisible = !hiddenIds.includes(item.link || item.url_original)
+      const link = item.link || item.url_original || ''
+      const isVisible = !hiddenIds.includes(link)
       return matchCategory && isVisible
     })
   }, [items, hiddenIds, activeCategory])
@@ -376,7 +377,7 @@ export function RadarDashboard() {
   }
 
   const handleDiscardItem = async (item: RadarFeedItem) => {
-    const link = item.link || item.url_original
+    const link = item.link || item.url_original || ''
     setHiddenIds((prev) => [...prev, link])
 
     try {
