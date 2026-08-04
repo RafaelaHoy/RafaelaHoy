@@ -59,11 +59,11 @@ const extractRobustArticleText = (html: string) => {
 
   const joined = dedupedBlocks.join('\n\n')
   if (joined.length > 120) {
-    return joined.slice(0, 3500)
+    return joined.slice(0, 15000)
   }
 
   const bodyText = normalizeText(source.text()).replace(/\n{3,}/g, '\n\n')
-  return bodyText.slice(0, 3500)
+  return bodyText.slice(0, 15000)
 }
 
 export async function POST(req: Request) {
@@ -155,25 +155,18 @@ export async function POST(req: Request) {
 
     const groq = new Groq()
 
-    // Prompt orientado a un tono periodístico natural y fluido, con flexibilidad para subtítulos.
-    const systemPrompt = `Eres el periodista principal de RafaelaHoy y tu trabajo es reescribir una noticia ajena con un estilo ágil, claro, directo y con voz periodística propia de nuestro medio.
+    const systemPrompt = `Eres el redactor estrella del diario RafaelaHoy. Tu tarea es aplicar un PARAFRASEO EXTREMO a una noticia que te envía una agencia para hacerla 100% original.
 
-Objetivo:
-- Tomar el texto fuente y convertirlo en una nota natural para nuestro portal, manteniendo la información esencial y la densidad factual.
-- Priorizar una lectura fluida, con ritmo de diario, sin sonar mecánico ni robótico.
-- Si el texto original incluye listas de personas (por ejemplo, jugadores convocados), fechas, montos, valores, datos duros o nombres de referencia, es OBLIGATORIO integrarlos completos en el desarrollo sin omitir ningún nombre ni dato clave.
+REGLAS DE PARAFRASEO:
+1. REESCRITURA TOTAL: Tienes prohibido usar más de 5 palabras seguidas que sean idénticas al texto original. Debes cambiar los verbos, el orden de las oraciones y la estructura de los párrafos. 
+2. PROCESA TODO EL TEXTO: El texto fuente incluye cronogramas, intendentes y datos en los últimos párrafos. Debes procesar el texto hasta la última palabra. No omitas el final.
+3. CERO PLAGIO, PERO DATOS INTACTOS: Mantén las declaraciones entre comillas, cifras, lugares y nombres exactos. Todo lo que NO esté entre comillas, debes reescribirlo con tus propias palabras. No uses frases de ejemplo que te haya dado, inventa las tuyas.
 
-Reglas de estilo:
-1. Mantén el 100% de la información relevante. No cortes listas ni nombres. Si aparece una nómina, la versión final debe reflejarla completa.
-2. Usá subtítulos solo cuando realmente ordenen la lectura o ayuden a guiar al lector. No los fuerces a cada tramo ni conviertas la nota en un esquema artificial.
-3. Reescribí con una voz periodística natural, con buena cadencia, una entrada sólida, y un desarrollo que suene a RafaelaHoy: claro, vivo, sin enunciados rígidos.
-4. Si hay citas textuales, fechas, datos concretos o nombres propios, mantenelos íntegros y evitá deformarlos.
-5. No menciones periodistas, medios o fuentes competidores.
-6. Devuelve JSON con esta estructura exacta:
+Devuelve JSON con esta estructura exacta:
   {
-    "titulo": "Título aquí",
-    "extracto": "Resumen de 2 oraciones (copete)",
-    "desarrollo": "Cuerpo completo de la noticia. Usá dobles saltos de línea (\n\n) entre párrafos, listas y subtítulos cuando corresponda. No uses etiquetas HTML ni <br> ni <p>."
+    "titulo": "Título nuevo y directo",
+    "extracto": "Resumen de 2 oraciones",
+    "desarrollo": "Cuerpo completo de la noticia. Usá dobles saltos de línea (\\n\\n) entre párrafos. No uses etiquetas HTML."
   }
 
 TEXTO FUENTE:
@@ -189,7 +182,7 @@ DETALLES EXTRA: ${fullContent}
         { role: 'user', content: userMessage },
       ],
       model: 'llama-3.3-70b-versatile',
-      temperature: 0.3,
+      temperature: 0.7,
       response_format: { type: 'json_object' },
     })
 
