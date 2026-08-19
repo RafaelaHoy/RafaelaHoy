@@ -344,17 +344,17 @@ const RichTextEditor = ({ value, onChange, placeholder }: {
       case 'insertVideo':
         const videoUrl = prompt('Ingrese la URL del video de YouTube:', 'https://')
         if (videoUrl) {
-          // Usamos la función local para extraer el ID limpio, o tomamos el texto si pegó directamente las 11 letras
           const videoId = extractYouTubeId(videoUrl) || (videoUrl.trim().length === 11 ? videoUrl.trim() : null);
           
           if (!videoId) {
             return alert('No se pudo procesar el enlace. Pegue una URL de YouTube válida o el código del video.');
           }
 
-          // Forzamos el formato oficial de embed, libre de rastreadores y errores
-          const safeEmbedUrl = `https://www.youtube.com/embed/${videoId}`;
+          // Usamos el dominio oficial de privacidad para evitar el Error 153 por bloqueo de cookies
+          const safeEmbedUrl = `https://www.youtube-nocookie.com/embed/${videoId}`;
           
-          newValue = `<div class="w-full my-6">\n  <div class="relative w-full aspect-video rounded-md overflow-hidden shadow-sm">\n    <iframe src="${safeEmbedUrl}" class="absolute top-0 left-0 w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen></iframe>\n  </div>\n</div>\n`
+          // Añadimos referrerpolicy="strict-origin-when-cross-origin" para pasar la política CORS de Next.js
+          newValue = `<div class="w-full my-6">\n  <div class="relative w-full aspect-video rounded-md overflow-hidden shadow-sm">\n    <iframe src="${safeEmbedUrl}" class="absolute top-0 left-0 w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowFullScreen></iframe>\n  </div>\n</div>\n`
         }
         break
       default:
