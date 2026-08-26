@@ -117,9 +117,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const supabase = createClient()
     
+    // Eliminamos el 'id' del body para obligar a Supabase a generar uno nuevo
+    const { id, ...insertData } = body
+    
     const { data, error } = await supabase
       .from('obituaries')
-      .insert(body)
+      .insert(insertData)
       .select()
       .single()
     
