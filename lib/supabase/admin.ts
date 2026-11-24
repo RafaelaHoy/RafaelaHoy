@@ -5,9 +5,10 @@ import { createClient } from '@supabase/supabase-js'
  * Bypassea RLS (Row Level Security) para operaciones de backend
  */
 export function createAdminClient() {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!, // Service Role Key para bypass RLS
+    serviceKey, // Service Role Key para bypass RLS
     {
       auth: {
         autoRefreshToken: false,

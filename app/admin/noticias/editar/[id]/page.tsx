@@ -18,6 +18,7 @@ import {
 import { ArrowLeft, Save, X, Bold, Italic, Underline, List, ListOrdered, Quote, LinkIcon, Image, Video, Type, Heading3, Heading4 } from "lucide-react"
 import Link from "next/link"
 import { MediaManager } from "@/components/admin/media-manager-enhanced"
+import { toast } from "sonner"
 
 interface Category {
   id: string
@@ -567,6 +568,10 @@ export default function EditNewsPage() {
   const [originalSortOrder, setOriginalSortOrder] = useState<number | null>(null) // Orden original
   const [occupiedOrders, setOccupiedOrders] = useState<{ destacadas: number[], ultimas: number[] }>({ destacadas: [], ultimas: [] })
   const [isPublished, setIsPublished] = useState(false)
+  const [shareToFacebook, setShareToFacebook] = useState(false)
+  const [igTheme, setIgTheme] = useState<'azul' | 'rojo' | 'blanco-azul' | 'blanco-rojo'>('azul')
+  const [downloadingIg, setDownloadingIg] = useState(false)
+  const [copyingCaption, setCopyingCaption] = useState(false)
   const [originalSlug, setOriginalSlug] = useState("")
   const [featuredImage, setFeaturedImage] = useState("")
   const [imageCaption, setImageCaption] = useState("")
@@ -892,14 +897,45 @@ export default function EditNewsPage() {
       console.log(`Noticia actualizada exitosamente con orden ${finalSortOrder}`)
       console.log('=== EDICIÓN CON ORDEN MANUAL COMPLETADA ===')
       
+      const slugGuardado = slug.trim() || generateSlug(title.trim())
+
       // Forzar el renderizado de la página pública para calentar la caché (Warm-up para Facebook)
       try {
-        const slugGuardado = slug.trim() || generateSlug(title.trim())
         await fetch(`https://rafaelahoy.com/noticia/${slugGuardado}`, { cache: 'no-store', mode: 'no-cors' }).catch(() => {});
       } catch (error) {
         // Silenciar errores del warm-up
       }
-      
+
+      // Compartir automáticamente en Facebook si la noticia está publicada y el switch activado
+      if (isPublished && shareToFacebook) {
+        try {
+          const selectedCategory = categories.find((c) => c.id === categoryId)
+          const fbResponse = await fetch('/api/social/facebook', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              titulo: title.trim(),
+              extracto: excerpt.trim(),
+              slug: slugGuardado,
+              categoria: selectedCategory?.name || '',
+            }),
+          })
+          const fbData = await fbResponse.json().catch(() => ({}))
+
+          if (!fbResponse.ok || !fbData?.success) {
+            toast.warning(
+              fbData?.error
+                ? `La noticia se guardó en la web, pero falló el envío a Facebook: ${fbData.error}`
+                : 'La noticia se guardó en la web, pero falló el envío a Facebook.'
+            )
+          } else {
+            toast.success('Noticia actualizada y compartida en Facebook.')
+          }
+        } catch {
+          toast.warning('La noticia se guardó en la web, pero falló el envío a Facebook.')
+        }
+      }
+
       // Forzar invalidación de caché del router antes de redirigir
       router.refresh()
       
@@ -911,6 +947,61 @@ export default function EditNewsPage() {
       alert('Error al guardar el artículo: ' + (error instanceof Error ? error.message : 'Error desconocido'))
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleDownloadIgPlate = async () => {
+    setDownloadingIg(true)
+    try {
+      const response = await fetch(`/api/og/instagram?id=${articleId}&theme=${igTheme}`)
+      if (!response.ok) {
+        throw new Error('No se pudo generar la placa de Instagram')
+      }
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `placa-ig-${slug || articleId}-${igTheme}.png`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      toast.success('Placa de Instagram descargada')
+    } catch (error) {
+      console.error('Error descargando placa IG:', error)
+      toast.error('Error al descargar la placa de Instagram')
+    } finally {
+      setDownloadingIg(false)
+    }
+  }
+
+  const handleCopyIgCaption = async () => {
+    setCopyingCaption(true)
+    try {
+      const selectedCategory = categories.find((c) => c.id === categoryId)
+      const response = await fetch('/api/social/instagram-caption', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: title.trim(),
+          excerpt: excerpt.trim(),
+          content: content.trim(),
+          category: selectedCategory?.name || 'Locales',
+        }),
+      })
+
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok || !data?.caption) {
+        throw new Error(data?.error || 'No se pudo generar el caption')
+      }
+
+      await navigator.clipboard.writeText(data.caption)
+      toast.success('Caption de Instagram generado y copiado al portapapeles')
+    } catch (error) {
+      console.error('Error generando caption IG:', error)
+      toast.error('No se pudo generar o copiar el caption')
+    } finally {
+      setCopyingCaption(false)
     }
   }
 
@@ -1179,7 +1270,7 @@ export default function EditNewsPage() {
               )}
 
               {/* Autor */}
-              <div className="space-y-2">
+              <div className="space-y-2 mb-4">
                 <Label htmlFor="author">Autor</Label>
                 <Input
                   id="author"
@@ -1187,6 +1278,39 @@ export default function EditNewsPage() {
                   disabled
                   className="bg-muted"
                 />
+              </div>
+
+              {/* Publicar / Borrador y Facebook */}
+              <div className="space-y-4 pt-4 border-t">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="is-published">Noticia publicada</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Desactivar para ocultar como borrador
+                    </p>
+                  </div>
+                  <Switch
+                    id="is-published"
+                    checked={isPublished}
+                    onCheckedChange={setIsPublished}
+                    disabled={saving}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="share-facebook">Compartir automáticamente en Facebook</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Publicar enlace en la fanpage de Rafaela Hoy
+                    </p>
+                  </div>
+                  <Switch
+                    id="share-facebook"
+                    checked={shareToFacebook}
+                    onCheckedChange={setShareToFacebook}
+                    disabled={saving || !isPublished}
+                  />
+                </div>
               </div>
             </div>
 
@@ -1222,6 +1346,60 @@ export default function EditNewsPage() {
                   className="mt-2"
                   disabled={saving}
                 />
+              </div>
+            </div>
+
+            {/* Placa para Instagram */}
+            <div className="bg-card rounded-lg border p-6 space-y-4">
+              <div>
+                <h3 className="font-semibold">Placa para Instagram</h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Generá la placa 1080×1080px y copiá el texto para publicar en @rafaela.hoy
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-medium">Color de placa</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'azul' as const, label: 'Azul', cls: 'bg-[#1B245A] text-white border-[#1B245A]' },
+                    { id: 'rojo' as const, label: 'Rojo', cls: 'bg-[#D9232E] text-white border-[#D9232E]' },
+                    { id: 'blanco-azul' as const, label: 'Blanco/Azul', cls: 'bg-[#F4F5F7] text-[#1B245A] border-[#1B245A]' },
+                    { id: 'blanco-rojo' as const, label: 'Blanco/Rojo', cls: 'bg-[#F4F5F7] text-[#D9232E] border-[#D9232E]' },
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setIgTheme(item.id)}
+                      className={`px-3 py-2 rounded-md text-xs font-semibold border-2 transition ${item.cls} ${
+                        igTheme === item.id ? 'ring-2 ring-offset-2 ring-primary' : 'opacity-75 hover:opacity-100'
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="default"
+                  onClick={handleDownloadIgPlate}
+                  disabled={downloadingIg || saving}
+                  className="w-full"
+                >
+                  {downloadingIg ? 'Generando placa...' : '📸 Descargar placa IG'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleCopyIgCaption}
+                  disabled={copyingCaption || saving}
+                  className="w-full"
+                >
+                  {copyingCaption ? 'Generando...' : '📋 Copiar caption IG'}
+                </Button>
               </div>
             </div>
           </div>

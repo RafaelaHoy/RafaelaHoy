@@ -255,7 +255,19 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
   const [noticiasRadar, setNoticiasRadar] = useState<RadarArticle[]>([])
   const [loadingRadar, setLoadingRadar] = useState(false)
   const [generatingDraftId, setGeneratingDraftId] = useState<string | null>(null)
+  const [mainTab, setMainTab] = useState<string>('noticias')
   const router = useRouter()
+
+  // Soporte para abrir pestaña directamente desde URL (?tab=radar)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const tabParam = params.get('tab')
+      if (tabParam && ['noticias', 'necrologicas', 'radar'].includes(tabParam)) {
+        setMainTab(tabParam)
+      }
+    }
+  }, [])
 
   // Sincronizar artículos cuando las props cambian (después de router.refresh)
   useEffect(() => {
@@ -409,6 +421,7 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
         return
       }
 
+      localStorage.setItem('radar_draft', JSON.stringify(data))
       localStorage.setItem('borradorRadar', JSON.stringify(data))
       toast.success('Borrador generado, redirigiendo al editor...')
       router.push('/admin/noticias/crear')
@@ -907,7 +920,7 @@ export function AdminDashboard({ articles: initialArticles, categories }: AdminD
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Tabs for different sections */}
-        <Tabs defaultValue="noticias" className="space-y-6">
+        <Tabs value={mainTab} onValueChange={setMainTab} className="space-y-6">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="noticias" className="flex items-center gap-2">
               <FileText className="h-3 w-3 sm:h-4 sm:w-4" />

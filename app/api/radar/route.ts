@@ -1,8 +1,10 @@
 import { NextResponse, NextRequest } from 'next/server'
 import Parser from 'rss-parser'
-import * as cheerio from 'cheerio'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { RSS_FEEDS } from '@/rssFeeds'
+import { scrapeHtmlFeed } from '@/lib/services/html-scraper'
+
+export const dynamic = 'force-dynamic'
 
 const parserHeaders = {
   'User-Agent':
@@ -32,13 +34,6 @@ type ProxyItem = {
   sourceUrl: string
   category: string
   scrapedAt: string
-}
-
-type CachedFeed = {
-  id: string
-  source_id: string
-  data: ProxyItem[]
-  fetched_at: string
 }
 
 const fetchWithTimeout = async (requestUrl: string) => {
@@ -89,7 +84,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const supabase = await createClient()
+    const supabase = createAdminClient()
 
     const oneHourAgo = new Date(Date.now() - 1000 * 60 * 60).toISOString()
     const { data: cached, error: cacheError } = await supabase
@@ -149,21 +144,6 @@ export async function GET(req: NextRequest) {
       const feed = await parser.parseString(cleanXml)
       const scrapedAt = new Date().toISOString()
 
-      console.log(`[RADAR RAW] ${url} -> Items extraídos: ${feed.items?.length || 0}`)
-      if (feed.items?.length > 0) {
-        console.log(
-          `[RADAR RAW] ${url} -> Primer noticia: ${feed.items[0].title} | Fecha original: ${feed.items[0].pubDate}`,
-        )
-      }
-
-      const firstItemDate = feed.items?.[0]?.pubDate || feed.items?.[0]?.isoDate || null
-      console.log(
-        `[radar] ${source.name} fetch ${refreshCache ? 'refresh' : 'cached'} - first raw item date:`,
-        firstItemDate,
-        'normalized:',
-        normalizeFeedDate(firstItemDate),
-      )
-
       feedItems = (feed.items || [])
         .map((item) => ({
           title: item.title || '',
@@ -176,100 +156,24 @@ export async function GET(req: NextRequest) {
           category: source.category,
           scrapedAt,
         }))
-        .sort((a, b) => {
-          const dateA = new Date(a.pubDate || 0).getTime()
-          const dateB = new Date(b.pubDate || 0).getTime()
-          return dateB - dateA
-        })
     } catch (parserError) {
-      console.warn(`RSS parser failed for ${source.name}, using fallback scraping:`, parserError)
+      console.warn(`RSS parser failed for ${source.name}, using resilient fallback scraping:`, parserError)
 
       try {
-        const homeResponse = await fetchWithTimeout(source.url)
-
-        if (!homeResponse.ok) {
-          throw new Error(`Fallback scraping failed with ${homeResponse.status} ${homeResponse.statusText}`)
-        }
-
-        const html = await homeResponse.text()
-        const $ = cheerio.load(html)
-        const uniqueLinks = new Set<string>()
-        const fallbackItems: { title: string; link: string; pubDate: string; contentSnippet: string }[] = []
-        const blacklist = [
-          'clima',
-          'contacto',
-          'ingresar',
-          'leer más',
-          'ver más',
-          'whatsapp',
-          'getty images',
-          'afp',
-          'reuters',
-          'bloomberg',
-          'crédito',
-          'foto:',
-          'fotografía:',
-          'ver todas',
-          'últimas noticias',
-          'youtube',
-          'foto /',
-          '/ ap',
-          'imágenes',
-        ]
-
-        $('main a, article a, h2 a, h3 a, .entry-title a, .noticia a')
-          .not('nav a, header a, footer a, .menu a, .navbar a')
-          .each((_, element) => {
-            const href = $(element).attr('href')?.trim()
-            $(element).find('svg, style, script').remove()
-            const text = $(element).text().replace(/\s+/g, ' ').trim()
-
-            if (!href || href === '#' || href === '/' || href.includes('javascript:')) {
-              return
-            }
-
-            const title = text.replace(/\s+/g, ' ').trim()
-
-            if (title.length < 30) {
-              return
-            }
-
-            if (title.includes('{') || title.includes('}')) {
-              return
-            }
-
-            if (blacklist.some((word) => title.toLowerCase().includes(word))) {
-              return
-            }
-
-            const absoluteLink = href.startsWith('http') ? href : new URL(href, source.url).toString()
-
-            if (!absoluteLink || absoluteLink === source.url || absoluteLink.includes('#') || uniqueLinks.has(absoluteLink)) {
-              return
-            }
-
-            uniqueLinks.add(absoluteLink)
-
-            fallbackItems.push({
-              title,
-              link: absoluteLink,
-              pubDate: new Date().toISOString(),
-              contentSnippet: 'Noticia extraída de la portada.',
-            })
-          })
-
+        const scrapedItems = await scrapeHtmlFeed(source.feedUrl, source.name)
         const scrapedAt = new Date().toISOString()
-        feedItems = fallbackItems.map((item) => ({
-            title: item.title,
-            link: item.link,
-            pubDate: item.pubDate,
-            contentSnippet: item.contentSnippet,
-            sourceId: source.id,
-            sourceName: source.name,
-            sourceUrl: source.url,
-            category: source.category,
-            scrapedAt,
-          }))
+
+        feedItems = (scrapedItems || []).map((item) => ({
+          title: item.title,
+          link: item.link,
+          pubDate: item.pubDate,
+          contentSnippet: 'Noticia extraída de la portada.',
+          sourceId: source.id,
+          sourceName: source.name,
+          sourceUrl: source.url,
+          category: source.category,
+          scrapedAt,
+        }))
       } catch (fallbackError) {
         console.error('Error en fallback de scraping de portada:', fallbackError)
         throw fallbackError
@@ -293,19 +197,23 @@ export async function GET(req: NextRequest) {
       console.error('Error purgando radar_noticias antiguas:', purgeError)
     }
 
-    const radarRows = sortedItems.map((item) => ({
-      titulo: item.title,
-      url_original: item.link,
-      medio: item.sourceName,
-      categoria: item.category,
-      copete: item.contentSnippet,
-      fecha_publicacion: item.pubDate,
-    }))
+    const radarRows = sortedItems
+      .filter((item) => Boolean(item.link && item.title))
+      .map((item) => ({
+        titulo: item.title,
+        url_original: item.link,
+        medio: item.sourceName,
+        categoria: item.category,
+        copete: item.contentSnippet,
+        fecha_publicacion: item.pubDate,
+      }))
 
     if (radarRows.length > 0) {
+      // Con ignoreDuplicates: true y select(), se obtienen únicamente las filas recién creadas
       const { data: upsertData, error: upsertError } = await supabase
         .from('radar_noticias')
         .upsert(radarRows, { onConflict: 'url_original', ignoreDuplicates: true })
+        .select('id, titulo, url_original, medio, categoria, copete, fecha_publicacion')
 
       if (upsertError) {
         console.error('Error guardando radar_noticias:', upsertError)
@@ -367,7 +275,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'ID de noticia requerido' }, { status: 400 })
     }
 
-    const supabase = await createClient()
+    const supabase = createAdminClient()
     const { data, error } = await supabase
       .from('radar_noticias')
       .update({ descartado: true })

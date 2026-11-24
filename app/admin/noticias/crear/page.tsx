@@ -19,6 +19,7 @@ import {
 import { ArrowLeft, Save, X, Bold, Italic, Underline, List, ListOrdered, Quote, LinkIcon, Image, Video, Upload, Type, Heading3, Heading4 } from "lucide-react"
 import Link from "next/link"
 import { MediaManager } from "@/components/admin/media-manager-enhanced"
+import { toast } from "sonner"
 
 interface Category {
   id: string
@@ -468,6 +469,7 @@ export default function CreateNewsPage() {
   const [sortOrder, setSortOrder] = useState<number | null>(null) // Orden manual
   const [occupiedOrders, setOccupiedOrders] = useState<{ destacadas: number[], ultimas: number[] }>({ destacadas: [], ultimas: [] })
   const [isPublished, setIsPublished] = useState(true)
+  const [shareToFacebook, setShareToFacebook] = useState(true)
   const [mediaItems, setMediaItems] = useState<MediaItem[]>([])
   const [featuredImage, setFeaturedImage] = useState<string>("")
   const [imageCaption, setImageCaption] = useState<string>("")
@@ -479,15 +481,16 @@ export default function CreateNewsPage() {
   // Recuperar borrador generado por el radar (localStorage)
   useEffect(() => {
     try {
-      const saved = typeof window !== 'undefined' ? localStorage.getItem('radar_draft') : null
+      const saved = typeof window !== 'undefined' ? (localStorage.getItem('radar_draft') || localStorage.getItem('borradorRadar')) : null
       if (saved) {
         const draftData = JSON.parse(saved)
         if (draftData.titulo) setTitle(draftData.titulo)
-        if (draftData.contenido) setContent(draftData.contenido)
+        if (draftData.contenido || draftData.desarrollo) setContent(draftData.contenido || draftData.desarrollo)
         if (draftData.extracto) setExcerpt(draftData.extracto)
         if (draftData.category) setCategoryId(draftData.category)
         // Limpiar para evitar reuso accidental
         localStorage.removeItem('radar_draft')
+        localStorage.removeItem('borradorRadar')
       }
     } catch (error) {
       console.error('Error al recuperar el borrador:', error)
@@ -710,14 +713,52 @@ export default function CreateNewsPage() {
       console.log(`Noticia creada exitosamente con orden ${finalSortOrder}`)
       console.log('=== CREACIÓN CON ORDEN MANUAL COMPLETADA ===')
       
+      const slugGuardado = slug.trim() || generateSlug(title.trim())
+
       // Forzar el renderizado de la página pública para calentar la caché (Warm-up para Facebook)
       try {
-        const slugGuardado = slug.trim() || generateSlug(title.trim())
         await fetch(`https://rafaelahoy.com/noticia/${slugGuardado}`, { cache: 'no-store', mode: 'no-cors' }).catch(() => {});
       } catch (error) {
         // Silenciar errores del warm-up
       }
-      
+
+      // Compartir automáticamente en Facebook si la noticia está publicada y el switch activado
+      let facebookWarning = false
+      if (isPublished && shareToFacebook) {
+        try {
+          const selectedCategory = categories.find((c) => c.id === categoryId)
+          const fbResponse = await fetch('/api/social/facebook', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              titulo: title.trim(),
+              extracto: excerpt.trim(),
+              slug: slugGuardado,
+              categoria: selectedCategory?.name || '',
+            }),
+          })
+          const fbData = await fbResponse.json().catch(() => ({}))
+
+          if (!fbResponse.ok || !fbData?.success) {
+            facebookWarning = true
+            toast.warning(
+              fbData?.error
+                ? `La noticia se publicó en la web, pero falló el envío a Facebook: ${fbData.error}`
+                : 'La noticia se publicó en la web, pero falló el envío a Facebook.'
+            )
+          } else {
+            toast.success('Noticia publicada en la web y compartida en Facebook.')
+          }
+        } catch {
+          facebookWarning = true
+          toast.warning('La noticia se publicó en la web, pero falló el envío a Facebook.')
+        }
+      }
+
+      if (facebookWarning) {
+        await new Promise((resolve) => setTimeout(resolve, 2500))
+      }
+
       // Redirigir al panel de administración con datos frescos
       // Usamos window.location.href para forzar recarga completa y evitar race conditions
       window.location.href = '/admin/noticias'
@@ -961,7 +1002,7 @@ export default function CreateNewsPage() {
               )}
 
               {/* Autor */}
-              <div className="space-y-2">
+              <div className="space-y-2 mb-4">
                 <Label htmlFor="author">Autor</Label>
                 <Input
                   id="author"
@@ -969,6 +1010,39 @@ export default function CreateNewsPage() {
                   disabled
                   className="bg-muted"
                 />
+              </div>
+
+              {/* Publicar / Borrador y Facebook */}
+              <div className="space-y-4 pt-4 border-t">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="is-published">Publicar noticia</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Desactivar para guardar como borrador
+                    </p>
+                  </div>
+                  <Switch
+                    id="is-published"
+                    checked={isPublished}
+                    onCheckedChange={setIsPublished}
+                    disabled={saving}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="share-facebook">Compartir automáticamente en Facebook</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Publicar enlace en la fanpage de Rafaela Hoy
+                    </p>
+                  </div>
+                  <Switch
+                    id="share-facebook"
+                    checked={shareToFacebook}
+                    onCheckedChange={setShareToFacebook}
+                    disabled={saving || !isPublished}
+                  />
+                </div>
               </div>
             </div>
 

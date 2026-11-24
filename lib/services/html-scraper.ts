@@ -19,11 +19,23 @@ const fetchHtml = async (url: string) => {
   const timeoutId = setTimeout(() => controller.abort(), 30000)
 
   try {
-    const response = await fetch(url, {
+    let response = await fetch(url, {
       headers: browserHeaders,
       redirect: 'follow',
       signal: controller.signal,
     })
+
+    // Cloudflare o protección bot bloqueando headers estándar de navegador
+    if (response.status === 403 || response.status === 429) {
+      response = await fetch(url, {
+        headers: {
+          'User-Agent': 'curl/8.4.0',
+          Accept: '*/*',
+        },
+        redirect: 'follow',
+        signal: controller.signal,
+      })
+    }
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status} ${response.statusText}`)
@@ -44,6 +56,26 @@ const normalizeLink = (href: string | undefined, baseUrl: string) => {
   }
 }
 
+const blacklistKeywords = [
+  'clima',
+  'contacto',
+  'ingresar',
+  'login',
+  'leer más',
+  'ver más',
+  'whatsapp',
+  'facebook',
+  'twitter',
+  'instagram',
+  'youtube',
+  'edición impresa',
+  'cotizaciones',
+  'suscribite',
+  'términos',
+  'privacidad',
+  'buscar',
+]
+
 const buildItems = ($: cheerio.CheerioAPI, baseUrl: string, elements: cheerio.Cheerio<any>) => {
   const uniqueLinks = new Set<string>()
   const items: ScrapedFeedItem[] = []
@@ -51,9 +83,22 @@ const buildItems = ($: cheerio.CheerioAPI, baseUrl: string, elements: cheerio.Ch
   elements.each((_, el) => {
     const anchor = $(el).is('a') ? $(el) : $(el).find('a').first()
     const href = normalizeLink(anchor.attr('href'), baseUrl)
+    
+    // Remover elementos visuales o de tracking antes de extraer texto
+    anchor.find('svg, style, script, img').remove()
     const text = anchor.text().replace(/\s+/g, ' ').trim() || $(el).text().replace(/\s+/g, ' ').trim()
 
-    if (!href || !text || text.length < 20) {
+    if (!href || !text || text.length < 25) {
+      return
+    }
+
+    // Filtrar enlaces a la propia home, anclas o vacíos
+    if (href === baseUrl || href === `${baseUrl}/` || href.includes('#') || href.startsWith('javascript:')) {
+      return
+    }
+
+    const lowerText = text.toLowerCase()
+    if (blacklistKeywords.some((word) => lowerText.includes(word))) {
       return
     }
 
@@ -76,7 +121,7 @@ const buildItems = ($: cheerio.CheerioAPI, baseUrl: string, elements: cheerio.Ch
       }
 
       // Buscar en el artículo contenedor
-      const article = $(el).closest('article')
+      const article = $(el).closest('article, .noticia, .item')
       if (article.length) {
         const t = article.find('time').first()
         if (t && t.attr('datetime')) return t.attr('datetime')
@@ -98,7 +143,7 @@ const buildItems = ($: cheerio.CheerioAPI, baseUrl: string, elements: cheerio.Ch
           pubDate = parsed.toISOString()
         }
       } catch {
-        // ignore and fallback
+        // fallback to now
       }
     }
 
@@ -118,7 +163,10 @@ export async function scrapeHtmlFeed(feedUrl: string, medio: string) {
   try {
     const homeUrls: Record<string, string> = {
       'Rafaela Noticias': 'https://www.rafaelanoticias.com/',
-      'Diario La Opinión': 'https://www.diariolaopinion.com.ar/',
+      'Diario La Opinión': 'https://diariolaopinion.com.ar/',
+      'Rafaela Informa': 'https://rafaelainforma.com/',
+      'Radio Rafaela': 'https://radiorafaela.com.ar/',
+      'ADN 97.9': 'https://adn979.com/',
     }
 
     const urlObj = new URL(feedUrl)
@@ -127,12 +175,20 @@ export async function scrapeHtmlFeed(feedUrl: string, medio: string) {
     const html = await fetchHtml(targetUrl)
     const $ = cheerio.load(html)
 
-    let candidates: cheerio.Cheerio<any> = $('article a, h2 a, h3 a, .entry-title a, .post-title a, .noticia a, .td-module-thumb a')
+    let candidates: cheerio.Cheerio<any>
 
     if (medio === 'Rafaela Noticias') {
-      candidates = $('article a, h2 a, h3 a, .entry-title a, .noticia a')
+      candidates = $('article a, .noticia a, .titulo a, .titulo-principal a, h2 a, h3 a, a:has(h2), a:has(h3)')
     } else if (medio === 'Diario La Opinión') {
-      candidates = $('article a, .entry-title a, .post-title a, h2 a, h3 a, .td-module-thumb a')
+      candidates = $('article a, .entry-title a, .post-title a, .titulo a, .titulo-principal a, h2 a, h3 a, .td-module-thumb a, a:has(h2), a:has(h3)')
+    } else if (medio === 'Rafaela Informa') {
+      candidates = $('article a, .noticia a, .titulo-bloque a, h2 a, h3 a, a:has(h3), a[href*="/contenido/"]')
+    } else if (medio === 'ADN 97.9') {
+      candidates = $('article a, .post__titulo a, h2 a, h3 a, a:has(h2), a[href*="/contenido/"]')
+    } else if (medio === 'Radio Rafaela') {
+      candidates = $('article a, h2 a, h3 a, a:has(h2), a:has(h3)')
+    } else {
+      candidates = $('article a, h2 a, h3 a, .entry-title a, .post-title a, .noticia a, .td-module-thumb a')
     }
 
     const items = buildItems($, targetUrl, candidates)
@@ -141,6 +197,7 @@ export async function scrapeHtmlFeed(feedUrl: string, medio: string) {
       return items
     }
 
+    // Fallback general si los selectores específicos no capturaron nada
     const fallback = buildItems($, targetUrl, $('a').filter((_, el) => {
       const text = $(el).text().replace(/\s+/g, ' ').trim()
       return text.length >= 30

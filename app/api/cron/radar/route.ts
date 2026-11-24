@@ -1,35 +1,82 @@
 import { NextResponse } from 'next/server'
 import Parser from 'rss-parser'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { RSS_FEEDS } from '@/rssFeeds'
 import { scrapeHtmlFeed } from '@/lib/services/html-scraper'
+import { notifyTelegramNewNews, type NoticiaNotificacion } from '@/lib/notifications/telegram'
+
+export const dynamic = 'force-dynamic'
+export const maxDuration = 60
 
 type RadarNoticiaInsert = {
   titulo: string
   url_original: string
   medio: string
   categoria: string
+  copete: string | null
   fecha_publicacion: string | null
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  // Validación de seguridad opcional si CRON_SECRET está configurado (acepta Bearer header o ?secret=...)
+  if (process.env.CRON_SECRET) {
+    const authHeader = req.headers.get('authorization')
+    const { searchParams } = new URL(req.url)
+    const secretQuery = searchParams.get('secret')
+
+    const isAuthorized =
+      authHeader === `Bearer ${process.env.CRON_SECRET}` ||
+      secretQuery === process.env.CRON_SECRET
+
+    if (!isAuthorized) {
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
+  }
+
   const parser = new Parser({
     requestOptions: {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         Accept: 'application/rss+xml, application/xml, text/xml, */*',
       },
     },
-    customFields: {},
+    customFields: {
+      item: ['contentSnippet'],
+    },
+    timeout: 15000,
   })
-  const supabase = await createClient()
+
+  // Cliente administrativo que bypasses RLS
+  const supabase = createAdminClient()
+
+  // Purgar noticias del radar de más de 24 horas para mantener limpia la BD
+  const hace24Horas = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  const { error: purgeError } = await supabase
+    .from('radar_noticias')
+    .delete()
+    .lt('created_at', hace24Horas)
+
+  if (purgeError) {
+    console.error('[CRON RADAR] Error purgando noticias antiguas:', purgeError)
+  }
+
   let nuevasNoticiasCount = 0
   let procesadasCount = 0
   const erroresLog: Array<{ medio: string; error: string }> = []
   const auditoriaMedios: Record<string, number> = {}
+  const nuevasNoticiasParaNotificar: NoticiaNotificacion[] = []
 
-  for (const fuente of RSS_FEEDS) {
-    let items: Array<{ title?: string; link?: string; pubDate?: string | null; isoDate?: string | null }> = []
+  const fuentesLocales = RSS_FEEDS.filter((fuente) => fuente.category === 'Locales')
+
+  for (const fuente of fuentesLocales) {
+    let items: Array<{
+      title?: string
+      link?: string
+      pubDate?: string | null
+      isoDate?: string | null
+      contentSnippet?: string | null
+    }> = []
     let errorMensaje: string | null = null
 
     try {
@@ -46,8 +93,10 @@ export async function GET() {
           link: item.link || item.guid,
           pubDate: item.isoDate || item.pubDate || null,
           isoDate: item.isoDate || item.pubDate || null,
+          contentSnippet: item.contentSnippet || (item.content ? item.content.slice(0, 280) : null),
         }))
       } catch (rssError) {
+        // Fallback a scraper HTML con Cheerio
         try {
           const scrapedItems = await scrapeHtmlFeed(fuente.feedUrl, fuente.name)
           if (!scrapedItems || scrapedItems.length === 0) {
@@ -58,6 +107,7 @@ export async function GET() {
               link: scraped.link,
               pubDate: scraped.pubDate,
               isoDate: scraped.pubDate,
+              contentSnippet: 'Noticia extraída de la portada.',
             }))
           }
         } catch (htmlError) {
@@ -71,33 +121,40 @@ export async function GET() {
 
       auditoriaMedios[fuente.name] = items.length
 
-      for (const item of items) {
-        const titulo = item.title?.trim() || 'Sin título'
-        const url_original = item.link?.trim() || ''
-        if (!url_original) continue
+      const registrosParaInsertar = items
+        .map((item) => {
+          const titulo = item.title?.trim() || ''
+          const url_original = item.link?.trim() || ''
+          if (!url_original || !titulo) return null
 
-        procesadasCount += 1
-        const fecha_publicacion = item.isoDate || item.pubDate || null
+          return {
+            titulo,
+            url_original,
+            medio: fuente.name,
+            categoria: fuente.category as string,
+            copete: item.contentSnippet || null,
+            fecha_publicacion: item.isoDate || item.pubDate || null,
+          }
+        })
+        .filter((r): r is NonNullable<typeof r> => r !== null)
 
-        const nuevoRegistro: RadarNoticiaInsert = {
-          titulo,
-          url_original,
-          medio: fuente.name,
-          categoria: fuente.category,
-          fecha_publicacion,
-        }
+      if (registrosParaInsertar.length > 0) {
+        procesadasCount += registrosParaInsertar.length
 
-        const { data, error } = (await supabase
+        // Con ignoreDuplicates: true y .select(), PostgREST retorna ÚNICAMENTE las filas insertadas (no las repetidas)
+        const { data, error } = await supabase
           .from('radar_noticias')
-          .upsert([nuevoRegistro], {
+          .upsert(registrosParaInsertar, {
             onConflict: 'url_original',
             ignoreDuplicates: true,
-          })) as { data: RadarNoticiaInsert[] | null; error: { message: string } | null }
+          })
+          .select('id, titulo, url_original, medio, categoria, copete, fecha_publicacion')
 
         if (error) {
           erroresLog.push({ medio: fuente.name, error: error.message })
         } else if (Array.isArray(data) && data.length > 0) {
-          nuevasNoticiasCount += 1
+          nuevasNoticiasCount += data.length
+          nuevasNoticiasParaNotificar.push(...(data as NoticiaNotificacion[]))
         }
       }
     } catch (error) {
@@ -105,6 +162,15 @@ export async function GET() {
         medio: fuente.name,
         error: error instanceof Error ? error.message : String(error),
       })
+    }
+  }
+
+  // Notificar por Telegram las noticias estrictamente nuevas detectadas
+  if (nuevasNoticiasParaNotificar.length > 0) {
+    try {
+      await notifyTelegramNewNews(nuevasNoticiasParaNotificar)
+    } catch (tgError) {
+      console.error('[CRON RADAR] Error notificando a Telegram:', tgError)
     }
   }
 

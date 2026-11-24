@@ -12,7 +12,7 @@ export const RSS_FEEDS: RssSource[] = [
   { id: 'minuto-rafaela', name: 'Minuto Rafaela', url: 'https://minutorafaela.com.ar/', feedUrl: 'https://minutorafaela.com.ar/feed/', category: 'Locales' },
   { id: 'diario-castellanos', name: 'Diario Castellanos', url: 'https://diariocastellanos.com.ar/', feedUrl: 'https://diariocastellanos.com.ar/feed', category: 'Locales' },
   { id: 'diario-la-opinion', name: 'Diario La Opinión', url: 'https://diariolaopinion.com.ar/', feedUrl: 'https://diariolaopinion.com.ar/feed/', category: 'Locales' },
-  { id: 'radio-rafaela', name: 'Radio Rafaela', url: 'https://radiorafaela.com.ar/', feedUrl: 'https://radiorafaelaapiv3.eleco.com.ar/feed-category/policiales', category: 'Locales' },
+  { id: 'radio-rafaela', name: 'Radio Rafaela', url: 'https://radiorafaela.com.ar/', feedUrl: 'https://radiorafaelaapiv3.eleco.com.ar/feed-category/noticias', category: 'Locales' },
   { id: 'adn-979', name: 'ADN 97.9', url: 'https://adn979.com/', feedUrl: 'https://adn979.com/feed/', category: 'Locales' },
   { id: 'movil-quique', name: 'Móvil Quique', url: 'https://movilquique.com/', feedUrl: 'https://movilquique.com/feed/', category: 'Regionales' },
   { id: 'sunchales-hoy', name: 'Sunchales Hoy', url: 'https://www.sunchaleshoy.com.ar', feedUrl: 'https://www.sunchaleshoy.com.ar/feed/', category: 'Regionales' },
