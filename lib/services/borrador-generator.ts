@@ -1,5 +1,5 @@
-import Groq from 'groq-sdk'
 import * as cheerio from 'cheerio'
+import { generateWithAiFallback } from '@/lib/services/ai-client'
 
 export type GenerarBorradorInput = {
   titulo: string
@@ -59,73 +59,6 @@ const extractRobustArticleText = (html: string) => {
 
   const bodyText = normalizeText(source.text()).replace(/\n{3,}/g, '\n\n')
   return bodyText.slice(0, 15000)
-}
-
-async function callGroq(systemPrompt: string, userMessage: string): Promise<string> {
-  const apiKey = process.env.GROQ_API_KEY
-  if (!apiKey) {
-    throw new Error('GROQ_API_KEY no configurada')
-  }
-
-  const groq = new Groq({ apiKey })
-  const chatCompletion = await groq.chat.completions.create({
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userMessage },
-    ],
-    model: 'llama-3.3-70b-versatile',
-    temperature: 0.7,
-    response_format: { type: 'json_object' },
-  })
-
-  const text = chatCompletion.choices?.[0]?.message?.content?.trim()
-  if (!text) {
-    throw new Error('Groq no retornó contenido')
-  }
-  return text
-}
-
-async function callGemini(systemPrompt: string, userMessage: string): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY no configurada')
-  }
-
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      system_instruction: {
-        parts: [{ text: systemPrompt }],
-      },
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: userMessage }],
-        },
-      ],
-      generationConfig: {
-        temperature: 0.7,
-        responseMimeType: 'application/json',
-      },
-    }),
-  })
-
-  if (!response.ok) {
-    const errText = await response.text().catch(() => '')
-    throw new Error(`Gemini API error HTTP ${response.status}: ${errText}`)
-  }
-
-  const data = await response.json()
-  const candidateText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
-  if (!candidateText) {
-    throw new Error('Gemini API no devolvió partes de texto en el candidato')
-  }
-  return candidateText
 }
 
 export async function generarBorradorConIA(input: GenerarBorradorInput): Promise<GenerarBorradorResult> {
@@ -199,23 +132,12 @@ REGLAS DE REDACCIÓN:
 
 ${sourceDetails}`
 
-  let generatedText = ''
-  let modelUsed = ''
-
-  try {
-    generatedText = await callGroq(systemPrompt, userMessage)
-    modelUsed = 'groq:llama-3.3-70b-versatile'
-  } catch (groqError) {
-    console.warn('⚠️ Groq falló o no está disponible. Intentando fallback con Gemini API:', groqError)
-    try {
-      generatedText = await callGemini(systemPrompt, userMessage)
-      modelUsed = 'gemini:gemini-2.5-flash'
-    } catch (geminiError) {
-      throw new Error(
-        `Error en motor de IA: Groq (${groqError instanceof Error ? groqError.message : String(groqError)}) | Gemini (${geminiError instanceof Error ? geminiError.message : String(geminiError)})`,
-      )
-    }
-  }
+  const { text: generatedText, provider: modelUsed } = await generateWithAiFallback({
+    systemPrompt,
+    userMessage,
+    temperature: 0.7,
+    responseFormat: 'json',
+  })
 
   let cleanText = generatedText
     .replace(/```json/gi, '')

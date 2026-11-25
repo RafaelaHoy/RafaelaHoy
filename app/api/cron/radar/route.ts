@@ -17,6 +17,44 @@ type RadarNoticiaInsert = {
   fecha_publicacion: string | null
 }
 
+const MAX_AGE_MS = 24 * 60 * 60 * 1000 // 24 horas
+
+function isNoticiaReciente(noticia: NoticiaNotificacion): boolean {
+  const now = Date.now()
+
+  // 1. Verificar fecha en URL (ej: /2026/03/ o /2026/11/24/) incluso si el scraper asignó fecha actual
+  if (noticia.url_original) {
+    const urlDateMatch = noticia.url_original.match(
+      /\/(20\d{2})\/(0[1-9]|1[0-2])(?:\/(0[1-9]|[12]\d|3[01]))?(?:\/|$)/,
+    )
+    if (urlDateMatch) {
+      const year = Number(urlDateMatch[1])
+      const month = Number(urlDateMatch[2])
+      const day = urlDateMatch[3] ? Number(urlDateMatch[3]) : null
+
+      const urlRefDate = day
+        ? new Date(year, month - 1, day, 23, 59, 59)
+        : new Date(year, month, 0, 23, 59, 59) // último día del mes
+
+      if (now - urlRefDate.getTime() > MAX_AGE_MS) {
+        return false
+      }
+    }
+  }
+
+  // 2. Verificar fecha_publicacion (published_at / pubDate / isoDate)
+  if (noticia.fecha_publicacion) {
+    const parsed = new Date(noticia.fecha_publicacion)
+    if (!Number.isNaN(parsed.getTime())) {
+      if (now - parsed.getTime() > MAX_AGE_MS) {
+        return false
+      }
+    }
+  }
+
+  return true
+}
+
 export async function GET(req: Request) {
   // Validación de seguridad opcional si CRON_SECRET está configurado (acepta Bearer header o ?secret=...)
   if (process.env.CRON_SECRET) {
@@ -165,10 +203,14 @@ export async function GET(req: Request) {
     }
   }
 
-  // Notificar por Telegram las noticias estrictamente nuevas detectadas
-  if (nuevasNoticiasParaNotificar.length > 0) {
+  // Filtrar solo noticias recientes (< 24hs) para notificar a Telegram (las viejas ya quedaron guardadas en Supabase)
+  const recientesParaNotificar = nuevasNoticiasParaNotificar.filter((noticia) =>
+    isNoticiaReciente(noticia),
+  )
+
+  if (recientesParaNotificar.length > 0) {
     try {
-      await notifyTelegramNewNews(nuevasNoticiasParaNotificar)
+      await notifyTelegramNewNews(recientesParaNotificar)
     } catch (tgError) {
       console.error('[CRON RADAR] Error notificando a Telegram:', tgError)
     }
@@ -178,6 +220,7 @@ export async function GET(req: Request) {
     status: 'ok',
     procesadas: procesadasCount,
     nuevas: nuevasNoticiasCount,
+    notificadas: recientesParaNotificar.length,
     errores: erroresLog,
     auditoria: auditoriaMedios,
   })

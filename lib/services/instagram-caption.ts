@@ -1,4 +1,4 @@
-import Groq from 'groq-sdk'
+import { generateWithAiFallback } from '@/lib/services/ai-client'
 
 export type InstagramCaptionInput = {
   title: string
@@ -13,70 +13,6 @@ function stripHtml(html: string): string {
     .replace(/&nbsp;/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim()
-}
-
-async function callGroqText(systemPrompt: string, userMessage: string): Promise<string> {
-  const apiKey = process.env.GROQ_API_KEY
-  if (!apiKey) {
-    throw new Error('GROQ_API_KEY no configurada')
-  }
-
-  const groq = new Groq({ apiKey })
-  const completion = await groq.chat.completions.create({
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userMessage },
-    ],
-    model: 'llama-3.3-70b-versatile',
-    temperature: 0.6,
-  })
-
-  const text = completion.choices?.[0]?.message?.content?.trim()
-  if (!text) {
-    throw new Error('Groq devolvió una respuesta vacía')
-  }
-  return text
-}
-
-async function callGeminiText(systemPrompt: string, userMessage: string): Promise<string> {
-  const apiKey = process.env.GEMINI_API_KEY
-  if (!apiKey) {
-    throw new Error('GEMINI_API_KEY no configurada')
-  }
-
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      system_instruction: {
-        parts: [{ text: systemPrompt }],
-      },
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: userMessage }],
-        },
-      ],
-      generationConfig: {
-        temperature: 0.6,
-      },
-    }),
-  })
-
-  if (!response.ok) {
-    const errText = await response.text().catch(() => '')
-    throw new Error(`Gemini API HTTP ${response.status}: ${errText}`)
-  }
-
-  const data = await response.json()
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
-  if (!text) {
-    throw new Error('Gemini devolvió una respuesta vacía')
-  }
-  return text
 }
 
 function buildSafeFallback(input: InstagramCaptionInput): string {
@@ -115,14 +51,15 @@ Copete/Extracto: ${excerpt || 'Sin extracto'}
 Contenido: ${cleanContent || 'Sin contenido adicional'}`
 
   try {
-    return await callGroqText(systemPrompt, userMessage)
-  } catch (groqError) {
-    console.warn('[Instagram Caption] Groq falló, intentando con Gemini 2.5 Flash:', groqError)
-    try {
-      return await callGeminiText(systemPrompt, userMessage)
-    } catch (geminiError) {
-      console.warn('[Instagram Caption] Gemini también falló, usando fallback seguro:', geminiError)
-      return buildSafeFallback(input)
-    }
+    const { text } = await generateWithAiFallback({
+      systemPrompt,
+      userMessage,
+      temperature: 0.6,
+      responseFormat: 'text',
+    })
+    return text
+  } catch (err) {
+    console.warn('[Instagram Caption] Fallaron todos los motores de IA, usando fallback seguro:', err)
+    return buildSafeFallback(input)
   }
 }
